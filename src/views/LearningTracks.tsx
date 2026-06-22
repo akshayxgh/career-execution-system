@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { TrackStatus, StudyLog } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, BookOpen, Clock } from 'lucide-react';
+import { Plus, BookOpen, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 
 export const LearningTracks = () => {
   const { state, updateState } = useStore();
   const [showLogForm, setShowLogForm] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
 
   const [logData, setLogData] = useState<Partial<StudyLog>>({
     date: new Date().toISOString().split('T')[0],
@@ -30,6 +31,16 @@ export const LearningTracks = () => {
       return t;
     });
     updateState({ learningTracks: updatedTracks });
+  };
+
+  const toggleLogExpansion = (id: string) => {
+    const newExpanded = new Set(expandedLogs);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedLogs(newExpanded);
   };
 
   const handleLogSubmit = (e: React.FormEvent) => {
@@ -145,6 +156,7 @@ export const LearningTracks = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                <th style={{ padding: '0.75rem 1rem', width: '40px' }}></th>
                 <th style={{ padding: '0.75rem 1rem' }}>Date</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Subject</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Topic</th>
@@ -154,13 +166,33 @@ export const LearningTracks = () => {
             </thead>
             <tbody>
               {state.studyLogs.slice(0, 10).map(log => (
-                <tr key={log.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '0.75rem 1rem' }}>{log.date}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{log.subject}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{log.topic}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{log.actualHours}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{log.confidenceScore}/10</td>
-                </tr>
+                <React.Fragment key={log.id}>
+                  <tr style={{ borderBottom: expandedLogs.has(log.id) ? 'none' : '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '0.75rem 1rem', cursor: log.notes ? 'pointer' : 'default' }} onClick={() => log.notes && toggleLogExpansion(log.id)}>
+                      {log.notes ? (expandedLogs.has(log.id) ? <ChevronDown size={18} /> : <ChevronRight size={18} />) : null}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>{log.date}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{log.subject}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{log.topic}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{log.actualHours}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <span className={`badge ${log.confidenceScore >= 8 ? 'badge-success' : log.confidenceScore >= 5 ? 'badge-warning' : 'badge-danger'}`}>
+                        {log.confidenceScore}/10
+                      </span>
+                    </td>
+                  </tr>
+                  {expandedLogs.has(log.id) && log.notes && (
+                    <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'rgba(0, 0, 0, 0.1)' }}>
+                      <td></td>
+                      <td colSpan={5} style={{ padding: '0.75rem 1rem', paddingTop: '0', color: 'var(--text-muted)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
+                        <div style={{ marginTop: '0.5rem', borderLeft: '2px solid var(--accent-primary)', paddingLeft: '1rem' }}>
+                          <strong>Notes:</strong><br />
+                          {log.notes}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
