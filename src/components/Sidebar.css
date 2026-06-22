@@ -1,0 +1,23 @@
+.sidebar-link:hover {
+  background-color: var(--bg-hover);
+}
+
+.sidebar-link.active {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--accent-primary) !important;
+  border-right: 3px solid var(--accent-primary);
+}
+
+@media (max-width: 768px) {
+  .sidebar-link {
+    padding: 0.75rem !important;
+    justify-content: center;
+  }
+  .sidebar-link span {
+    display: none;
+  }
+  .sidebar-link.active {
+    border-right: none;
+    border-bottom: 3px solid var(--accent-primary);
+  }
+}
