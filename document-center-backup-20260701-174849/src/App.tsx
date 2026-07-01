@@ -12,7 +12,6 @@ import { Weaknesses } from './views/Weaknesses';
 import { PL300Tracker } from './views/PL300Tracker';
 import { ProjectTracker } from './views/ProjectTracker';
 import { ResumeTracker } from './views/ResumeTracker';
-import { Documents } from './views/Documents';
 import { Analytics } from './views/Analytics';
 
 function App() {
@@ -29,7 +28,6 @@ function App() {
             <Route path="pl300" element={<PL300Tracker />} />
             <Route path="projects" element={<ProjectTracker />} />
             <Route path="resumes" element={<ResumeTracker />} />
-            <Route path="documents" element={<Documents />} />
             <Route path="analytics" element={<Analytics />} />
           </Route>
         </Routes>

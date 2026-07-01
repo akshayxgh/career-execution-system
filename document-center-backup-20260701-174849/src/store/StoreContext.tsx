@@ -57,7 +57,6 @@ const defaultState: StoreState = {
   studyLogs: [],
   projects: [],
   resumes: [],
-  documents: [],
   skillAssessments: [],
   settings: {
     pl300TargetDate: null

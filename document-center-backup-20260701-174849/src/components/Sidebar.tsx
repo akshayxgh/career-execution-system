@@ -9,7 +9,6 @@ import {
   Target, 
   FolderGit2, 
   FileText,
-  Files,
   BarChart2
 } from 'lucide-react';
 import './Sidebar.css';
@@ -24,7 +23,6 @@ export const Sidebar = () => {
     { to: '/pl300', label: 'PL-300', icon: <Target size={20} /> },
     { to: '/projects', label: 'Projects', icon: <FolderGit2 size={20} /> },
     { to: '/resumes', label: 'Resumes', icon: <FileText size={20} /> },
-    { to: '/documents', label: 'Documents', icon: <Files size={20} /> },
     { to: '/analytics', label: 'Analytics', icon: <BarChart2 size={20} /> },
   ];
 

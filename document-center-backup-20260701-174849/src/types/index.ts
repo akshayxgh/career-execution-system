@@ -80,14 +80,6 @@ export interface Resume {
   notes: string;
 }
 
-export interface DocumentRecord {
-  id: string;
-  docName: string;
-  documentNo: string;
-  issueDate?: string;
-  directLink: string;
-}
-
 export interface SkillAssessment {
   id: string;
   date: string; // YYYY-MM
@@ -125,7 +117,6 @@ export interface StoreState {
   studyLogs: StudyLog[];
   projects: Project[];
   resumes: Resume[];
-  documents: DocumentRecord[];
   skillAssessments: SkillAssessment[];
   settings: UserSettings;
   learningTracks: LearningTrack[];
