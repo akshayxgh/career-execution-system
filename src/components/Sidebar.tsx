@@ -10,11 +10,14 @@ import {
   FolderGit2, 
   FileText,
   Files,
-  BarChart2
+  BarChart2,
+  LogOut
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 
 export const Sidebar = () => {
+  const navigate = useNavigate();
   const links = [
     { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { to: '/tracks', label: 'Learning Tracks', icon: <BookOpen size={20} /> },
@@ -27,6 +30,11 @@ export const Sidebar = () => {
     { to: '/documents', label: 'Documents', icon: <Files size={20} /> },
     { to: '/analytics', label: 'Analytics', icon: <BarChart2 size={20} /> },
   ];
+
+  const handleLogout = async () => {
+    await fetch('/api/logout', { method: 'POST' }).catch(() => null);
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside className="sidebar">
@@ -58,6 +66,15 @@ export const Sidebar = () => {
       <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         <p style={{ marginBottom: '0.5rem' }}>Stay focused. Execute.</p>
         <p style={{ color: 'var(--warning)', fontWeight: 600 }}>Priority: Employment</p>
+        <button
+          className="btn btn-secondary"
+          type="button"
+          onClick={handleLogout}
+          style={{ width: '100%', marginTop: '1rem' }}
+        >
+          <LogOut size={16} />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );

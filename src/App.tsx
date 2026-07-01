@@ -2,6 +2,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { StoreProvider } from './store/StoreContext';
 import { Layout } from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Views
 import { Dashboard } from './views/Dashboard';
@@ -14,13 +15,15 @@ import { ProjectTracker } from './views/ProjectTracker';
 import { ResumeTracker } from './views/ResumeTracker';
 import { Documents } from './views/Documents';
 import { Analytics } from './views/Analytics';
+import { Login } from './views/Login';
 
 function App() {
   return (
     <StoreProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="tracks" element={<LearningTracks />} />
             <Route path="applications" element={<Applications />} />
