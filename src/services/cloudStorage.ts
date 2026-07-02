@@ -9,10 +9,11 @@ export async function loadState() {
     .eq("user_id", USER_ID)
     .single();
 
-  if (error) {
-    console.error(error);
-    return null;
-  }
+    if (error) {
+    console.error("Cloud save failed:", error);
+    } else {
+    console.log("Cloud save successful");
+    }
 
   return data?.data ?? null;
 }
@@ -30,7 +31,9 @@ export async function saveState(state: unknown) {
       }
     );
 
-  if (error) {
-    console.error(error);
-  }
+    if (error) {
+    console.error("Cloud save failed:", error);
+    } else {
+    console.log("Cloud save successful", state);
+    }
 }
