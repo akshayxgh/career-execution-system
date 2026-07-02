@@ -4,22 +4,11 @@ import { Navigate, useLocation } from 'react-router-dom';
 
 type AuthState = 'checking' | 'authenticated' | 'anonymous';
 
-// Development-only bypass.
-// Set to false before merging this branch if you want to test real authentication.
-const DEV_AUTH_BYPASS = true;
-
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const [authState, setAuthState] = useState<AuthState>(
-    DEV_AUTH_BYPASS ? 'authenticated' : 'checking'
-  );
-
+  const [authState, setAuthState] = useState<AuthState>('checking');
   const location = useLocation();
 
   useEffect(() => {
-    if (DEV_AUTH_BYPASS) {
-      return;
-    }
-
     let cancelled = false;
 
     fetch('/api/session')

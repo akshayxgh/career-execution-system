@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { StoreProvider } from './store/StoreContext';
 import { Layout } from './components/Layout';
@@ -16,6 +15,7 @@ import { ResumeTracker } from './views/ResumeTracker';
 import { Documents } from './views/Documents';
 import { Analytics } from './views/Analytics';
 import { Login } from './views/Login';
+import DecisionIntelligence from './views/DecisionIntelligence';
 
 function App() {
   return (
@@ -23,7 +23,15 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="tracks" element={<LearningTracks />} />
             <Route path="applications" element={<Applications />} />
@@ -34,6 +42,12 @@ function App() {
             <Route path="resumes" element={<ResumeTracker />} />
             <Route path="documents" element={<Documents />} />
             <Route path="analytics" element={<Analytics />} />
+
+            {/* New Module */}
+            <Route
+              path="decision-intelligence"
+              element={<DecisionIntelligence />}
+            />
           </Route>
         </Routes>
       </BrowserRouter>
