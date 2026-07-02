@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabase";
+import { loadState, saveState } from "../services/cloudStorage";
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { StoreState, LearningTrack } from '../types';
 
@@ -73,25 +75,47 @@ interface StoreContextType {
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
-
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<StoreState>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return { ...defaultState, ...parsed }; // Merge to ensure new fields are present
-      } catch (e) {
-        console.error('Failed to parse local storage data', e);
-        return defaultState;
-      }
-    }
-    return defaultState;
-  });
+
+const [state, setState] = useState<StoreState>(defaultState);
+const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    async function initialize() {
+      const cloudState = await loadState();
+
+      if (cloudState) {
+        setState({ ...defaultState, ...cloudState });
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEY);
+
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setState({ ...defaultState, ...parsed });
+          } catch (e) {
+            console.error("Failed to parse local storage data", e);
+          }
+        }
+      }
+
+      setLoading(false);
+    }
+
+    initialize();
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+
+    const timer = setTimeout(() => {
+      saveState(state);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [state, loading]);
 
   const updateState = (newState: Partial<StoreState>) => {
     setState(prev => ({ ...prev, ...newState }));
