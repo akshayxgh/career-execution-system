@@ -1,4 +1,3 @@
-import { supabase } from "../lib/supabase";
 import { loadState, saveState } from "../services/cloudStorage";
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { StoreState, LearningTrack } from '../types';
