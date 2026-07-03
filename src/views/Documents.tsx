@@ -1,54 +1,112 @@
-import React, { useMemo, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import {
+  uploadDocument,
+  getDocuments,
+  getDocumentUrl,
+  mapDocument,
+  deleteDocument as deleteDocumentService,
+} from "../services/documentService";
+import React, { useEffect, useMemo, useState } from "react";
 import { ExternalLink, FileText, Plus, Search, Trash2 } from 'lucide-react';
 import { useStore } from '../store/StoreContext';
 import type { DocumentRecord } from '../types';
 
 export const Documents = () => {
-  const { state, updateState } = useStore();
+  const {} = useStore();
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [formData, setFormData] = useState<Partial<DocumentRecord>>({
     docName: '',
     documentNo: '',
     issueDate: '',
-    directLink: ''
+    storagePath: '',
+    fileName: '',
+    fileSize: 0,
+    mimeType: ''
   });
+  
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  async function loadDocuments() {
+    try {
+      const data = await getDocuments();
+      setDocuments(data.map(mapDocument));
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   const filteredDocuments = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return state.documents;
+    if (!query) return documents;
 
-    return state.documents.filter(document =>
+    return documents.filter(document =>
       document.docName.toLowerCase().includes(query) ||
       document.documentNo.toLowerCase().includes(query)
     );
-  }, [state.documents, searchTerm]);
+  }, [documents, searchTerm]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newDocument: DocumentRecord = {
-      id: uuidv4(),
-      docName: formData.docName?.trim() || '',
-      documentNo: formData.documentNo?.trim() || '',
-      issueDate: formData.issueDate || '',
-      directLink: formData.directLink?.trim() || ''
+    if (!selectedFile) {
+      alert("Please select a file.");
+      return;
+    }
+
+    try {
+      await uploadDocument(
+        selectedFile,
+        formData.docName?.trim() || "",
+        formData.documentNo?.trim(),
+        formData.issueDate
+      );
+      await loadDocuments();
+      alert("Document uploaded successfully.");
+
+      setShowForm(false);
+      setSelectedFile(null);
+
+      setFormData({
+        docName: "",
+        documentNo: "",
+        issueDate: "",
+        storagePath: "",
+        fileName: "",
+        fileSize: 0,
+        mimeType: "",
+      });
+
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed.");
+    }
+  };
+  const openDocument = async (storagePath: string) => {
+    console.log("Storage Path:", storagePath);
+
+    try {
+      const url = await getDocumentUrl(storagePath);
+      window.open(url, "_blank");
+    } catch (err) {
+      console.error(err);
+      alert(JSON.stringify(err));
+    }
+  };
+    const deleteDocument = async (id: string, storagePath: string) => {
+      if (!confirm("Delete this document?")) return;
+
+      try {
+        await deleteDocumentService(id, storagePath);
+        loadDocuments();
+      } catch (err) {
+        console.error(err);
+        alert("Delete failed.");
+      }
     };
-
-    updateState({ documents: [newDocument, ...state.documents] });
-    setShowForm(false);
-    setFormData({
-      docName: '',
-      documentNo: '',
-      issueDate: '',
-      directLink: ''
-    });
-  };
-
-  const deleteDocument = (id: string) => {
-    updateState({ documents: state.documents.filter(document => document.id !== id) });
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -94,15 +152,29 @@ export const Documents = () => {
               />
             </div>
             <div>
-              <label className="text-sm text-muted">Dropbox Link</label>
-              <input
-                required
-                type="url"
-                className="input"
-                placeholder="https://www.dropbox.com/..."
-                value={formData.directLink}
-                onChange={e => setFormData({ ...formData, directLink: e.target.value })}
-              />
+              <label className="text-sm text-muted">Document File</label>
+                <input
+                  type="file"
+                  className="input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+
+                    if (!file) return;
+
+                    if (file.size > 10 * 1024 * 1024) {
+                      alert("Maximum file size is 10 MB.");
+                      e.target.value = "";
+                      return;
+                    }
+
+                    setSelectedFile(file);
+                  }}
+                />
+                {selectedFile && (
+                  <p className="text-sm text-muted" style={{ marginTop: "0.5rem" }}>
+                    Selected: {selectedFile.name}
+                  </p>
+                )}
             </div>
             <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button type="submit" className="btn btn-primary">Save Document</button>
@@ -148,21 +220,18 @@ export const Documents = () => {
                   <td style={{ padding: '1rem' }}>{document.documentNo}</td>
                   <td style={{ padding: '1rem' }}>{document.issueDate || '-'}</td>
                   <td style={{ padding: '1rem' }}>
-                    <a
-                      href={document.directLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn-secondary"
-                      title="Open document"
-                    >
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => openDocument(document.storagePath)}
+                      >
                       <ExternalLink size={16} /> Open
-                    </a>
+                    </button>
                   </td>
                   <td style={{ padding: '1rem' }}>
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={() => deleteDocument(document.id)}
+                      onClick={() => deleteDocument(document.id, document.storagePath)}
                       title="Delete document"
                       aria-label={`Delete ${document.docName}`}
                       style={{ padding: '0.5rem' }}

@@ -85,7 +85,10 @@ export interface DocumentRecord {
   docName: string;
   documentNo: string;
   issueDate?: string;
-  directLink: string;
+  storagePath: string;
+  fileName: string;
+  fileSize?: number;
+  mimeType?: string;
 }
 
 export interface SkillAssessment {
