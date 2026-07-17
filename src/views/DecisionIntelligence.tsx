@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DecisionJobRow from "../components/decision/DecisionJobRow";
 import {
   getDecisionJobs,
   type DecisionJob,
@@ -13,7 +14,6 @@ export default function DecisionIntelligence() {
     async function loadJobs() {
       try {
         setLoading(true);
-
         const data = await getDecisionJobs();
         setJobs(data);
       } catch (err: any) {
@@ -30,7 +30,7 @@ export default function DecisionIntelligence() {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">
+        <h1 className="mb-6 text-3xl font-bold">
           Decision Intelligence
         </h1>
 
@@ -42,69 +42,59 @@ export default function DecisionIntelligence() {
   if (error) {
     return (
       <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">
+        <h1 className="mb-6 text-3xl font-bold">
           Decision Intelligence
         </h1>
 
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-600">{error}</p>
       </div>
     );
   }
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-2">
-        Decision Intelligence
-      </h1>
 
-      <p className="mb-6 text-gray-500">
-        {jobs.length} recommended jobs
-      </p>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">
+          Decision Intelligence
+        </h1>
 
-      <div className="space-y-4">
+        <p className="text-gray-500">
+          {jobs.length} Recommended Jobs
+        </p>
+      </div>
+
+      {/* Header */}
+
+      <div className="grid grid-cols-[90px_3fr_2fr_120px_120px_160px_90px] gap-4 border-b bg-gray-100 px-4 py-3 font-semibold rounded-t-lg">
+
+        <div className="text-center">Score</div>
+
+        <div>Job Title</div>
+
+        <div>Company</div>
+
+        <div>Posted</div>
+
+        <div>Salary</div>
+
+        <div>Status</div>
+
+        <div>View</div>
+
+      </div>
+
+      {/* Rows */}
+
+      <div className="space-y-2 mt-2">
         {jobs.map((job) => (
-          <div
+          <DecisionJobRow
             key={job.id}
-            className="rounded-lg border p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">
-                  {job.title}
-                </h2>
-
-                <p className="text-gray-600">
-                  {job.company_name}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  {job.location}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <div className="text-lg font-bold">
-                  {job.score}/100
-                </div>
-
-                <div className="text-sm">
-                  {job.recommendation}
-                </div>
-              </div>
-            </div>
-
-            <p className="mt-4 text-sm">
-              {job.reason}
-            </p>
-
-            <div className="mt-4 flex gap-6 text-sm text-gray-500">
-              <span>Status: {job.my_status}</span>
-              <span>Source: {job.source}</span>
-              <span>Posted: {job.posted_date ?? "-"}</span>
-            </div>
-          </div>
+            job={job}
+          />
         ))}
       </div>
+
     </div>
   );
 }
