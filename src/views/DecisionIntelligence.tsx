@@ -55,8 +55,8 @@ export default function DecisionIntelligence() {
 
   if (loading) {
     return (
-      <div className="min-h-full bg-slate-950 p-4 text-slate-100 sm:p-6 lg:p-8">
-        <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-5 py-4 text-sm text-slate-300 shadow-xl">
+      <div className="decision-page">
+        <div className="decision-state">
           Loading decision intelligence...
         </div>
       </div>
@@ -65,8 +65,8 @@ export default function DecisionIntelligence() {
 
   if (error) {
     return (
-      <div className="min-h-full bg-slate-950 p-4 text-slate-100 sm:p-6 lg:p-8">
-        <div className="rounded-lg border border-red-900/60 bg-red-950/40 px-5 py-4 text-sm text-red-200 shadow-xl">
+      <div className="decision-page">
+        <div className="decision-state decision-state-error">
           {error}
         </div>
       </div>
@@ -74,9 +74,9 @@ export default function DecisionIntelligence() {
   }
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="decision-page">
+      <div className="decision-shell">
+        <div className="decision-topbar">
           <DecisionHeader count={jobs.length} />
           <DecisionToolbar search={search} onSearchChange={handleSearchChange} />
         </div>

@@ -5,7 +5,6 @@ import StatusDropdown from "./StatusDropdown";
 
 interface DecisionJobRowProps {
   job: DecisionJob;
-  columnClass: string;
 }
 
 function formatPostedDate(postedDate: string | null) {
@@ -26,11 +25,11 @@ function formatPostedDate(postedDate: string | null) {
   }).format(date);
 }
 
-export default function DecisionJobRow({ job, columnClass }: DecisionJobRowProps) {
+export default function DecisionJobRow({ job }: DecisionJobRowProps) {
   const rowTone =
     job.recommendation === "Apply"
-      ? "bg-emerald-950/30 hover:bg-emerald-900/35"
-      : "bg-amber-950/30 hover:bg-amber-900/35";
+      ? "decision-row-apply"
+      : "decision-row-maybe";
 
   const openJob = () => {
     window.open(job.url, "_blank");
@@ -47,37 +46,37 @@ export default function DecisionJobRow({ job, columnClass }: DecisionJobRowProps
           openJob();
         }
       }}
-      className={`${columnClass} cursor-pointer border-b border-slate-800/80 text-sm text-slate-200 transition ${rowTone}`}
+      className={`decision-row ${rowTone}`}
     >
-      <div className="flex items-center justify-center px-4 py-3">
+      <div className="decision-cell decision-score-cell">
         <ScoreBadge score={job.score} />
       </div>
 
-      <div className="flex min-w-0 items-center gap-2 px-4 py-3">
+      <div className="decision-cell decision-title-cell">
         {job.email_to_hr ? (
-          <Mail className="h-4 w-4 flex-none text-sky-300" aria-label="Email HR" />
+          <Mail className="decision-mail-icon" aria-label="Email HR" />
         ) : null}
-        <div className="min-w-0">
-          <div className="truncate font-semibold text-slate-50">{job.title}</div>
-          <div className="truncate text-xs text-slate-400">{job.company_name}</div>
+        <div className="decision-title-wrap">
+          <div className="decision-job-title">{job.title}</div>
+          <div className="decision-job-company-sub">{job.company_name}</div>
         </div>
       </div>
 
-      <div className="min-w-0 px-4 py-3">
-        <div className="truncate text-slate-200">{job.company_name}</div>
+      <div className="decision-cell decision-company-cell">
+        <div className="decision-company-name">{job.company_name}</div>
         {job.location ? (
-          <div className="truncate text-xs text-slate-500">{job.location}</div>
+          <div className="decision-location">{job.location}</div>
         ) : null}
       </div>
 
-      <div className="px-4 py-3 text-slate-300">{formatPostedDate(job.posted_date)}</div>
+      <div className="decision-cell decision-muted-cell">{formatPostedDate(job.posted_date)}</div>
 
-      <div className="min-w-0 px-4 py-3">
-        <span className="block truncate text-slate-300">{job.salary || "-"}</span>
+      <div className="decision-cell decision-salary-cell">
+        <span>{job.salary || "-"}</span>
       </div>
 
       <div
-        className="px-4 py-3"
+        className="decision-cell"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
@@ -85,15 +84,15 @@ export default function DecisionJobRow({ job, columnClass }: DecisionJobRowProps
       </div>
 
       <div
-        className="px-4 py-3"
+        className="decision-cell"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-100 shadow-sm transition hover:border-sky-500 hover:text-sky-200"
+          className="decision-view-button"
         >
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink className="decision-view-icon" />
           View
         </button>
       </div>
