@@ -1,0 +1,36 @@
+Phase 1 – Database Foundation ✅
+    Phase 1.1 – Freeze Scraper Tables
+        • Mark scraper tables as read-only for MyCES
+        • Freeze: companies, jobs, job_analysis, scrape_runs
+    Phase 1.1.5 – Database Cleanup
+        • Remove obsolete tables
+        • Dropped: job_decisions, job_matches, job_intelligence
+    Phase 1.2 – MyCES Job State
+        • Create my_jobs table
+        • Add lifecycle statuses
+        • Enforce status validation
+        • Default status = NEW
+    Phase 1.3 – Decision Intelligence Read Layer
+        • Create vw_decision_intelligence
+        • Join jobs + job_analysis + my_jobs
+        • Show only AI recommendations (Apply, Consider)
+        • Hide processed jobs (HIDDEN, APPLIED, etc.)
+    Phase 1.4 – Database Business Functions
+        • save_job()
+        • hide_job()
+        • apply_job()
+        • update_job_status()
+    Outcome
+        • Clean separation between Scraper and MyCES
+        • Database-driven job lifecycle
+        • Frontend interacts via views and RPC functions only
+Phase 2 — Decision Intelligence
+    2.1 Connect Supabase ✅
+    2.2 Job List
+    2.3 Search
+    2.4 Filters
+    2.5 Job Card
+    2.6 View Details
+    2.7 Actions
+    2.8 Save
+    2.9 Hide
