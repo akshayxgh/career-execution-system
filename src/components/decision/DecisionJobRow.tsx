@@ -5,6 +5,7 @@ import StatusDropdown from "./StatusDropdown";
 
 interface DecisionJobRowProps {
   job: DecisionJob;
+  onOpenJob: (job: DecisionJob) => void;
 }
 
 function formatPostedDate(postedDate: string | null) {
@@ -80,25 +81,27 @@ function formatSalary(salary: string | null) {
   return `${formatAmount(matches[0])} – ${formatAmount(matches[1])}`;
 }
 
-export default function DecisionJobRow({ job }: DecisionJobRowProps) {
+export default function DecisionJobRow({ job, onOpenJob }: DecisionJobRowProps) {
   const rowTone =
     job.recommendation === "Apply"
       ? "decision-row-apply"
       : "decision-row-maybe";
 
-  const openJob = () => {
-    window.open(job.url, "_blank");
+  const handleRowClick = () => {
+    if (job.url) {
+      window.open(job.url, "_blank", "noopener,noreferrer");
+    }
   };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={openJob}
+      onClick={handleRowClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          openJob();
+          handleRowClick();
         }
       }}
       className={`decision-row ${rowTone}`}
@@ -145,6 +148,7 @@ export default function DecisionJobRow({ job }: DecisionJobRowProps) {
         <button
           type="button"
           className="decision-view-button"
+          onClick={() => onOpenJob(job)}
         >
           <ExternalLink className="decision-view-icon" />
           Details

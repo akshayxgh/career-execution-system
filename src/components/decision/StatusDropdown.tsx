@@ -1,13 +1,13 @@
 import { useState } from "react";
-import type { DecisionJob } from "../../services/decisionIntelligenceService";
-
-type DecisionStatus = DecisionJob["my_status"] | "HIDDEN" | "APPLIED";
+import {
+  decisionStatuses,
+  type DecisionJob,
+  type DecisionStatus,
+} from "../../services/decisionIntelligenceService";
 
 interface StatusDropdownProps {
   value: DecisionJob["my_status"];
 }
-
-const statuses: DecisionStatus[] = ["NEW", "SAVED", "HIDDEN", "APPLIED"];
 
 export default function StatusDropdown({ value }: StatusDropdownProps) {
   const [status, setStatus] = useState<DecisionStatus>(value);
@@ -18,7 +18,7 @@ export default function StatusDropdown({ value }: StatusDropdownProps) {
       onChange={(event) => setStatus(event.target.value as DecisionStatus)}
       className="decision-status-select"
     >
-      {statuses.map((item) => (
+      {decisionStatuses.map((item) => (
         <option key={item} value={item}>
           {item}
         </option>

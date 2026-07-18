@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import DecisionHeader from "../components/decision/DecisionHeader";
+import DecisionJobModal from "../components/decision/DecisionJobModal";
 import DecisionTable from "../components/decision/DecisionTable";
 import DecisionToolbar from "../components/decision/DecisionToolbar";
 import {
   getDecisionJobs,
   type DecisionJob,
+  type DecisionStatus,
+  updateDecisionJobStatus,
 } from "../services/decisionIntelligenceService";
 
 const ROWS_PER_PAGE = 25;
@@ -77,6 +80,9 @@ export default function DecisionIntelligence() {
   const [page, setPage] = useState(1);
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [selectedJob, setSelectedJob] = useState<DecisionJob | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [statusSaveError, setStatusSaveError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -194,6 +200,41 @@ export default function DecisionIntelligence() {
     setPage(1);
   };
 
+  const handleOpenJob = (job: DecisionJob) => {
+    setStatusSaveError("");
+    setSelectedJob(job);
+  };
+
+  const handleSaveStatus = async (status: DecisionStatus) => {
+    if (!selectedJob) {
+      return;
+    }
+
+    setSavingStatus(true);
+    setStatusSaveError("");
+
+    try {
+      await updateDecisionJobStatus(selectedJob.id, status);
+
+      const updatedJob = {
+        ...selectedJob,
+        my_status: status,
+        status_updated_at: new Date().toISOString(),
+      };
+
+      setJobs((currentJobs) =>
+        currentJobs.map((job) => (job.id === selectedJob.id ? updatedJob : job)),
+      );
+      setSelectedJob(updatedJob);
+    } catch (e: unknown) {
+      setStatusSaveError(
+        e instanceof Error ? e.message : "Unable to save status.",
+      );
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="decision-page">
@@ -231,10 +272,21 @@ export default function DecisionIntelligence() {
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={handleSort}
+          onOpenJob={handleOpenJob}
           onResetSorting={handleResetSorting}
           onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
           onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
         />
+
+        {selectedJob ? (
+          <DecisionJobModal
+            job={selectedJob}
+            saving={savingStatus}
+            saveError={statusSaveError}
+            onClose={() => setSelectedJob(null)}
+            onSaveStatus={handleSaveStatus}
+          />
+        ) : null}
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ interface DecisionTableProps {
   sortColumn: DecisionSortColumn | null;
   sortDirection: DecisionSortDirection;
   onSort: (column: DecisionSortColumn) => void;
+  onOpenJob: (job: DecisionJob) => void;
   onResetSorting: () => void;
   onPreviousPage: () => void;
   onNextPage: () => void;
@@ -76,6 +77,7 @@ export default function DecisionTable({
   sortColumn,
   sortDirection,
   onSort,
+  onOpenJob,
   onResetSorting,
   onPreviousPage,
   onNextPage,
@@ -152,7 +154,7 @@ export default function DecisionTable({
 
           {jobs.length > 0 ? (
             jobs.map((job) => (
-              <DecisionJobRow key={job.id} job={job} />
+              <DecisionJobRow key={job.id} job={job} onOpenJob={onOpenJob} />
             ))
           ) : (
             <div className="decision-empty">

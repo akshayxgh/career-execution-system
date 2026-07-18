@@ -34,10 +34,19 @@ Phase 2 — Decision Intelligence
     2.7 Actions
     2.8 Save
     2.9 Hide
-
+Phase 3 – Job Management
+Phase 4 – Application Management
+Phase 5 – Interview Management
+Phase 6 – Resume Intelligence
+Phase 7 – Email Intelligence
+Phase 8 – Application History
+Phase 9 – Analytics & Insights
+Phase 10 – Automation
+Phase 11 – UI & Experience
+Phase 12 – Future Enhancements
 
 ------------------------------------
-1. Resume Library ✅ (foundation)
+✅ 1. Resume Library (foundation)
         │
         ├── Data Analyst
         ├── MIS Executive
@@ -47,9 +56,9 @@ Phase 2 — Decision Intelligence
         └── Reporting Analyst
     Create 5–6 base resumes.
     Store metadata (role, keywords, JSON, PDF).
-2. Status Synchronization ✅ (workflow)
+2. Status Synchronization (workflow)
     Make jobs move automatically between Decision → Applications → Interviews.
-3. Decision Details Page ✅ (intelligence)
+3. Decision Details Page (intelligence)
     Use the Resume Library to recommend the best resume.
     Add "Generate Tailored Resume" and later HR email generation.
 
