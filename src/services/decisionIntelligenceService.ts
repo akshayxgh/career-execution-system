@@ -47,8 +47,8 @@ export async function getDecisionJobs(): Promise<DecisionJob[]> {
 
     // NEW -> newest posted job first (LIFO)
     if (a.my_status === "NEW") {
-      const aDate = new Date(a.posted_date ?? 0).getTime();
-      const bDate = new Date(b.posted_date ?? 0).getTime();
+      const aDate = new Date(a.analyzed_at ?? 0).getTime();
+      const bDate = new Date(b.analyzed_at ?? 0).getTime();
 
       return bDate - aDate;
     }
