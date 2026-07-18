@@ -349,6 +349,9 @@ h3 { font-size: 1.25rem; }
 }
 
 .decision-th {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: 700;
@@ -358,7 +361,55 @@ h3 { font-size: 1.25rem; }
 }
 
 .decision-th-score {
-  text-align: center;
+  justify-content: center;
+}
+
+.decision-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  text-transform: inherit;
+}
+
+.decision-sort-button:hover {
+  color: var(--text-main);
+}
+
+.decision-sort-indicator {
+  color: var(--accent-primary);
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.decision-reset-button {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.decision-reset-button:hover {
+  background: rgb(51 65 85 / 0.65);
+  color: var(--text-main);
+}
+
+.decision-reset-icon {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 
 .decision-row {
@@ -369,7 +420,10 @@ h3 { font-size: 1.25rem; }
   color: #cbd5e1;
   font-size: 0.875rem;
   box-shadow: 0 8px 18px rgb(0 0 0 / 0.13);
-  transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
 }
 
 .decision-row-apply {
@@ -378,8 +432,6 @@ h3 { font-size: 1.25rem; }
 
 .decision-row-apply:hover {
   background: rgb(6 95 70 / 0.42);
-  box-shadow: 0 16px 28px rgb(0 0 0 / 0.22);
-  transform: translateY(-1px);
 }
 
 .decision-row-maybe {
@@ -388,8 +440,11 @@ h3 { font-size: 1.25rem; }
 
 .decision-row-maybe:hover {
   background: rgb(146 64 14 / 0.36);
-  box-shadow: 0 16px 28px rgb(0 0 0 / 0.22);
-  transform: translateY(-1px);
+}
+
+.decision-row:hover {
+  box-shadow: 0 18px 32px rgb(0 0 0 / 0.24);
+  transform: translateY(-2px);
 }
 
 .decision-cell {

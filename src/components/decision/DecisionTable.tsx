@@ -1,5 +1,16 @@
+import type { ReactNode } from "react";
+import { RotateCcw } from "lucide-react";
 import type { DecisionJob } from "../../services/decisionIntelligenceService";
 import DecisionJobRow from "./DecisionJobRow";
+
+export type DecisionSortColumn =
+  | "score"
+  | "posted"
+  | "analyzed"
+  | "experience"
+  | "salary"
+  | "status";
+export type DecisionSortDirection = "asc" | "desc";
 
 interface DecisionTableProps {
   jobs: DecisionJob[];
@@ -7,8 +18,53 @@ interface DecisionTableProps {
   totalPages: number;
   totalResults: number;
   rowsPerPage: number;
+  sortColumn: DecisionSortColumn | null;
+  sortDirection: DecisionSortDirection;
+  onSort: (column: DecisionSortColumn) => void;
+  onResetSorting: () => void;
   onPreviousPage: () => void;
   onNextPage: () => void;
+}
+
+interface SortableHeaderProps {
+  column: DecisionSortColumn;
+  label: string;
+  activeColumn: DecisionSortColumn | null;
+  direction: DecisionSortDirection;
+  onSort: (column: DecisionSortColumn) => void;
+  className?: string;
+  prefix?: ReactNode;
+}
+
+function SortableHeader({
+  column,
+  label,
+  activeColumn,
+  direction,
+  onSort,
+  className = "",
+  prefix,
+}: SortableHeaderProps) {
+  const isActive = activeColumn === column;
+
+  return (
+    <div className={`decision-th ${className}`}>
+      {prefix}
+      <button
+        type="button"
+        className="decision-sort-button"
+        onClick={() => onSort(column)}
+        aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <span>{label}</span>
+        {isActive ? (
+          <span className="decision-sort-indicator">
+            {direction === "asc" ? "▲" : "▼"}
+          </span>
+        ) : null}
+      </button>
+    </div>
+  );
 }
 
 export default function DecisionTable({
@@ -17,6 +73,10 @@ export default function DecisionTable({
   totalPages,
   totalResults,
   rowsPerPage,
+  sortColumn,
+  sortDirection,
+  onSort,
+  onResetSorting,
   onPreviousPage,
   onNextPage,
 }: DecisionTableProps) {
@@ -28,27 +88,63 @@ export default function DecisionTable({
       <div className="decision-table-scroll">
         <div className="decision-table">
           <div className="decision-table-header">
-            <div className="decision-th decision-th-score">
-              Score
-            </div>
+            <SortableHeader
+              column="score"
+              label="Score"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+              className="decision-th-score"
+              prefix={
+                <button
+                  type="button"
+                  className="decision-reset-button"
+                  onClick={onResetSorting}
+                  title="Reset Sorting & Filters"
+                  aria-label="Reset Sorting & Filters"
+                >
+                  <RotateCcw className="decision-reset-icon" />
+                </button>
+              }
+            />
             <div className="decision-th">
               Job Title
             </div>
-            <div className="decision-th">
-              Posted
-            </div>
-            <div className="decision-th">
-              Analyzed
-            </div>
-            <div className="decision-th">
-              Experience
-            </div>
-            <div className="decision-th">
-              Salary
-            </div>
-            <div className="decision-th">
-              Status
-            </div>
+            <SortableHeader
+              column="posted"
+              label="Posted"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
+              column="analyzed"
+              label="Analyzed"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
+              column="experience"
+              label="Experience"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
+              column="salary"
+              label="Salary"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
+              column="status"
+              label="Status"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+            />
             <div className="decision-th">
               Details
             </div>
