@@ -1,30 +1,143 @@
-import React, { useState } from 'react';
-import { useStore } from '../store/StoreContext';
-import type { Resume } from '../types';
-import { v4 as uuidv4 } from 'uuid';
-import { Plus, FileText } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Download, FileText } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+const BUCKET = 'resume-library';
+
+interface ResumeLibraryRecord {
+  resume_name: string;
+  role_keywords: string[] | string | null;
+  focus_keywords: string[] | string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ResumeCardRecord extends ResumeLibraryRecord {
+  docxFileName: string;
+  hasDocx: boolean;
+}
+
+const parseKeywords = (value: string[] | string | null) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [String(parsed)];
+  } catch {
+    return value
+      .split(',')
+      .map(keyword => keyword.trim())
+      .filter(Boolean);
+  }
+};
+
+const displayName = (resumeName: string) => resumeName.replaceAll('_', ' ');
+
+const formatDate = (value: string) => {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toISOString().split('T')[0];
+};
 
 export const ResumeTracker = () => {
-  const { state, updateState } = useStore();
-  const [showForm, setShowForm] = useState(false);
+  const [resumes, setResumes] = useState<ResumeCardRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<Partial<Resume>>({
-    versionName: '', roleTargeted: '', dateCreated: new Date().toISOString().split('T')[0],
-    lastUpdated: new Date().toISOString().split('T')[0], notes: ''
-  });
+  useEffect(() => {
+    let isMounted = true;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newResume: Resume = {
-      id: uuidv4(),
-      ...(formData as Omit<Resume, 'id'>)
+    async function loadResumes() {
+      setLoading(true);
+      setError(null);
+
+      const { data: records, error: recordsError } = await supabase
+        .from('resume_library')
+        .select('resume_name, role_keywords, focus_keywords, created_at, updated_at')
+        .order('created_at', { ascending: false });
+
+      if (recordsError) {
+        if (isMounted) {
+          setError(recordsError.message);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const { data: files, error: filesError } = await supabase.storage
+        .from(BUCKET)
+        .list('', { limit: 1000 });
+
+      if (filesError) {
+        if (isMounted) {
+          setError(filesError.message);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const docxFiles = new Set(
+        (files ?? [])
+          .map(file => file.name)
+          .filter(name => name.toLowerCase().endsWith('.docx'))
+      );
+
+      const mappedResumes = (records ?? []).map(record => {
+        const docxFileName = `${record.resume_name}.docx`;
+
+        return {
+          ...record,
+          docxFileName,
+          hasDocx: docxFiles.has(docxFileName),
+        };
+      });
+
+      if (isMounted) {
+        setResumes(mappedResumes);
+        setLoading(false);
+      }
+    }
+
+    loadResumes();
+
+    return () => {
+      isMounted = false;
     };
-    updateState({ resumes: [newResume, ...state.resumes] });
-    setShowForm(false);
-    setFormData({
-      versionName: '', roleTargeted: '', dateCreated: new Date().toISOString().split('T')[0],
-      lastUpdated: new Date().toISOString().split('T')[0], notes: ''
-    });
+  }, []);
+
+  const emptyMessage = useMemo(() => {
+    if (loading) return 'Loading resumes...';
+    if (error) return `Unable to load resumes: ${error}`;
+    return 'No resume versions tracked.';
+  }, [error, loading]);
+
+  const handleDownload = async (resume: ResumeCardRecord) => {
+    if (!resume.hasDocx) return;
+
+    setDownloadingFile(resume.docxFileName);
+
+    const { data, error: signedUrlError } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(resume.docxFileName, 60);
+
+    setDownloadingFile(null);
+
+    if (signedUrlError || !data?.signedUrl) {
+      setError(signedUrlError?.message ?? 'Unable to create download link.');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = data.signedUrl;
+    link.download = resume.docxFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -34,62 +147,47 @@ export const ResumeTracker = () => {
           <h1 style={{ marginBottom: '0.5rem' }}>Resume Tracker</h1>
           <p className="text-muted">Manage targeted resumes for different roles.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          <Plus size={18} /> {showForm ? 'Cancel' : 'New Resume Version'}
-        </button>
       </header>
 
-      {showForm && (
-        <div className="card" style={{ borderLeft: '4px solid var(--accent-primary)' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>Add Resume Version</h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-muted">Version Name (e.g. Power BI Resume)</label>
-              <input required className="input" value={formData.versionName} onChange={e => setFormData({...formData, versionName: e.target.value})} />
-            </div>
-            <div>
-              <label className="text-sm text-muted">Role Targeted</label>
-              <input required className="input" value={formData.roleTargeted} onChange={e => setFormData({...formData, roleTargeted: e.target.value})} />
-            </div>
-            <div>
-              <label className="text-sm text-muted">Date Created</label>
-              <input type="date" required className="input" value={formData.dateCreated} onChange={e => setFormData({...formData, dateCreated: e.target.value})} />
-            </div>
-            <div>
-              <label className="text-sm text-muted">Last Updated</label>
-              <input type="date" required className="input" value={formData.lastUpdated} onChange={e => setFormData({...formData, lastUpdated: e.target.value})} />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <label className="text-sm text-muted">Notes (Focus areas, keywords included)</label>
-              <textarea className="textarea" rows={2} value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}></textarea>
-            </div>
-            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-primary">Save Resume</button>
-            </div>
-          </form>
-        </div>
-      )}
-
       <div className="grid grid-cols-3 gap-6">
-        {state.resumes.length === 0 ? (
+        {resumes.length === 0 ? (
           <div style={{ gridColumn: 'span 3' }} className="card text-center text-muted">
-            No resume versions tracked.
+            {emptyMessage}
           </div>
-        ) : state.resumes.map(resume => (
-          <div key={resume.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}><FileText size={18} className="text-accent-primary" /> {resume.versionName}</h3>
-            <span className="badge badge-info" style={{ alignSelf: 'flex-start' }}>{resume.roleTargeted}</span>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span>Created: {resume.dateCreated}</span>
-              <span>Updated: {resume.lastUpdated}</span>
+        ) : resumes.map(resume => {
+          const roleTarget = parseKeywords(resume.role_keywords)[0] ?? 'No role target';
+          const focusKeywords = parseKeywords(resume.focus_keywords).join(', ');
+
+          return (
+            <div key={resume.resume_name} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}><FileText size={18} className="text-accent-primary" /> {displayName(resume.resume_name)}</h3>
+              <span className="badge badge-info" style={{ alignSelf: 'flex-start' }}>{roleTarget}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span>Created: {formatDate(resume.created_at)}</span>
+                <span>Updated: {formatDate(resume.updated_at)}</span>
+              </div>
+              {focusKeywords && (
+                <p className="text-sm text-muted" style={{ backgroundColor: 'var(--bg-dark)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                  {focusKeywords}
+                </p>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
+                {resume.hasDocx ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => handleDownload(resume)}
+                    disabled={downloadingFile === resume.docxFileName}
+                  >
+                    <Download size={16} /> {downloadingFile === resume.docxFileName ? 'Downloading...' : 'Download'}
+                  </button>
+                ) : (
+                  <span className="badge badge-warning">DOCX Missing</span>
+                )}
+              </div>
             </div>
-            {resume.notes && (
-              <p className="text-sm text-muted" style={{ backgroundColor: 'var(--bg-dark)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                {resume.notes}
-              </p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -26,10 +26,10 @@ Phase 1 – Database Foundation ✅
         • Frontend interacts via views and RPC functions only
 Phase 2 — Decision Intelligence
     2.1 Connect Supabase ✅
-    2.2 Job List
-    2.3 Search
-    2.4 Filters
-    2.5 Job Card
+    2.2 Job List ✅
+    2.3 Search ✅
+    2.4 Filters ✅
+    2.5 Job Card ✅
     2.6 View Details
     2.7 Actions
     2.8 Save
@@ -37,11 +37,24 @@ Phase 2 — Decision Intelligence
 
 
 ------------------------------------
-1. Company column
-2. Salary
-3. Email icon
-4. View button
-5. Score badge
-6. Header
-7. Status
-8. Pagination
+1. Resume Library ✅ (foundation)
+        │
+        ├── Data Analyst
+        ├── MIS Executive
+        ├── Power BI Developer
+        ├── Business Analyst
+        ├── SQL Developer
+        └── Reporting Analyst
+    Create 5–6 base resumes.
+    Store metadata (role, keywords, JSON, PDF).
+2. Status Synchronization ✅ (workflow)
+    Make jobs move automatically between Decision → Applications → Interviews.
+3. Decision Details Page ✅ (intelligence)
+    Use the Resume Library to recommend the best resume.
+    Add "Generate Tailored Resume" and later HR email generation.
+
+
+Step 0 — Create table and folder to store resume
+Step 1 — Job Title Match (Highest Priority)
+Step 2 — Description Match (Fallback)
+Step 3 — AI (Only if Needed)
