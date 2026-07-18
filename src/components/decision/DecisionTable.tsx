@@ -35,10 +35,13 @@ export default function DecisionTable({
               Job Title
             </div>
             <div className="decision-th">
-              Company
+              Posted
             </div>
             <div className="decision-th">
-              Posted
+              Analyzed
+            </div>
+            <div className="decision-th">
+              Experience
             </div>
             <div className="decision-th">
               Salary
@@ -47,7 +50,7 @@ export default function DecisionTable({
               Status
             </div>
             <div className="decision-th">
-              View
+              Details
             </div>
           </div>
 

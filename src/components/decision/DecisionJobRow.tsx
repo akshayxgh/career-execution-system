@@ -9,7 +9,7 @@ interface DecisionJobRowProps {
 
 function formatPostedDate(postedDate: string | null) {
   if (!postedDate) {
-    return "-";
+    return "—";
   }
 
   const date = new Date(postedDate);
@@ -21,8 +21,63 @@ function formatPostedDate(postedDate: string | null) {
   return new Intl.DateTimeFormat("en", {
     day: "2-digit",
     month: "short",
-    year: "numeric",
   }).format(date);
+}
+
+function formatAnalyzedDate(analyzedAt: string) {
+  const date = new Date(analyzedAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return analyzedAt;
+  }
+
+  const dayMonth = new Intl.DateTimeFormat("en", {
+    day: "2-digit",
+    month: "short",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+    .format(date)
+    .replace(" ", "")
+    .toUpperCase();
+
+  return `${dayMonth} ${time}`;
+}
+
+function formatSalary(salary: string | null) {
+  if (!salary) {
+    return "—";
+  }
+
+  const matches = salary.match(/\d+/g);
+
+  if (!matches || matches.length === 0) {
+    return salary;
+  }
+
+  const formatAmount = (value: string) => {
+    const amount = Number(value);
+
+    if (!Number.isFinite(amount)) {
+      return value;
+    }
+
+    const lakhs = amount / 100000;
+    const formatted = Number.isInteger(lakhs)
+      ? lakhs.toString()
+      : lakhs.toFixed(2).replace(/\.?0+$/, "");
+
+    return `₹${formatted}L`;
+  };
+
+  if (matches.length === 1) {
+    return formatAmount(matches[0]);
+  }
+
+  return `${formatAmount(matches[0])} – ${formatAmount(matches[1])}`;
 }
 
 export default function DecisionJobRow({ job }: DecisionJobRowProps) {
@@ -62,17 +117,16 @@ export default function DecisionJobRow({ job }: DecisionJobRowProps) {
         </div>
       </div>
 
-      <div className="decision-cell decision-company-cell">
-        <div className="decision-company-name">{job.company_name}</div>
-        {job.location ? (
-          <div className="decision-location">{job.location}</div>
-        ) : null}
-      </div>
-
       <div className="decision-cell decision-muted-cell">{formatPostedDate(job.posted_date)}</div>
 
+      <div className="decision-cell decision-muted-cell">{formatAnalyzedDate(job.analyzed_at)}</div>
+
+      <div className="decision-cell decision-experience-cell">
+        <span>{job.experience || "—"}</span>
+      </div>
+
       <div className="decision-cell decision-salary-cell">
-        <span>{job.salary || "-"}</span>
+        <span>{formatSalary(job.salary)}</span>
       </div>
 
       <div
@@ -93,7 +147,7 @@ export default function DecisionJobRow({ job }: DecisionJobRowProps) {
           className="decision-view-button"
         >
           <ExternalLink className="decision-view-icon" />
-          View
+          Details
         </button>
       </div>
     </div>
