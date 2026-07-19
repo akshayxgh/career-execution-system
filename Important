@@ -24,17 +24,45 @@ Phase 1 – Database Foundation ✅
         • Clean separation between Scraper and MyCES
         • Database-driven job lifecycle
         • Frontend interacts via views and RPC functions only
-Phase 2 — Decision Intelligence
+Phase 2 — Decision Intelligence ✅
     2.1 Connect Supabase ✅
     2.2 Job List ✅
     2.3 Search ✅
     2.4 Filters ✅
     2.5 Job Card ✅
     2.6 View Details✅
-    2.7 Actions
-    2.8 Save
-    2.9 Hide
 Phase 3 – Job Management
+    Step 3.1 – Job Status System ✅
+        Add a Status button to each job in the list.
+        Add the same Status option inside the Job Details modal.
+        Available actions: Apply / Save / Hide
+    Step 3.2 – Personal Job Status ✅
+        Store user actions in the my_jobs table.
+        Do not modify jobs or job_analysis.
+    Step 3.3 – Hide Jobs ✅
+        When a job is marked Hidden:
+        Save status as HIDDEN in my_jobs.
+        Remove it from Decision Intelligence.
+        Never show it again unless hidden jobs are explicitly viewed.
+    Step 3.4 – Apply Jobs ✅
+        When a job is marked Applied:
+        Save status as APPLIED in my_jobs.
+        Remove it from Decision Intelligence.
+        Automatically display it in the Applications page.
+    Step 3.5 – Save Jobs ✅
+        When a job is marked Saved:
+        Save status as SAVED in my_jobs.
+        Remove it from the default Decision Intelligence view.
+        Display it in the Saved Jobs section (future phase).
+    Step 3.6 – Update Dashboard Logic ✅
+        Decision Intelligence should display only jobs that:
+        AI Recommendation = Apply or Consider
+        Have no personal status (NEW)
+        Jobs with status:
+        HIDDEN
+        APPLIED
+        SAVED
+        should no longer appear in the main recommendation list.
 Phase 4 – Application Management
 Phase 5 – Interview Management
 Phase 6 – Resume Intelligence

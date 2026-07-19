@@ -96,14 +96,90 @@ export async function updateDecisionJobStatus(
   status: DecisionStatus,
 ) {
   const { error } = await supabase
-    .from("vw_decision_intelligence")
-    .update({
-      my_status: status,
-      status_updated_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
+    .from("my_jobs")
+    .upsert(
+      {
+        job_id: jobId,
+        status,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "job_id",
+      },
+    );
 
   if (error) {
     throw error;
   }
+}
+
+export interface AppliedJobFromDB {
+  id: string;
+  status: DecisionStatus;
+  updated_at: string;
+  job_id: string;
+  jobs: {
+    company_id: string | null;
+    title: string;
+    company_name: string;
+    location: string | null;
+    description: string | null;
+    experience: string | null;
+    salary: string | null;
+    posted_date: string | null;
+    url: string;
+    source: string;
+    search_keyword: string | null;
+    search_location: string | null;
+    job_analysis: {
+      score: number;
+      reason: string;
+      recommendation: string;
+      email_to_hr: boolean;
+      hr_email: string | null;
+      confidence: string | null;
+      analyzed_at: string;
+    } | null;
+  } | null;
+}
+
+export async function getAppliedJobs(): Promise<AppliedJobFromDB[]> {
+  const { data, error } = await supabase
+    .from("my_jobs")
+    .select(`
+      id,
+      status,
+      updated_at,
+      job_id,
+      jobs:jobs(
+        company_id,
+        title,
+        company_name,
+        location,
+        description,
+        experience,
+        salary,
+        posted_date,
+        url,
+        source,
+        search_keyword,
+        search_location,
+        job_analysis:job_analysis(
+          score,
+          reason,
+          recommendation,
+          email_to_hr,
+          hr_email,
+          confidence,
+          analyzed_at
+        )
+      )
+    `)
+    .in("status", ["APPLIED", "INTERVIEW", "OFFER", "REJECTED", "JOINED", "WITHDRAWN", "DECLINED"]);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as unknown as AppliedJobFromDB[];
 }

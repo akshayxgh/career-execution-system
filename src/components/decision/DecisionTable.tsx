@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { RotateCcw } from "lucide-react";
-import type { DecisionJob } from "../../services/decisionIntelligenceService";
+import type {
+  DecisionJob,
+  DecisionStatus,
+} from "../../services/decisionIntelligenceService";
 import DecisionJobRow from "./DecisionJobRow";
 
 export type DecisionSortColumn =
@@ -21,6 +24,7 @@ interface DecisionTableProps {
   sortColumn: DecisionSortColumn | null;
   sortDirection: DecisionSortDirection;
   onSort: (column: DecisionSortColumn) => void;
+  onStatusChange: (jobId: string, status: DecisionStatus) => void;
   onOpenJob: (job: DecisionJob) => void;
   onResetSorting: () => void;
   onPreviousPage: () => void;
@@ -79,6 +83,7 @@ export default function DecisionTable({
   onSort,
   onOpenJob,
   onResetSorting,
+  onStatusChange,
   onPreviousPage,
   onNextPage,
 }: DecisionTableProps) {
@@ -154,7 +159,7 @@ export default function DecisionTable({
 
           {jobs.length > 0 ? (
             jobs.map((job) => (
-              <DecisionJobRow key={job.id} job={job} onOpenJob={onOpenJob} />
+              <DecisionJobRow key={job.id} job={job} onOpenJob={onOpenJob} onStatusChange={onStatusChange} />
             ))
           ) : (
             <div className="decision-empty">

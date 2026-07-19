@@ -17,6 +17,8 @@ export interface JobApplication {
   lastContactDate?: string;
   nextAction: string;
   priorityLevel: PriorityLevel;
+  source?: string;
+  score?: number;
 }
 
 export interface Interview {

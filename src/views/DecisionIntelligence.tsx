@@ -240,6 +240,44 @@ export default function DecisionIntelligence() {
       setSavingStatus(false);
     }
   };
+  
+  const handleTableStatusChange = async (
+    jobId: string,
+    status: DecisionStatus,
+  ) => {
+    setSavingStatus(true);
+
+    try {
+      await updateDecisionJobStatus(jobId, status);
+      
+
+      setJobs((currentJobs) =>
+        currentJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                my_status: status,
+                status_updated_at: new Date().toISOString(),
+              }
+            : job,
+        ),
+      );
+
+      if (selectedJob?.id === jobId) {
+        setSelectedJob((current) =>
+          current
+            ? {
+                ...current,
+                my_status: status,
+                status_updated_at: new Date().toISOString(),
+              }
+            : null,
+        );
+      }
+    } finally {
+      setSavingStatus(false);
+    }
+  };  
 
   if (loading) {
     return (
@@ -279,6 +317,7 @@ export default function DecisionIntelligence() {
           sortDirection={sortDirection}
           onSort={handleSort}
           onOpenJob={handleOpenJob}
+          onStatusChange={handleTableStatusChange}
           onResetSorting={handleResetSorting}
           onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
           onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}

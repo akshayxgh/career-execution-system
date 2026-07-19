@@ -1,11 +1,15 @@
 import { ExternalLink, Mail } from "lucide-react";
-import type { DecisionJob } from "../../services/decisionIntelligenceService";
+import type {
+  DecisionJob,
+  DecisionStatus,
+} from "../../services/decisionIntelligenceService";
 import ScoreBadge from "./ScoreBadge";
 import StatusDropdown from "./StatusDropdown";
 
 interface DecisionJobRowProps {
   job: DecisionJob;
   onOpenJob: (job: DecisionJob) => void;
+  onStatusChange: (jobId: string, status: DecisionStatus) => void;
 }
 
 function formatPostedDate(postedDate: string | null) {
@@ -81,7 +85,11 @@ function formatSalary(salary: string | null) {
   return `${formatAmount(matches[0])} – ${formatAmount(matches[1])}`;
 }
 
-export default function DecisionJobRow({ job, onOpenJob }: DecisionJobRowProps) {
+export default function DecisionJobRow({
+  job,
+  onOpenJob,
+  onStatusChange,
+}: DecisionJobRowProps) {
   const rowTone =
     job.recommendation === "Apply"
       ? "decision-row-apply"
@@ -92,6 +100,7 @@ export default function DecisionJobRow({ job, onOpenJob }: DecisionJobRowProps) 
       window.open(job.url, "_blank", "noopener,noreferrer");
     }
   };
+
 
   return (
     <div
@@ -137,7 +146,11 @@ export default function DecisionJobRow({ job, onOpenJob }: DecisionJobRowProps) 
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
-        <StatusDropdown value={job.my_status} />
+        <StatusDropdown
+          value={job.my_status}
+          options={["SAVED", "APPLIED", "HIDDEN"]}
+          onChange={(status) => onStatusChange(job.id, status)}
+        />
       </div>
 
       <div
