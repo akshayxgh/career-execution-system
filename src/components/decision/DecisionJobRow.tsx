@@ -10,6 +10,7 @@ interface DecisionJobRowProps {
   job: DecisionJob;
   onOpenJob: (job: DecisionJob) => void;
   onStatusChange: (jobId: string, status: DecisionStatus) => void;
+  isRemoving?: boolean;
 }
 
 function formatPostedDate(postedDate: string | null) {
@@ -89,6 +90,7 @@ export default function DecisionJobRow({
   job,
   onOpenJob,
   onStatusChange,
+  isRemoving = false,
 }: DecisionJobRowProps) {
   const rowTone =
     job.recommendation === "Apply"
@@ -113,7 +115,7 @@ export default function DecisionJobRow({
           handleRowClick();
         }
       }}
-      className={`decision-row ${rowTone}`}
+      className={`decision-row ${rowTone} ${isRemoving ? "decision-row-removing" : ""}`}
     >
       <div className="decision-cell decision-score-cell">
         <ScoreBadge score={job.score} />

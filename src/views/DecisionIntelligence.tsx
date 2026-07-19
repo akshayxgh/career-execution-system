@@ -83,6 +83,7 @@ export default function DecisionIntelligence() {
   const [selectedJob, setSelectedJob] = useState<DecisionJob | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusSaveError, setStatusSaveError] = useState("");
+  const [removingJobIds, setRemovingJobIds] = useState<Record<string, boolean>>({});
 
   const loadJobs = async () => {
     try {
@@ -232,6 +233,20 @@ export default function DecisionIntelligence() {
         currentJobs.map((job) => (job.id === selectedJob.id ? updatedJob : job)),
       );
       setSelectedJob(updatedJob);
+
+      if (status !== "NEW") {
+        const jobId = selectedJob.id;
+        setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+        setTimeout(() => {
+          setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
+          setRemovingJobIds((prev) => {
+            const next = { ...prev };
+            delete next[jobId];
+            return next;
+          });
+        }, 300);
+        setSelectedJob(null);
+      }
     } catch (e: unknown) {
       setStatusSaveError(
         e instanceof Error ? e.message : "Unable to save status.",
@@ -273,6 +288,18 @@ export default function DecisionIntelligence() {
               }
             : null,
         );
+      }
+
+      if (status !== "NEW") {
+        setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+        setTimeout(() => {
+          setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
+          setRemovingJobIds((prev) => {
+            const next = { ...prev };
+            delete next[jobId];
+            return next;
+          });
+        }, 300);
       }
     } finally {
       setSavingStatus(false);
@@ -321,6 +348,7 @@ export default function DecisionIntelligence() {
           onResetSorting={handleResetSorting}
           onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
           onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
+          removingJobIds={removingJobIds}
         />
 
         {selectedJob ? (

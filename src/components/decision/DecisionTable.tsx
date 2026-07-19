@@ -29,6 +29,7 @@ interface DecisionTableProps {
   onResetSorting: () => void;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  removingJobIds?: Record<string, boolean>;
 }
 
 interface SortableHeaderProps {
@@ -86,6 +87,7 @@ export default function DecisionTable({
   onStatusChange,
   onPreviousPage,
   onNextPage,
+  removingJobIds = {},
 }: DecisionTableProps) {
   const pageStart = totalResults === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const pageEnd = Math.min(currentPage * rowsPerPage, totalResults);
@@ -159,7 +161,13 @@ export default function DecisionTable({
 
           {jobs.length > 0 ? (
             jobs.map((job) => (
-              <DecisionJobRow key={job.id} job={job} onOpenJob={onOpenJob} onStatusChange={onStatusChange} />
+              <DecisionJobRow 
+                key={job.id} 
+                job={job} 
+                onOpenJob={onOpenJob} 
+                onStatusChange={onStatusChange} 
+                isRemoving={removingJobIds[job.id]}
+              />
             ))
           ) : (
             <div className="decision-empty">

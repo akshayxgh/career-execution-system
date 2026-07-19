@@ -1152,3 +1152,10 @@ transform: rotate(-24deg);
   transition: transform 0.2s ease;
 }
 
+.decision-row-removing {
+  opacity: 0 !important;
+  transform: scale(0.95) !important;
+  transition: opacity 300ms ease, transform 300ms ease !important;
+  pointer-events: none !important;
+}
+
