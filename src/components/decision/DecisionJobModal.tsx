@@ -159,7 +159,7 @@ export default function DecisionJobModal({
                 </div>
                 <div>
                   <dt>Search Keyword</dt>
-                  <dd>{formatValue(job.search_keyword)}</dd>
+                  <dd>{formatValue(job.search_keyword || (job as any).keyword)}</dd>
                 </div>
                 <div>
                   <dt>Search Location</dt>

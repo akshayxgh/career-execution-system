@@ -84,16 +84,21 @@ export default function DecisionIntelligence() {
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusSaveError, setStatusSaveError] = useState("");
 
+  const loadJobs = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      setJobs(await getDecisionJobs());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        setJobs(await getDecisionJobs());
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Error");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadJobs();
   }, []);
 
   const filteredJobs = useMemo(() => {
@@ -106,8 +111,9 @@ export default function DecisionIntelligence() {
     return jobs.filter((job) => {
       const title = job.title.toLowerCase();
       const company = job.company_name.toLowerCase();
+      const source = (job.source || "").toLowerCase();
 
-      return title.includes(query) || company.includes(query);
+      return title.includes(query) || company.includes(query) || source.includes(query);
     });
   }, [jobs, search]);
 
@@ -180,24 +186,24 @@ export default function DecisionIntelligence() {
   };
 
   const handleSort = (column: SortColumn) => {
-    setSortColumn((currentColumn) => {
-      if (currentColumn === column) {
-        setSortDirection((currentDirection) =>
-          currentDirection === "asc" ? "desc" : "asc",
-        );
-        return currentColumn;
-      }
-
+    if (sortColumn === column) {
+      setSortDirection((currentDirection) =>
+        currentDirection === "asc" ? "desc" : "asc"
+      );
+    } else {
+      setSortColumn(column);
       setSortDirection("asc");
-      return column;
-    });
+    }
+
     setPage(1);
   };
 
-  const handleResetSorting = () => {
+  const handleResetSorting = async () => {
     setSortColumn(null);
     setSortDirection("asc");
     setPage(1);
+
+    await loadJobs();
   };
 
   const handleOpenJob = (job: DecisionJob) => {

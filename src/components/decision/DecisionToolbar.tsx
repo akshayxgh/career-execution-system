@@ -17,7 +17,7 @@ export default function DecisionToolbar({
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search title or company"
+          placeholder="Search title, company or source"
         />
       </label>
     </div>
