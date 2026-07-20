@@ -9,6 +9,7 @@ import {
   type DecisionStatus,
   updateDecisionJobStatus,
 } from "../services/decisionIntelligenceService";
+import JobCopilotWidget from "../components/copilot/JobCopilotWidget";
 
 const ROWS_PER_PAGE = 25;
 
@@ -360,6 +361,8 @@ export default function DecisionIntelligence() {
             onSaveStatus={handleSaveStatus}
           />
         ) : null}
+
+        <JobCopilotWidget job={selectedJob} />
       </div>
     </div>
   );

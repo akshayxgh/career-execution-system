@@ -90,18 +90,24 @@ export default function DecisionJobModal({
     return null;
   }, [job.resume]);
 
-  const handleDownload = async () => {
-    if (!job.resume?.recommended?.name) return;
-    
+  const handleDownload = async (storagePath: string, displayName?: string) => {
+    if (downloading) return;
     setDownloading(true);
     setDownloadError(null);
 
-    const fileName = `${job.resume.recommended.name}.docx`;
+    let bucket = "resume-library";
+    let filePath = storagePath;
+    
+    const parts = storagePath.split('/');
+    if (parts.length > 1 && parts[0] === "resume-library") {
+      bucket = parts[0];
+      filePath = parts.slice(1).join('/');
+    }
 
     try {
       const { data, error: signedUrlError } = await supabase.storage
-        .from("resume-library")
-        .createSignedUrl(fileName, 60);
+        .from(bucket)
+        .createSignedUrl(filePath, 60);
 
       if (signedUrlError || !data?.signedUrl) {
         setDownloadError(signedUrlError?.message ?? "Unable to create download link.");
@@ -110,7 +116,7 @@ export default function DecisionJobModal({
 
       const link = document.createElement("a");
       link.href = data.signedUrl;
-      link.download = fileName;
+      link.download = displayName ? `${displayName}.docx` : (filePath.split('/').pop() || "resume.docx");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -230,7 +236,10 @@ export default function DecisionJobModal({
                   type="button"
                   className="decision-modal-download-btn"
                   title="Download Resume"
-                  onClick={handleDownload}
+                  onClick={() => {
+                    const storagePath = job.resume?.recommended?.storage_path || job.resume?.recommended?.storagePath || job.resume?.recommended?.path || `${job.resume?.recommended?.name}.docx`;
+                    handleDownload(storagePath, resumeName);
+                  }}
                   disabled={downloading}
                 >
                   {downloading ? "⏳" : "⏬"}

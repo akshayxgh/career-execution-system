@@ -67,23 +67,85 @@ Phase 4 – Application Management
 Phase 5 – Interview Management
 Phase 6 – Resume Intelligence ✅
     Step 6.2 — Resume Recommendation Engine
-        Step 6.2.1 — Database Design
-        Step 6.2.2 — Title Matching Engine
-        Step 6.2.3 — Description Matching Engine
-        Step 6.2.4 — Tie Detection
-        Step 6.2.5 — Gemini Tie Resolver
-        Step 6.2.6 — Save Recommendation
-    Step 6.3 — Tie Resolver (AI)
-    Step 6.4 — Decision Intelligence Integration
-    Step 6.5 — Resume Preview
-    Step 6.6 — Tailored Resume Generator
-    Step 6.7 — Resume Versioning
+        6.2.1 — Database Design
+        6.2.2 — Title Matching Engine
+        6.2.3 — Description Matching Engine
+        6.2.4 — Tie Detection (Priority Tie-breaker)
+        6.2.5 — Gemini Tie Resolver (Dropped by design)❌
+        6.2.6 — Save Recommendation (Backend Pipeline)
+    Step 6.3 — Tie Resolver (AI) → Not Required (Can remove) ⏸️ 
+    Step 6.4 — Decision Intelligence Integration ✅ 
+        ✅ Recommended Resume displayed
+        ✅ Download Master Resume
+        ✅ Skip jobs handled correctly
+    Step 6.5 — Resume Preview❌ 
+    Step 6.6 — Tailored Resume Generator❌ 
+    Step 6.7 — Resume Versioning    ❌ 
 Phase 7 – Email Intelligence
 Phase 8 – Application History
 Phase 9 – Analytics & Insights
 Phase 10 – Automation
 Phase 11 – UI & Experience
 Phase 12 – Future Enhancements
+Phase 13 – AI Job Copilot
+    Step 13.1 — Chat Interface
+        13.1.1 — Chat Modal UI
+        13.1.2 — Conversation History
+        13.1.3 — Suggested Prompt Buttons
+        13.1.4 — AI Streaming Response
+    Step 13.2 — Context Engine
+        13.2.1 — Job Context Injection
+        13.2.2 — Resume JSON Injection
+        13.2.3 — AI Analysis Injection
+        13.2.4 — User Profile Context
+        13.2.5 — Prompt Builder
+    Step 13.3 — Job Understanding
+        13.3.1 — Job Summary
+        13.3.2 — Explain Recommendation Score
+        13.3.3 — Key Responsibilities
+        13.3.4 — Required Skills
+        13.3.5 — Hidden Expectations
+    Step 13.4 — Resume Match Analysis
+        13.4.1 — Overall Match Score
+        13.4.2 — Matching Skills
+        13.4.3 — Missing Skills
+        13.4.4 — ATS Keyword Analysis
+        13.4.5 — Resume Improvement Suggestions
+    Step 13.5 — Resume Intelligence Integration
+        13.5.1 — Recommend Best Resume
+        13.5.2 — Explain Resume Choice
+        13.5.3 — Generate Tailored Resume
+        13.5.4 — Compare Resume Versions
+    Step 13.6 — Interview Preparation
+        13.6.1 — HR Questions
+        13.6.2 — Technical Questions
+        13.6.3 — Project-based Questions
+        13.6.4 — Behavioral Questions
+        13.6.5 — Mock Interview
+    Step 13.7 — Company Intelligence
+        13.7.1 — Company Overview
+        13.7.2 — Products & Services
+        13.7.3 — Recent News
+        13.7.4 — Interview Experience
+        13.7.5 — Salary Insights
+    Step 13.8 — Application Strategy
+        13.8.1 — Should I Apply?
+        13.8.2 — Chances of Shortlisting
+        13.8.3 — Resume Customization Advice
+        13.8.4 — Cover Letter Advice
+        13.8.5 — HR Email Advice
+    Step 13.9 — Career Guidance
+        13.9.1 — Skill Gap Analysis
+        13.9.2 — Learning Recommendations
+        13.9.3 — Career Roadmap
+        13.9.4 — Similar Job Suggestions
+    Step 13.10 — Future Enhancements
+        13.10.1 — Voice Chat
+        13.10.2 — Multi-model Support
+        13.10.3 — Chat Memory
+        13.10.4 — Follow-up Recommendations
+
+
 
 ------------------------------------
 ✅ 1. Resume Library (foundation)
@@ -103,7 +165,3 @@ Phase 12 – Future Enhancements
     Add "Generate Tailored Resume" and later HR email generation.
 
 
-Step 0 — Create table and folder to store resume
-Step 1 — Job Title Match (Highest Priority)
-Step 2 — Description Match (Fallback)
-Step 3 — AI (Only if Needed)
