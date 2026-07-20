@@ -65,7 +65,19 @@ Phase 3 – Job Management
         should no longer appear in the main recommendation list.
 Phase 4 – Application Management
 Phase 5 – Interview Management
-Phase 6 – Resume Intelligence
+Phase 6 – Resume Intelligence ✅
+    Step 6.2 — Resume Recommendation Engine
+        Step 6.2.1 — Database Design
+        Step 6.2.2 — Title Matching Engine
+        Step 6.2.3 — Description Matching Engine
+        Step 6.2.4 — Tie Detection
+        Step 6.2.5 — Gemini Tie Resolver
+        Step 6.2.6 — Save Recommendation
+    Step 6.3 — Tie Resolver (AI)
+    Step 6.4 — Decision Intelligence Integration
+    Step 6.5 — Resume Preview
+    Step 6.6 — Tailored Resume Generator
+    Step 6.7 — Resume Versioning
 Phase 7 – Email Intelligence
 Phase 8 – Application History
 Phase 9 – Analytics & Insights

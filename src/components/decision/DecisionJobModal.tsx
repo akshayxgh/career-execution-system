@@ -5,6 +5,7 @@ import {
   type DecisionJob,
   type DecisionStatus,
 } from "../../services/decisionIntelligenceService";
+import { supabase } from "../../lib/supabase";
 
 interface DecisionJobModalProps {
   job: DecisionJob;
@@ -79,10 +80,46 @@ export default function DecisionJobModal({
     job.my_status,
   );
 
-  const recommendedResume = useMemo(
-    () => job.recommended_master_resume ?? job.recommended_resume ?? "-",
-    [job.recommended_master_resume, job.recommended_resume],
-  );
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const resumeName = useMemo(() => {
+    if (job.resume && job.resume.recommended && job.resume.recommended.name) {
+      return job.resume.recommended.name.replace(/_/g, " ");
+    }
+    return null;
+  }, [job.resume]);
+
+  const handleDownload = async () => {
+    if (!job.resume?.recommended?.name) return;
+    
+    setDownloading(true);
+    setDownloadError(null);
+
+    const fileName = `${job.resume.recommended.name}.docx`;
+
+    try {
+      const { data, error: signedUrlError } = await supabase.storage
+        .from("resume-library")
+        .createSignedUrl(fileName, 60);
+
+      if (signedUrlError || !data?.signedUrl) {
+        setDownloadError(signedUrlError?.message ?? "Unable to create download link.");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.href = data.signedUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      setDownloadError(err.message ?? "An unexpected error occurred during download.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div
@@ -176,9 +213,35 @@ export default function DecisionJobModal({
         </main>
 
         <footer className="decision-modal-actions">
-          <div className="decision-modal-resume">
-            <span>Recommended Resume</span>
-            <strong>{recommendedResume}</strong>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: 0 }}>
+            <div className="decision-modal-resume">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
+                <span>Recommended Resume :</span>
+                {resumeName ? (
+                  <strong>{resumeName}</strong>
+                ) : (
+                  <span style={{ textTransform: "none", letterSpacing: "normal", fontSize: "0.88rem", fontWeight: "normal" }}>
+                    No resume recommendation
+                  </span>
+                )}
+              </div>
+              {resumeName && (
+                <button
+                  type="button"
+                  className="decision-modal-download-btn"
+                  title="Download Resume"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                >
+                  {downloading ? "⏳" : "⏬"}
+                </button>
+              )}
+            </div>
+            {downloadError && (
+              <p style={{ margin: 0, paddingLeft: "0.25rem", color: "#f87171", fontSize: "0.75rem" }}>
+                {downloadError}
+              </p>
+            )}
           </div>
 
           <button type="button" className="decision-modal-generate">
@@ -208,7 +271,15 @@ export default function DecisionJobModal({
             {saving ? "Saving..." : "Save"}
           </button>
 
-          <button type="button" className="decision-modal-apply">
+          <button 
+            type="button" 
+            className="decision-modal-apply"
+            onClick={() => {
+              if (job.url) {
+                window.open(job.url, "_blank", "noopener,noreferrer");
+              }
+            }}
+          >
             Apply
           </button>
 

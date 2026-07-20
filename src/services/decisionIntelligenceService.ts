@@ -31,6 +31,7 @@ export interface DecisionJob {
 
   my_status: DecisionStatus;
   status_updated_at: string | null;
+  resume?: any;
 }
 
 export type DecisionStatus =
@@ -58,6 +59,7 @@ export const decisionStatuses: DecisionStatus[] = [
   "HIDDEN",
 ];
 
+
 export async function getDecisionJobs(): Promise<DecisionJob[]> {
   const { data, error } = await supabase
     .from("vw_decision_intelligence")
@@ -68,6 +70,28 @@ export async function getDecisionJobs(): Promise<DecisionJob[]> {
   }
 
   const jobs = (data ?? []) as DecisionJob[];
+
+  if (jobs.length > 0) {
+    try {
+      const { data: analysisData, error: analysisErr } = await supabase
+        .from("job_analysis")
+        .select("job_id, resume")
+        .in("job_id", jobs.map(j => j.id));
+
+      if (!analysisErr && analysisData) {
+        const resumeMap = new Map<string, any>();
+        analysisData.forEach(row => {
+          resumeMap.set(row.job_id, row.resume);
+        });
+
+        jobs.forEach(job => {
+          job.resume = resumeMap.get(job.id) || null;
+        });
+      }
+    } catch (e) {
+      console.error("Failed to merge resume recommendations inside getDecisionJobs:", e);
+    }
+  }
 
   return jobs.sort((a, b) => {
     // NEW always comes before SAVED
