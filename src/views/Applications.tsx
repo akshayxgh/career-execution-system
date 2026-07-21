@@ -126,11 +126,26 @@ export const Applications = () => {
 
   const allApps = [...dbAppsMapped, ...manualAppsMapped];
 
-  const filteredApps = allApps.filter(app => 
-    app.company.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    app.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    app.source.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredApps = allApps.filter(app => {
+    const q = searchTerm.toLowerCase();
+    if (
+      app.company.toLowerCase().includes(q) || 
+      app.jobTitle.toLowerCase().includes(q) ||
+      app.source.toLowerCase().includes(q)
+    ) return true;
+
+    if (app.isAutomatic) {
+      const dbApp = app.raw as AppliedJobFromDB;
+      const email = (dbApp.jobs?.job_analysis?.hr_email || '').toLowerCase();
+      const desc = (dbApp.jobs?.description || '').toLowerCase();
+      return email.includes(q) || desc.includes(q);
+    } else {
+      const manualApp = app.raw as any;
+      const contact = (manualApp.recruiterContact || '').toLowerCase();
+      const notes = (manualApp.notes || '').toLowerCase();
+      return contact.includes(q) || notes.includes(q);
+    }
+  });
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {

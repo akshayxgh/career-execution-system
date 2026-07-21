@@ -114,8 +114,16 @@ export default function DecisionIntelligence() {
       const title = job.title.toLowerCase();
       const company = job.company_name.toLowerCase();
       const source = (job.source || "").toLowerCase();
+      const email = (job.hr_email || "").toLowerCase();
+      const description = (job.description || "").toLowerCase();
 
-      return title.includes(query) || company.includes(query) || source.includes(query);
+      return (
+        title.includes(query) ||
+        company.includes(query) ||
+        source.includes(query) ||
+        email.includes(query) ||
+        description.includes(query)
+      );
     });
   }, [jobs, search]);
 
