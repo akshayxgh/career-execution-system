@@ -1,5 +1,10 @@
 import type { DecisionJob } from "../services/decisionIntelligenceService";
 
+export interface CopilotChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 export interface CurrentJobContext {
   id: string;
   title: string;

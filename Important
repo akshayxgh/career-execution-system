@@ -165,3 +165,22 @@ Phase 13 – AI Job Copilot
     Add "Generate Tailored Resume" and later HR email generation.
 
 
+✅ 13.2.1 Current Job Context
+        │
+        ▼
+🔜 13.2.2 Prompt Builder
+        │
+        ▼
+13.2.3 Conversation Memory
+        │
+        ▼
+13.2.4 AI Service
+        │
+        ▼
+13.2.5 Streaming Responses
+        │
+        ▼
+13.2.6 Dynamic Suggested Questions
+        │
+        ▼
+13.2.7 Conversation Persistence (optional)
