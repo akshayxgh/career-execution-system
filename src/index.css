@@ -327,14 +327,14 @@ h3 { font-size: 1.25rem; }
 }
 
 .decision-table {
-  min-width: 1120px;
+  min-width: 868px;
   padding: 0 0.75rem 0.75rem;
 }
 
 .decision-table-header,
 .decision-row {
   display: grid;
-  grid-template-columns: 104px minmax(300px, 2.2fr) 120px 150px 160px 170px 150px 106px;
+  grid-template-columns: 76px minmax(180px, 2fr) 85px 110px 85px 110px 110px 112px;
 }
 
 .decision-table-header {
@@ -351,13 +351,18 @@ h3 { font-size: 1.25rem; }
 .decision-th {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
   color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 1rem;
+  padding: 0.75rem 0.4rem;
+}
+
+.decision-th:last-child {
+  justify-content: center;
+  padding-right: 0.75rem;
 }
 
 .decision-th-score {
@@ -451,11 +456,16 @@ h3 { font-size: 1.25rem; }
   min-width: 0;
   display: flex;
   align-items: center;
-  padding: 0.8rem 1rem;
+  padding: 0.6rem 0.4rem;
 }
 
 .decision-score-cell {
   justify-content: center;
+}
+
+.decision-row > div:last-child {
+  justify-content: center;
+  padding-right: 0.75rem;
 }
 
 .decision-title-cell {
@@ -1403,4 +1413,168 @@ transform: rotate(-24deg);
 .copilot-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Mobile Responsiveness Improvements */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 0.75rem !important;
+  }
+
+  .decision-shell {
+    gap: 0.875rem !important;
+  }
+
+  .decision-topbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .decision-toolbar {
+    width: 100% !important;
+  }
+
+  .decision-table-frame {
+    border-radius: var(--radius-md) !important;
+  }
+
+  .decision-table-scroll {
+    overflow-x: visible !important;
+  }
+
+  .decision-table {
+    min-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .decision-table-header {
+    display: none !important;
+  }
+
+  .decision-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    grid-template-rows: auto auto auto !important;
+    grid-template-areas:
+      "score title details"
+      "meta  meta  meta"
+      "status status status" !important;
+    gap: 0.5rem 0.75rem !important;
+    padding: 0.875rem !important;
+    align-items: center !important;
+    border-bottom: 1px solid #1e293b !important;
+    margin-top: 0.5rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* 1: Score Badge */
+  .decision-row > div:nth-child(1) {
+    grid-area: score;
+    padding: 0 !important;
+  }
+
+  .decision-row > div:nth-child(1) .score-badge {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  /* 2: Title & Company */
+  .decision-row > div:nth-child(2) {
+    grid-area: title;
+    padding: 0 !important;
+    min-width: 0;
+  }
+
+  /* 8: Details Button -> Prominently placed at top-right of mobile card */
+  .decision-row > div:nth-child(8) {
+    grid-area: details;
+    padding: 0 !important;
+    justify-content: flex-end !important;
+  }
+
+  .decision-row > div:nth-child(8) .decision-view-button {
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8rem !important;
+    background: var(--accent-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+  }
+
+  /* 3 & 4: Posted / Analyzed dates - hidden on mobile card to keep clean */
+  .decision-row > div:nth-child(3),
+  .decision-row > div:nth-child(4) {
+    display: none !important;
+  }
+
+  /* 5 & 6: Experience & Salary - middle row meta */
+  .decision-row > div:nth-child(5) {
+    grid-area: meta;
+    justify-self: start;
+    padding: 0 !important;
+    font-size: 0.775rem !important;
+    color: #94a3b8 !important;
+  }
+
+  .decision-row > div:nth-child(6) {
+    grid-area: meta;
+    justify-self: end;
+    padding: 0 !important;
+    font-size: 0.775rem !important;
+    color: #38bdf8 !important;
+    font-weight: 600;
+  }
+
+  /* 7: Status Dropdown - bottom of card */
+  .decision-row > div:nth-child(7) {
+    grid-area: status;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .decision-row > div:nth-child(7) .decision-status-select {
+    width: 100% !important;
+    height: 2.35rem !important;
+  }
+
+  /* Applications table mobile responsiveness */
+  .applications-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .applications-table {
+    min-width: 600px !important;
+  }
+
+  .applications-table th,
+  .applications-table td {
+    padding: 0.6rem 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .applications-table .btn-secondary {
+    background: var(--accent-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-primary) !important;
+    font-size: 0.75rem !important;
+    padding: 0.35rem 0.65rem !important;
+    font-weight: 600 !important;
+  }
+
+  /* AI Copilot Widget on Mobile */
+  .copilot-widget-panel {
+    bottom: 0.75rem !important;
+    right: 0.75rem !important;
+    left: 0.75rem !important;
+    width: auto !important;
+    max-height: 85vh !important;
+  }
+
+  .copilot-floating-btn {
+    bottom: 1rem !important;
+    right: 1rem !important;
+  }
 }
