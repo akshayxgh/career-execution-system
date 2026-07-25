@@ -11,6 +11,7 @@ import {
   type DecisionStatus 
 } from '../services/decisionIntelligenceService';
 import DecisionJobModal from '../components/decision/DecisionJobModal';
+import { formatToISTDate } from '../utils/dateUtils';
 
 interface UnifiedApplication {
   id: string;
@@ -103,7 +104,7 @@ export const Applications = () => {
     company: dbApp.jobs?.company_name || '—',
     jobTitle: dbApp.jobs?.title || '—',
     status: formatStatus(dbApp.status),
-    appliedDate: dbApp.updated_at ? dbApp.updated_at.split('T')[0] : '—',
+    appliedDate: dbApp.updated_at ? formatToISTDate(dbApp.updated_at) : '—',
     source: dbApp.jobs?.source || 'Manual',
     score: dbApp.jobs?.job_analysis?.score ?? undefined,
     jobLink: dbApp.jobs?.url || '',

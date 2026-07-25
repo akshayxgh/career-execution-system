@@ -5,6 +5,7 @@ import type {
 } from "../../services/decisionIntelligenceService";
 import ScoreBadge from "./ScoreBadge";
 import StatusDropdown from "./StatusDropdown";
+import { formatToISTShortDate, formatToISTDateTime } from "../../utils/dateUtils";
 
 interface DecisionJobRowProps {
   job: DecisionJob;
@@ -14,43 +15,13 @@ interface DecisionJobRowProps {
 }
 
 function formatPostedDate(postedDate: string | null) {
-  if (!postedDate) {
-    return "—";
-  }
-
-  const date = new Date(postedDate);
-
-  if (Number.isNaN(date.getTime())) {
-    return postedDate;
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    month: "short",
-  }).format(date);
+  if (!postedDate) return "—";
+  return formatToISTShortDate(postedDate);
 }
 
 function formatAnalyzedDate(analyzedAt: string) {
-  const date = new Date(analyzedAt);
-
-  if (Number.isNaN(date.getTime())) {
-    return analyzedAt;
-  }
-
-  const dayMonth = new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    month: "short",
-  }).format(date);
-  const time = new Intl.DateTimeFormat("en", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
-    .format(date)
-    .replace(" ", "")
-    .toUpperCase();
-
-  return `${dayMonth} ${time}`;
+  if (!analyzedAt) return "—";
+  return formatToISTDateTime(analyzedAt);
 }
 
 function formatSalary(salary: string | null) {

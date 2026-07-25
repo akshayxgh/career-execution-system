@@ -94,6 +94,57 @@ export default function DecisionTable({
 
   return (
     <section className="decision-table-frame">
+      <div className="decision-mobile-sort-bar">
+        <span className="decision-mobile-sort-label">Sort:</span>
+        <div className="decision-mobile-sort-chips">
+          <button
+            type="button"
+            className={`decision-sort-chip ${sortColumn === 'score' ? 'active' : ''}`}
+            onClick={() => onSort('score')}
+          >
+            Score {sortColumn === 'score' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+          </button>
+          <button
+            type="button"
+            className={`decision-sort-chip ${sortColumn === 'posted' ? 'active' : ''}`}
+            onClick={() => onSort('posted')}
+          >
+            Posted {sortColumn === 'posted' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+          </button>
+          <button
+            type="button"
+            className={`decision-sort-chip ${sortColumn === 'salary' ? 'active' : ''}`}
+            onClick={() => onSort('salary')}
+          >
+            Salary {sortColumn === 'salary' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+          </button>
+          <button
+            type="button"
+            className={`decision-sort-chip ${sortColumn === 'experience' ? 'active' : ''}`}
+            onClick={() => onSort('experience')}
+          >
+            Exp {sortColumn === 'experience' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+          </button>
+          <button
+            type="button"
+            className={`decision-sort-chip ${sortColumn === 'status' ? 'active' : ''}`}
+            onClick={() => onSort('status')}
+          >
+            Status {sortColumn === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+          </button>
+          {sortColumn && (
+            <button
+              type="button"
+              className="decision-sort-chip decision-sort-reset"
+              onClick={onResetSorting}
+              title="Reset sorting"
+            >
+              <RotateCcw size={12} /> Reset
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="decision-table-scroll">
         <div className="decision-table">
           <div className="decision-table-header">
