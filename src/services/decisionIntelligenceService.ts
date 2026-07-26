@@ -26,7 +26,7 @@ export interface DecisionJob {
 
   email_to_hr: boolean;
   hr_email: string | null;
-  confidence: number | null;
+  confidence: string | number | null;
   analyzed_at: string;
 
   my_status: DecisionStatus;

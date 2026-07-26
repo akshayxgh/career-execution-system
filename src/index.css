@@ -994,7 +994,7 @@ h3 { font-size: 1.25rem; }
 
 .decision-modal-side {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 1.25rem;
   min-width: 0;
   height: 100%;
@@ -1036,6 +1036,47 @@ h3 { font-size: 1.25rem; }
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-y: auto;
+}
+
+.decision-modal-notes {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-dark);
+}
+
+.decision-modal-notes h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text-main);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.decision-modal-notes-textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 85px;
+  resize: vertical;
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.75rem;
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.decision-modal-notes-textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
 .decision-modal-actions {

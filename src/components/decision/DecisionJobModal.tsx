@@ -55,7 +55,7 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 function formatValue(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === "") {
+  if (value === null || value === undefined || value === "" || (typeof value === "number" && Number.isNaN(value))) {
     return "-";
   }
 
@@ -82,6 +82,17 @@ export default function DecisionJobModal({
 
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const [notes, setNotes] = useState<string>(() => {
+    return localStorage.getItem(`job_notes_${job.id}`) || (job as any).notes || "";
+  });
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  const handleSaveNotes = (newNotes?: string) => {
+    const textToSave = newNotes !== undefined ? newNotes : notes;
+    localStorage.setItem(`job_notes_${job.id}`, textToSave);
+    setNoteSaved(true);
+  };
 
   const resumeName = useMemo(() => {
     if (job.resume && job.resume.recommended && job.resume.recommended.name) {
@@ -215,6 +226,27 @@ export default function DecisionJobModal({
               <h3>Reason</h3>
               <p>{job.reason || "-"}</p>
             </section>
+
+            <section className="decision-modal-notes">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <h3 style={{ margin: 0 }}>My Job Notes 📝</h3>
+                {noteSaved && (
+                  <span style={{ fontSize: "0.72rem", color: "var(--accent-primary)", fontWeight: 800 }}>
+                    Saved ✓
+                  </span>
+                )}
+              </div>
+              <textarea
+                className="decision-modal-notes-textarea"
+                placeholder="Type private notes for this job (e.g. recruiter contact info, interview prep notes, follow-up date)..."
+                value={notes}
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                  setNoteSaved(false);
+                }}
+                onBlur={() => handleSaveNotes()}
+              />
+            </section>
           </aside>
         </main>
 
@@ -274,7 +306,10 @@ export default function DecisionJobModal({
           <button
             type="button"
             className="decision-modal-save"
-            onClick={() => onSaveStatus(selectedStatus)}
+            onClick={() => {
+              handleSaveNotes();
+              onSaveStatus(selectedStatus);
+            }}
             disabled={saving}
           >
             {saving ? "Saving..." : "Save"}

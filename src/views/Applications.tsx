@@ -229,7 +229,7 @@ export const Applications = () => {
       recommended_master_resume: null,
       email_to_hr: dbApp.jobs?.job_analysis?.email_to_hr || false,
       hr_email: dbApp.jobs?.job_analysis?.hr_email || null,
-      confidence: dbApp.jobs?.job_analysis?.confidence ? Number(dbApp.jobs.job_analysis.confidence) : null,
+      confidence: dbApp.jobs?.job_analysis?.confidence ?? null,
       analyzed_at: dbApp.jobs?.job_analysis?.analyzed_at || dbApp.updated_at || '',
       my_status: dbApp.status,
       status_updated_at: dbApp.updated_at || null,
