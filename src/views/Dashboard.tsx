@@ -456,13 +456,13 @@ export const Dashboard = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} /> 0 (Dark)
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} /> 0
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#86efac', display: 'inline-block' }} /> 10+ (Light Green)
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#86efac', display: 'inline-block' }} /> 10+
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#15803d', display: 'inline-block' }} /> 20+ (Greenest)
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#15803d', display: 'inline-block' }} /> 20+
             </div>
           </div>
         </div>

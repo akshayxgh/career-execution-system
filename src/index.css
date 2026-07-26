@@ -50,7 +50,8 @@
   border-color: #1e293b;
 }
 
-[data-theme="night"] .decision-table-header {
+[data-theme="night"] .decision-table-header,
+[data-theme="night"] .decision-pagination {
   background: #0b1120;
 }
 
@@ -665,10 +666,12 @@ h3 { font-size: 1.25rem; }
   justify-content: space-between;
   gap: 1rem;
   border-top: 1px solid var(--border-color);
-  background: rgb(15 23 42 / 0.86);
+  background: #f8fafc;
   color: var(--text-muted);
   padding: 0.8rem 1rem;
   font-size: 0.875rem;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 .decision-pagination-actions {
@@ -678,31 +681,33 @@ h3 { font-size: 1.25rem; }
 }
 
 .decision-pagination button {
-  border: 1px solid #475569;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: transparent;
+  background: var(--bg-card);
   color: var(--text-main);
   padding: 0.45rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  transition: background-color 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
 }
 
 .decision-pagination button:hover:not(:disabled) {
-  background: var(--bg-hover);
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
 }
 
 .decision-pagination button:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .decision-page-count {
   min-width: 4rem;
   text-align: center;
-  color: #64748b;
-  font-size: 0.75rem;
+  color: var(--text-main);
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
