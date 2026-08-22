@@ -10,21 +10,6 @@ const MarkdownEditor = ({ value, onChange, placeholder }: { value: string, onCha
   const [tab, setTab] = useState<'write' | 'preview'>('write');
   return (
     <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <style>{`
-        .markdown-preview ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
-        .markdown-preview ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
-        .markdown-preview li { margin-bottom: 0.25rem; }
-        .markdown-preview p { margin-bottom: 1rem; }
-        .markdown-preview p:last-child { margin-bottom: 0; }
-        .markdown-preview a { color: var(--accent-primary); text-decoration: underline; }
-        .markdown-preview code { background-color: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
-        .markdown-preview pre code { background-color: transparent; padding: 0; }
-        .markdown-preview pre { background-color: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; }
-        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 { font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--text-main); }
-        .markdown-preview h1 { font-size: 1.5em; }
-        .markdown-preview h2 { font-size: 1.25em; }
-        .markdown-preview h3 { font-size: 1.1em; }
-      `}</style>
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-dark)' }}>
         <button type="button" onClick={() => setTab('write')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: tab === 'write' ? 'var(--bg-card)' : 'transparent', color: tab === 'write' ? 'var(--text-main)' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>Write</button>
         <button type="button" onClick={() => setTab('preview')} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', backgroundColor: tab === 'preview' ? 'var(--bg-card)' : 'transparent', color: tab === 'preview' ? 'var(--text-main)' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>Preview</button>
@@ -139,6 +124,21 @@ export const ConceptLibrary = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <style>{`
+        .markdown-preview ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+        .markdown-preview ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
+        .markdown-preview li { margin-bottom: 0.25rem; }
+        .markdown-preview p { margin-bottom: 1rem; }
+        .markdown-preview p:last-child { margin-bottom: 0; }
+        .markdown-preview a { color: var(--accent-primary); text-decoration: underline; }
+        .markdown-preview code { background-color: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
+        .markdown-preview pre code { background-color: transparent; padding: 0; }
+        .markdown-preview pre { background-color: rgba(0,0,0,0.3); padding: 1rem; border-radius: 6px; overflow-x: auto; margin-bottom: 1rem; }
+        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 { font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--text-main); }
+        .markdown-preview h1 { font-size: 1.5em; }
+        .markdown-preview h2 { font-size: 1.25em; }
+        .markdown-preview h3 { font-size: 1.1em; }
+      `}</style>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -253,13 +253,10 @@ export const ConceptLibrary = () => {
                     </div>
                     <div>
                       <label className="text-xs text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Key Answer Points / Cheatsheet</label>
-                      <textarea 
-                        className="textarea" 
-                        rows={3} 
-                        placeholder="e.g. Memory contention between OLTP writes and OLAP reads..." 
-                        value={q.answer} 
-                        onChange={e => updateQuestion(idx, 'answer', e.target.value)} 
-                        style={{ width: '100%', resize: 'vertical' }}
+                      <MarkdownEditor 
+                        value={q.answer || ''} 
+                        onChange={val => updateQuestion(idx, 'answer', val)} 
+                        placeholder="e.g. Memory contention between OLTP writes and OLAP reads... (Markdown supported)" 
                       />
                     </div>
                   </div>
@@ -424,8 +421,10 @@ export const ConceptLibrary = () => {
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
                                   Q: {q.question || 'Untitled Question'}
                                 </div>
-                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
-                                  {q.answer || 'No answer provided.'}
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                                  <div className="markdown-preview">
+                                    {q.answer ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.answer}</ReactMarkdown> : 'No answer provided.'}
+                                  </div>
                                 </div>
                               </div>
                             ))}
