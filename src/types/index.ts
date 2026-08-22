@@ -134,7 +134,8 @@ export interface Concept {
   notebookLmAudioLink: string;
   linkedinPostLink: string;
   notes: string;
-  interviewQuestion: string;
+  interviewQuestion?: string; // Legacy fallback
+  interviewQuestions?: { question: string; answer: string }[];
 }
 
 export interface StoreState {
