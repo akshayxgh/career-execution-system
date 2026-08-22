@@ -11,6 +11,7 @@ import { Applications } from './views/Applications';
 import { Interviews } from './views/Interviews';
 import { Weaknesses } from './views/Weaknesses';
 import { PL300Tracker } from './views/PL300Tracker';
+import { ConceptLibrary } from './views/ConceptLibrary';
 import { ProjectTracker } from './views/ProjectTracker';
 import { ResumeTracker } from './views/ResumeTracker';
 import { Documents } from './views/Documents';
@@ -39,6 +40,7 @@ function App() {
             <Route path="interviews" element={<Interviews />} />
             <Route path="weaknesses" element={<Weaknesses />} />
             <Route path="pl300" element={<PL300Tracker />} />
+            <Route path="concept-library" element={<ConceptLibrary />} />
             <Route path="projects" element={<ProjectTracker />} />
             <Route path="resumes" element={<ResumeTracker />} />
             <Route path="documents" element={<Documents />} />

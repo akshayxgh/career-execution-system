@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
+  Library,
   Briefcase,
   MessageSquare,
   AlertTriangle,
@@ -43,10 +44,11 @@ export const Sidebar = () => {
   const mainLinks = [
     { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { to: '/tracks', label: 'Learning Tracks', icon: <BookOpen size={20} /> },
+    { to: '/pl300', label: 'PL-300', icon: <Target size={20} /> },
+    { to: '/concept-library', label: 'Concept Library', icon: <Library size={20} /> },
     { to: '/applications', label: 'Applications', icon: <Briefcase size={20} /> },
     { to: '/interviews', label: 'Interviews', icon: <MessageSquare size={20} /> },
     { to: '/weaknesses', label: 'Weaknesses', icon: <AlertTriangle size={20} /> },
-    { to: '/pl300', label: 'PL-300', icon: <Target size={20} /> },
     { to: '/projects', label: 'Projects', icon: <FolderGit2 size={20} /> },
     { to: '/resumes', label: 'Resumes', icon: <FileText size={20} /> },
     { to: '/documents', label: 'Documents', icon: <Files size={20} /> },

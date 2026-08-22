@@ -63,7 +63,8 @@ const defaultState: StoreState = {
   settings: {
     pl300TargetDate: null
   },
-  learningTracks: initialTracks
+  learningTracks: initialTracks,
+  concepts: []
 };
 
 interface StoreContextType {

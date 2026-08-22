@@ -123,6 +123,19 @@ export interface LearningTrack {
   modules: TrackModule[];
 }
 
+export type ConceptStatus = 'Planned' | 'In Progress' | 'Completed';
+
+export interface Concept {
+  id: string;
+  name: string;
+  learningDate: string; // YYYY-MM-DD
+  status: ConceptStatus;
+  notebookLmResearchLink: string;
+  notebookLmAudioLink: string;
+  linkedinPostLink: string;
+  notes: string;
+}
+
 export interface StoreState {
   applications: JobApplication[];
   interviews: Interview[];
@@ -134,4 +147,5 @@ export interface StoreState {
   skillAssessments: SkillAssessment[];
   settings: UserSettings;
   learningTracks: LearningTrack[];
+  concepts: Concept[];
 }
