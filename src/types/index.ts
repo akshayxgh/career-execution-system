@@ -134,6 +134,7 @@ export interface Concept {
   notebookLmAudioLink: string;
   linkedinPostLink: string;
   notes: string;
+  interviewQuestion: string;
 }
 
 export interface StoreState {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { Concept, ConceptStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock } from 'lucide-react';
+import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock, MessageSquare } from 'lucide-react';
 
 export const ConceptLibrary = () => {
   const { state, updateState } = useStore();
@@ -16,13 +16,15 @@ export const ConceptLibrary = () => {
     notebookLmResearchLink: '',
     notebookLmAudioLink: '',
     linkedinPostLink: '',
-    notes: ''
+    notes: '',
+    interviewQuestion: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newConcept: Concept = {
       id: uuidv4(),
+      interviewQuestion: '', // Fallback for older entries if missing
       ...(formData as Omit<Concept, 'id'>)
     };
     const updatedConcepts = state.concepts ? [newConcept, ...state.concepts] : [newConcept];
@@ -35,7 +37,8 @@ export const ConceptLibrary = () => {
       notebookLmResearchLink: '',
       notebookLmAudioLink: '',
       linkedinPostLink: '',
-      notes: ''
+      notes: '',
+      interviewQuestion: ''
     });
   };
 
@@ -146,6 +149,16 @@ export const ConceptLibrary = () => {
                 onChange={e => setFormData({...formData, notes: e.target.value})}
               ></textarea>
             </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label className="text-sm text-muted">Interview Question (Optional)</label>
+              <textarea 
+                className="textarea" 
+                rows={2} 
+                placeholder='e.g. "Explain the difference between OLTP and OLAP systems."'
+                value={formData.interviewQuestion} 
+                onChange={e => setFormData({...formData, interviewQuestion: e.target.value})}
+              ></textarea>
+            </div>
             <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button type="submit" className="btn btn-primary">Save Concept</button>
             </div>
@@ -167,12 +180,16 @@ export const ConceptLibrary = () => {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div 
-                      onClick={() => toggleExpansion(concept.id)}
-                      style={{ cursor: 'pointer', marginTop: '4px', color: 'var(--text-muted)' }}
-                    >
-                      {expandedConcepts.has(concept.id) ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                    </div>
+                    {(concept.notes || concept.interviewQuestion) ? (
+                      <div 
+                        onClick={() => toggleExpansion(concept.id)}
+                        style={{ cursor: 'pointer', marginTop: '4px', color: 'var(--text-muted)' }}
+                      >
+                        {expandedConcepts.has(concept.id) ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                      </div>
+                    ) : (
+                      <div style={{ width: '20px', height: '20px' }}></div>
+                    )}
                     <div>
                       <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {concept.name}
@@ -223,21 +240,45 @@ export const ConceptLibrary = () => {
                   </div>
                 </div>
 
-                {expandedConcepts.has(concept.id) && concept.notes && (
+                {expandedConcepts.has(concept.id) && (
                   <div style={{ 
                     marginTop: '1rem', 
                     marginLeft: '2.5rem',
-                    padding: '1rem', 
-                    backgroundColor: 'rgba(0,0,0,0.2)', 
-                    borderRadius: '6px',
-                    borderLeft: '2px solid var(--accent-primary)'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem'
                   }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
-                      <FileText size={16} /> Key Takeaway
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
-                      {concept.notes}
-                    </p>
+                    {concept.notes && (
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: 'rgba(0,0,0,0.2)', 
+                        borderRadius: '6px',
+                        borderLeft: '2px solid var(--accent-primary)'
+                      }}>
+                        <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                          <FileText size={16} /> Key Takeaway
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
+                          {concept.notes}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {concept.interviewQuestion && (
+                      <div style={{ 
+                        padding: '1rem', 
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)', 
+                        borderRadius: '6px',
+                        borderLeft: '2px solid var(--info, #3b82f6)'
+                      }}>
+                        <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-main)' }}>
+                          <MessageSquare size={16} /> Interview Question
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
+                          {concept.interviewQuestion}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
