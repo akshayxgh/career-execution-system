@@ -24,7 +24,6 @@ export const ConceptLibrary = () => {
     e.preventDefault();
     const newConcept: Concept = {
       id: uuidv4(),
-      interviewQuestion: '', // Fallback for older entries if missing
       ...(formData as Omit<Concept, 'id'>)
     };
     const updatedConcepts = state.concepts ? [newConcept, ...state.concepts] : [newConcept];
