@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { Concept, ConceptStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock, MessageSquare, Trash2 } from 'lucide-react';
+import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock, MessageSquare, Trash2, Edit2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -51,9 +51,10 @@ const MarkdownEditor = ({ value, onChange, placeholder }: { value: string, onCha
 export const ConceptLibrary = () => {
   const { state, updateState } = useStore();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
 
-  const [formData, setFormData] = useState<Partial<Concept>>({
+  const initialFormState: Partial<Concept> = {
     name: '',
     learningDate: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
     status: 'Planned',
@@ -62,27 +63,42 @@ export const ConceptLibrary = () => {
     linkedinPostLink: '',
     notes: '',
     interviewQuestions: []
-  });
+  };
+
+  const [formData, setFormData] = useState<Partial<Concept>>(initialFormState);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newConcept: Concept = {
-      id: uuidv4(),
-      ...(formData as Omit<Concept, 'id'>)
-    };
-    const updatedConcepts = state.concepts ? [newConcept, ...state.concepts] : [newConcept];
-    updateState({ concepts: updatedConcepts });
+    if (editingId) {
+      const updatedConcepts = state.concepts.map(c => 
+        c.id === editingId ? { ...(formData as Concept), id: editingId } : c
+      );
+      updateState({ concepts: updatedConcepts });
+    } else {
+      const newConcept: Concept = {
+        id: uuidv4(),
+        ...(formData as Omit<Concept, 'id'>)
+      };
+      const updatedConcepts = state.concepts ? [newConcept, ...state.concepts] : [newConcept];
+      updateState({ concepts: updatedConcepts });
+    }
+    
     setShowForm(false);
-    setFormData({
-      name: '',
-      learningDate: new Date().toISOString().slice(0, 10),
-      status: 'Planned',
-      notebookLmResearchLink: '',
-      notebookLmAudioLink: '',
-      linkedinPostLink: '',
-      notes: '',
-      interviewQuestions: []
-    });
+    setEditingId(null);
+    setFormData(initialFormState);
+  };
+
+  const handleEdit = (concept: Concept) => {
+    setFormData(concept);
+    setEditingId(concept.id);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData(initialFormState);
   };
 
   const handleUpdateStatus = (id: string, newStatus: ConceptStatus) => {
@@ -131,14 +147,14 @@ export const ConceptLibrary = () => {
           </h1>
           <p className="text-muted">Store and track concepts from the Data Industry Roadmap.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+        <button className="btn btn-primary" onClick={() => showForm ? handleCancel() : setShowForm(true)}>
           <Plus size={18} /> {showForm ? 'Cancel' : 'Add Concept'}
         </button>
       </header>
 
       {showForm && (
         <div className="card" style={{ borderLeft: '4px solid var(--accent-primary)' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>Add New Concept</h3>
+          <h3 style={{ marginBottom: '1.5rem' }}>{editingId ? 'Edit Concept' : 'Add New Concept'}</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm text-muted">Concept Name</label>
@@ -257,8 +273,11 @@ export const ConceptLibrary = () => {
               </div>
             </div>
 
-            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-primary">Save Concept</button>
+            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', gap: '1rem' }}>
+              {editingId && (
+                <button type="button" className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
+              )}
+              <button type="submit" className="btn btn-primary">{editingId ? 'Update Concept' : 'Save Concept'}</button>
             </div>
           </form>
         </div>
@@ -280,7 +299,7 @@ export const ConceptLibrary = () => {
                   backgroundColor: 'var(--bg-card)'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flex: 1 }}>
                       {(concept.notes || hasInterviewQuestions) ? (
                         <div 
                           onClick={() => toggleExpansion(concept.id)}
@@ -296,7 +315,7 @@ export const ConceptLibrary = () => {
                           {concept.name}
                         </h3>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap' }}>
                             <Clock size={14} /> {concept.learningDate}
                           </span>
                           <span>•</span>
@@ -322,7 +341,7 @@ export const ConceptLibrary = () => {
                       </div>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {concept.notebookLmResearchLink && (
                         <a href={concept.notebookLmResearchLink} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.4rem', borderRadius: '50%' }} title="NotebookLM Research">
                           <Search size={16} />
@@ -338,6 +357,9 @@ export const ConceptLibrary = () => {
                           <Link size={16} />
                         </a>
                       )}
+                      <button onClick={() => handleEdit(concept)} className="btn btn-secondary" style={{ padding: '0.4rem', borderRadius: '50%' }} title="Edit Concept">
+                        <Edit2 size={16} />
+                      </button>
                     </div>
                   </div>
 
