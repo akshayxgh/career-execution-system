@@ -3,6 +3,7 @@ import { useStore } from '../store/StoreContext';
 import type { Concept, ConceptStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock, MessageSquare } from 'lucide-react';
+import Editor from 'react-simple-wysiwyg';
 
 export const ConceptLibrary = () => {
   const { state, updateState } = useStore();
@@ -140,23 +141,23 @@ export const ConceptLibrary = () => {
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <label className="text-sm text-muted">Key Takeaway / Notes</label>
-              <textarea 
-                className="textarea" 
-                rows={3} 
-                placeholder='e.g. "OLTP helps run the business; OLAP helps understand the business."'
-                value={formData.notes} 
-                onChange={e => setFormData({...formData, notes: e.target.value})}
-              ></textarea>
+              <div style={{ marginTop: '0.5rem', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', borderRadius: '4px' }}>
+                <Editor 
+                  value={formData.notes || ''} 
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  containerProps={{ style: { minHeight: '100px' } }}
+                />
+              </div>
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <label className="text-sm text-muted">Interview Question (Optional)</label>
-              <textarea 
-                className="textarea" 
-                rows={2} 
-                placeholder='e.g. "Explain the difference between OLTP and OLAP systems."'
-                value={formData.interviewQuestion} 
-                onChange={e => setFormData({...formData, interviewQuestion: e.target.value})}
-              ></textarea>
+              <div style={{ marginTop: '0.5rem', backgroundColor: 'var(--bg-card)', color: 'var(--text-main)', borderRadius: '4px' }}>
+                <Editor 
+                  value={formData.interviewQuestion || ''} 
+                  onChange={(e) => setFormData({...formData, interviewQuestion: e.target.value})}
+                  containerProps={{ style: { minHeight: '100px' } }}
+                />
+              </div>
             </div>
             <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button type="submit" className="btn btn-primary">Save Concept</button>
@@ -257,9 +258,11 @@ export const ConceptLibrary = () => {
                         <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
                           <FileText size={16} /> Key Takeaway
                         </h4>
-                        <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
-                          {concept.notes}
-                        </p>
+                        <div 
+                          style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}
+                          className="ql-editor"
+                          dangerouslySetInnerHTML={{ __html: concept.notes }} 
+                        />
                       </div>
                     )}
                     
@@ -273,9 +276,11 @@ export const ConceptLibrary = () => {
                         <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-main)' }}>
                           <MessageSquare size={16} /> Interview Question
                         </h4>
-                        <p style={{ margin: 0, fontSize: '0.875rem', whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
-                          {concept.interviewQuestion}
-                        </p>
+                        <div 
+                          style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}
+                          className="ql-editor"
+                          dangerouslySetInnerHTML={{ __html: concept.interviewQuestion }} 
+                        />
                       </div>
                     )}
                   </div>
