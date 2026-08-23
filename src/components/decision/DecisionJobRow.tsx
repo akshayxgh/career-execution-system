@@ -24,6 +24,16 @@ function formatAnalyzedDate(analyzedAt: string) {
   return formatToISTDateTime(analyzedAt);
 }
 
+function formatScraperName(scraper: string | null | undefined, source: string) {
+  const val = scraper || source || "—";
+  if (val.toLowerCase().includes("recommended")) return "Recommended";
+  if (val.toLowerCase().includes("portal")) return "Portals";
+  if (val.toLowerCase().includes("career")) return "Career";
+  if (val.toLowerCase().includes("link")) return "Links";
+  return val;
+}
+
+
 function formatSalary(salary: string | null) {
   if (!salary) {
     return "—";
@@ -107,12 +117,13 @@ export default function DecisionJobRow({
       <div className="decision-cell decision-muted-cell">{formatAnalyzedDate(job.analyzed_at)}</div>
 
       <div className="decision-cell decision-scraper-cell">
-        <span className="badge badge-secondary" style={{ textTransform: 'capitalize', fontSize: '0.75rem' }}>
-          {job.scraper || job.source || "—"}
+        <span className="badge badge-secondary" style={{ fontSize: '0.72rem', whiteSpace: 'nowrap', padding: '0.2rem 0.5rem' }}>
+          {formatScraperName(job.scraper, job.source)}
         </span>
       </div>
 
       <div className="decision-cell decision-experience-cell">
+
 
         <span>{job.experience || "—"}</span>
       </div>
