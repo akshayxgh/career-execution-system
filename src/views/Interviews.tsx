@@ -2,12 +2,71 @@ import React, { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { Interview } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Search, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Search, BookOpen, AlertCircle, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
+import { CopilotService } from '../services/copilotService';
 
 export const Interviews = () => {
   const { state, updateState } = useStore();
   const [showForm, setShowForm] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiInput, setAiInput] = useState({ company: '', role: '', description: '' });
   const [searchTerm, setSearchTerm] = useState('');
+
+  const copilotService = new CopilotService();
+
+  const handleGenerateAiPrep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiInput.company || !aiInput.role) return;
+
+    setAiLoading(true);
+    setAiError('');
+
+    const prompt = `You are an expert technical interviewer preparing a candidate for a job interview.
+Company: ${aiInput.company}
+Role: ${aiInput.role}
+Job Description / Context: ${aiInput.description || "General technical role at this company"}
+
+Generate a concise, high-yield interview prep kit in valid JSON format:
+{
+  "questions": [
+    "Technical question 1 specific to this role/company",
+    "Technical question 2 specific to this role/company",
+    "System / architecture / scenario question",
+    "Behavioral question",
+    "Company culture / situational question"
+  ],
+  "lessons": [
+    "Key focus area or core concept to master for ${aiInput.company}",
+    "Common pitfall / mistake to avoid during this interview"
+  ]
+}
+Return ONLY valid raw JSON without markdown formatting or code blocks.`;
+
+    try {
+      const responseText = await copilotService.generateResponse(prompt);
+      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      setFormData(prev => ({
+        ...prev,
+        company: aiInput.company,
+        round: `${aiInput.role} - Technical Prep`,
+        questionsAsked: parsed.questions || [],
+        lessonsLearned: parsed.lessons || [],
+      }));
+
+      setShowAiModal(false);
+      setShowForm(true);
+    } catch (err: any) {
+      console.error("AI Prep Generation Failed:", err);
+      setAiError(err.message || "Failed to generate prep kit. Check your Gemini API key.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   const [formData, setFormData] = useState<Partial<Interview>>({
     company: '', round: '', date: new Date().toISOString().split('T')[0],
@@ -63,10 +122,52 @@ export const Interviews = () => {
           <h1 style={{ marginBottom: '0.5rem' }}>Interview Knowledge Base</h1>
           <p className="text-muted">Document every question, mistake, and lesson learned.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          <Plus size={18} /> {showForm ? 'Cancel' : 'Log Interview'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn btn-secondary" onClick={() => setShowAiModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sparkles size={18} style={{ color: 'var(--accent-primary)' }} /> AI Interview Prep Kit
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            <Plus size={18} /> {showForm ? 'Cancel' : 'Log Interview'}
+          </button>
+        </div>
       </header>
+
+      {showAiModal && (
+        <div className="card" style={{ borderLeft: '4px solid var(--accent-secondary)', backgroundColor: 'var(--bg-card)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Sparkles size={20} style={{ color: 'var(--accent-primary)' }} /> Generate AI Interview Prep Kit
+            </h3>
+            <button className="btn btn-secondary" onClick={() => setShowAiModal(false)}>Cancel</button>
+          </div>
+          <p className="text-sm text-muted" style={{ marginBottom: '1.25rem' }}>
+            Enter the target company and role. Gemini AI will instantly generate targeted technical questions, scenario challenges, and core concepts to focus on.
+          </p>
+          {aiError && <p className="text-danger text-sm" style={{ marginBottom: '1rem' }}>{aiError}</p>}
+          <form onSubmit={handleGenerateAiPrep} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted">Target Company</label>
+                <input required className="input" placeholder="e.g. TCS, Accenture, Microsoft" value={aiInput.company} onChange={e => setAiInput({...aiInput, company: e.target.value})} />
+              </div>
+              <div>
+                <label className="text-sm text-muted">Role / Position</label>
+                <input required className="input" placeholder="e.g. Power BI Developer, Data Analyst" value={aiInput.role} onChange={e => setAiInput({...aiInput, role: e.target.value})} />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-muted">Job Description / Specific Focus (Optional)</label>
+              <textarea className="input" rows={3} placeholder="Paste requirements or specific skills (e.g. DAX, SQL Window Functions, AWS)" value={aiInput.description} onChange={e => setAiInput({...aiInput, description: e.target.value})} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="submit" className="btn btn-primary" disabled={aiLoading} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {aiLoading ? <><Loader2 size={16} className="animate-spin" /> Generating Prep Kit...</> : <><Sparkles size={16} /> Generate Questions</>}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
 
       {showForm && (
         <div className="card" style={{ borderLeft: '4px solid var(--accent-primary)' }}>
