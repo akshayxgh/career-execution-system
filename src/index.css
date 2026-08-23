@@ -398,15 +398,16 @@ h3 { font-size: 1.25rem; }
 }
 
 .decision-table {
-  min-width: 868px;
+  min-width: 980px;
   padding: 0 0.75rem 0.75rem;
 }
 
 .decision-table-header,
 .decision-row {
   display: grid;
-  grid-template-columns: 76px minmax(180px, 2fr) 85px 110px 85px 110px 110px 112px;
+  grid-template-columns: 76px minmax(180px, 2fr) 85px 110px 100px 85px 110px 110px 112px;
 }
+
 
 .decision-table-header {
   position: sticky;
