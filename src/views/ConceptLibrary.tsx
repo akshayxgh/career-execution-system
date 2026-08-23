@@ -38,7 +38,7 @@ export const ConceptLibrary = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'status'>('date-desc');
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'status-asc' | 'status-desc'>('date-desc');
 
   const initialFormState: Partial<Concept> = {
     name: '',
@@ -128,10 +128,12 @@ export const ConceptLibrary = () => {
       return new Date(b.learningDate).getTime() - new Date(a.learningDate).getTime();
     } else if (sortBy === 'date-asc') {
       return new Date(a.learningDate).getTime() - new Date(b.learningDate).getTime();
-    } else if (sortBy === 'status') {
+    } else if (sortBy === 'status-asc' || sortBy === 'status-desc') {
       const statusOrder = { 'In Progress': 1, 'Planned': 2, 'Completed': 3 };
       if (statusOrder[a.status] !== statusOrder[b.status]) {
-         return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+         return sortBy === 'status-asc' 
+           ? (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0)
+           : (statusOrder[b.status] || 0) - (statusOrder[a.status] || 0);
       }
       return new Date(b.learningDate).getTime() - new Date(a.learningDate).getTime();
     }
@@ -312,7 +314,8 @@ export const ConceptLibrary = () => {
                 >
                   <option value="date-desc">Date (Newest to Oldest)</option>
                   <option value="date-asc">Date (Oldest to Newest)</option>
-                  <option value="status">Status</option>
+                  <option value="status-asc">Status (In Progress First)</option>
+                  <option value="status-desc">Status (Completed First)</option>
                 </select>
               </div>
             </div>
