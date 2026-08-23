@@ -10,9 +10,11 @@ export type DecisionSortColumn =
   | "score"
   | "posted"
   | "analyzed"
+  | "scraper"
   | "experience"
   | "salary"
   | "status";
+
 export type DecisionSortDirection = "asc" | "desc";
 
 interface DecisionTableProps {
@@ -185,12 +187,20 @@ export default function DecisionTable({
               onSort={onSort}
             />
             <SortableHeader
+              column="scraper"
+              label="Scraper"
+              activeColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
               column="experience"
               label="Experience"
               activeColumn={sortColumn}
               direction={sortDirection}
               onSort={onSort}
             />
+
             <SortableHeader
               column="salary"
               label="Salary"

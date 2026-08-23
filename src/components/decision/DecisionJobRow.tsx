@@ -106,7 +106,14 @@ export default function DecisionJobRow({
 
       <div className="decision-cell decision-muted-cell">{formatAnalyzedDate(job.analyzed_at)}</div>
 
+      <div className="decision-cell decision-scraper-cell">
+        <span className="badge badge-secondary" style={{ textTransform: 'capitalize', fontSize: '0.75rem' }}>
+          {job.scraper || job.source || "—"}
+        </span>
+      </div>
+
       <div className="decision-cell decision-experience-cell">
+
         <span>{job.experience || "—"}</span>
       </div>
 

@@ -20,14 +20,16 @@ interface UnifiedApplication {
   status: string;
   appliedDate: string;
   source: string;
+  scraper?: string;
   score: number | undefined;
   jobLink: string;
   isAutomatic: boolean;
   raw: any;
 }
 
-type SortColumn = 'company' | 'jobTitle' | 'status' | 'appliedDate' | 'source' | 'score';
+type SortColumn = 'company' | 'jobTitle' | 'status' | 'appliedDate' | 'source' | 'scraper' | 'score';
 type SortDirection = 'asc' | 'desc';
+
 
 export const Applications = () => {
   const { state, updateState } = useStore();
@@ -106,11 +108,13 @@ export const Applications = () => {
     status: formatStatus(dbApp.status),
     appliedDate: dbApp.updated_at ? formatToISTDate(dbApp.updated_at) : '—',
     source: dbApp.jobs?.source || 'Manual',
+    scraper: dbApp.jobs?.scraper || undefined,
     score: dbApp.jobs?.job_analysis?.score ?? undefined,
     jobLink: dbApp.jobs?.url || '',
     isAutomatic: true,
     raw: dbApp,
   }));
+
 
   const manualAppsMapped: UnifiedApplication[] = state.applications.map(app => ({
     id: app.id,
@@ -451,6 +455,7 @@ export const Applications = () => {
                 {renderSortHeader('status', 'Status')}
                 {renderSortHeader('appliedDate', 'Applied Date')}
                 {renderSortHeader('source', 'Source')}
+                {renderSortHeader('scraper', 'Scraper')}
                 {renderSortHeader('score', 'Score')}
                 <th style={{ padding: '0.75rem 1rem' }}>Details</th>
               </tr>
@@ -458,13 +463,13 @@ export const Applications = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     Loading applications...
                   </td>
                 </tr>
               ) : sortedApps.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     No applications found. Start applying!
                   </td>
                 </tr>
@@ -495,6 +500,11 @@ export const Applications = () => {
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
+                    <span className="badge badge-secondary" style={{ textTransform: 'capitalize', fontSize: '0.75rem' }}>
+                      {app.scraper || app.source || '—'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem' }}>
                     {app.score !== undefined && app.score !== null ? (
                       <span style={getScoreStyle(app.score)}>{app.score}%</span>
                     ) : (
@@ -502,6 +512,7 @@ export const Applications = () => {
                     )}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
+
                     <button 
                       type="button" 
                       className="btn btn-secondary" 

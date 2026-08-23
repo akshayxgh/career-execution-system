@@ -17,10 +17,12 @@ type SortColumn =
   | "score"
   | "posted"
   | "analyzed"
+  | "scraper"
   | "experience"
   | "salary"
   | "status";
 type SortDirection = "asc" | "desc";
+
 
 function getDateValue(value: string | null) {
   if (!value) {
@@ -159,7 +161,14 @@ export default function DecisionIntelligence() {
         );
       }
 
+      if (sortColumn === "scraper") {
+        const aScraper = (a.scraper || a.source || "").toLowerCase();
+        const bScraper = (b.scraper || b.source || "").toLowerCase();
+        result = aScraper.localeCompare(bScraper) * directionModifier;
+      }
+
       if (sortColumn === "experience") {
+
         result = compareNullableValues(
           getMinimumNumber(a.experience),
           getMinimumNumber(b.experience),

@@ -15,8 +15,10 @@ export interface DecisionJob {
   created_at?: string | null;
   url: string;
   source: string;
+  scraper?: string | null;
   search_keyword?: string | null;
   search_location?: string | null;
+
 
   score: number;
   recommendation: "Apply" | "Maybe";
@@ -153,8 +155,10 @@ export interface AppliedJobFromDB {
     posted_date: string | null;
     url: string;
     source: string;
+    scraper: string | null;
     search_keyword: string | null;
     search_location: string | null;
+
     job_analysis: {
       score: number;
       reason: string;
@@ -186,8 +190,10 @@ export async function getAppliedJobs(): Promise<AppliedJobFromDB[]> {
         posted_date,
         url,
         source,
+        scraper,
         search_keyword,
         search_location,
+
         job_analysis:job_analysis(
           score,
           reason,
