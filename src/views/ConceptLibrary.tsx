@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { Concept, ConceptStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock, MessageSquare, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Library, Search, Headphones, Link, FileText, ChevronDown, ChevronRight, Clock, MessageSquare, Trash2, Edit2, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -39,6 +39,7 @@ export const ConceptLibrary = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'status-asc' | 'status-desc'>('date-desc');
+  const [promptCopied, setPromptCopied] = useState(false);
 
   const initialFormState: Partial<Concept> = {
     name: '',
@@ -234,7 +235,91 @@ export const ConceptLibrary = () => {
               />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <label className="text-sm text-muted">Key Takeaway / Notes</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="text-sm text-muted">Key Takeaway / Notes</label>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const conceptName = formData.name || "[Concept Name]";
+                    const prompt = `Create a concise MyCES Quick Review Note for this topic based ONLY on the sources in this notebook.
+
+The purpose of this note is not to teach the topic from scratch. I have already listened to the Audio Overview.
+
+I want a short reference that I can revisit later in 2–3 minutes to refresh my memory.
+
+Use this structure:
+
+${conceptName}
+1. What is it?
+
+Explain the concept in 2–3 simple sentences.
+
+2. Why does it exist?
+
+Explain the main business/problem it solves in 2–4 bullets.
+
+3. Mental Model
+
+Give me the simplest mental model I should remember.
+
+Use a short flow/relationship where useful.
+
+Example:
+Source Systems → Data Warehouse → BI → Business Decisions
+
+4. Key Things to Remember
+
+Give me 5–7 bullets maximum containing the most important ideas from the Audio Overview.
+
+Prioritize concepts that help me understand where this topic fits in the larger data ecosystem.
+
+5. How It Connects
+
+Briefly explain how this concept connects to concepts I have already learned and/or concepts that naturally come next.
+
+Keep this section short.
+
+6. Don't Confuse It With
+
+Mention 2–4 important distinctions or common points of confusion.
+
+7. Interview Quick Answer
+
+Give me a natural 30–45 second answer to:
+
+"Can you explain ${conceptName}?"
+
+It should sound like something I could actually say in an interview, not a memorized textbook definition.
+
+8. One-Line Takeaway
+
+End with one memorable sentence that captures the entire concept.
+
+Rules
+Keep the entire note concise.
+Target approximately 400–600 words maximum.
+Use simple language.
+Prefer bullets over paragraphs.
+Do not introduce new topics that were not meaningfully discussed in the sources.
+Do not deep dive into advanced topics.
+Do not turn this into a tutorial.
+Do not repeat the Audio Overview word-for-word.
+Preserve important terminology used in the sources.
+Focus on mental models, relationships, and practical understanding.
+If the sources do not provide enough information for a section, say so rather than inventing information.
+
+This note will be saved in my MyCES Concept Library as my permanent quick-reference note.`;
+                    navigator.clipboard.writeText(prompt).then(() => {
+                      setPromptCopied(true);
+                      setTimeout(() => setPromptCopied(false), 2000);
+                    });
+                  }} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                >
+                  {promptCopied ? <><Check size={14} /> Copied Prompt</> : <><Copy size={14} /> Copy Smart Prompt</>}
+                </button>
+              </div>
               <div style={{ marginTop: '0.5rem' }}>
                 <MarkdownEditor 
                   value={formData.notes || ''} 
