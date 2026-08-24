@@ -370,6 +370,17 @@ This note will be saved in my MyCES Concept Library as my permanent quick-refere
                     No interview questions added yet. Click "+ Add Question" to start.
                   </div>
                 )}
+                
+                {formData.interviewQuestions && formData.interviewQuestions.length > 0 && (
+                  <button 
+                    type="button" 
+                    onClick={addQuestion} 
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.75rem', fontSize: '0.875rem', borderStyle: 'dashed', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', width: '100%' }}
+                  >
+                    <Plus size={16} /> Add Another Question
+                  </button>
+                )}
               </div>
             </div>
 
