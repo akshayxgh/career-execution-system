@@ -494,7 +494,10 @@ export default function DecisionIntelligence() {
     <div className="decision-page">
       <div className="decision-shell">
         <div className="decision-topbar">
-          <DecisionHeader count={jobs.length} />
+          <DecisionHeader
+            totalCount={jobs.length}
+            filteredCount={sortedJobs.length}
+          />
           <DecisionToolbar
             search={search}
             onSearchChange={handleSearchChange}

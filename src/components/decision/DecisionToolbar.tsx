@@ -15,6 +15,19 @@ export default function DecisionToolbar({
 }: DecisionToolbarProps) {
   return (
     <div className="decision-toolbar">
+      {activeFiltersCount > 0 && onResetAllFilters && (
+        <button
+          type="button"
+          className="decision-toolbar-filter-badge"
+          onClick={onResetAllFilters}
+          title="Click to reset all active filters"
+        >
+          <Filter size={13} />
+          <span>{activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""} active</span>
+          <RotateCcw size={12} style={{ marginLeft: "0.25rem" }} />
+        </button>
+      )}
+
       <label className="decision-search">
         <Search className="decision-search-icon" />
         <input
@@ -24,19 +37,6 @@ export default function DecisionToolbar({
           placeholder="Search title, company, URL or source..."
         />
       </label>
-
-      {activeFiltersCount > 0 && onResetAllFilters && (
-        <button
-          type="button"
-          className="decision-toolbar-filter-badge"
-          onClick={onResetAllFilters}
-          title="Click to clear all column filters"
-        >
-          <Filter size={13} />
-          <span>{activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""} active</span>
-          <RotateCcw size={12} style={{ marginLeft: "0.25rem" }} />
-        </button>
-      )}
     </div>
   );
 }
