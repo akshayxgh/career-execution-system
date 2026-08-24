@@ -10,6 +10,7 @@ import {
   updateDecisionJobStatus,
 } from "../services/decisionIntelligenceService";
 import JobCopilotWidget from "../components/copilot/JobCopilotWidget";
+import HideReasonModal from "../components/decision/HideReasonModal";
 import {
   type ColumnFiltersState,
   type FilterColumnKey,
@@ -126,6 +127,7 @@ export default function DecisionIntelligence() {
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusSaveError, setStatusSaveError] = useState("");
   const [removingJobIds, setRemovingJobIds] = useState<Record<string, boolean>>({});
+  const [hidingJob, setHidingJob] = useState<DecisionJob | null>(null);
 
   const loadJobs = async () => {
     try {
@@ -382,6 +384,11 @@ export default function DecisionIntelligence() {
       return;
     }
 
+    if (status === "HIDDEN") {
+      setHidingJob(selectedJob);
+      return;
+    }
+
     setSavingStatus(true);
     setStatusSaveError("");
 
@@ -425,6 +432,14 @@ export default function DecisionIntelligence() {
     jobId: string,
     status: DecisionStatus,
   ) => {
+    if (status === "HIDDEN") {
+      const target = jobs.find((j) => j.id === jobId);
+      if (target) {
+        setHidingJob(target);
+      }
+      return;
+    }
+
     setSavingStatus(true);
 
     try {
@@ -465,6 +480,49 @@ export default function DecisionIntelligence() {
           });
         }, 300);
       }
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const handleConfirmHide = async (jobId: string, reason: string) => {
+    setSavingStatus(true);
+    setStatusSaveError("");
+
+    try {
+      await updateDecisionJobStatus(jobId, "HIDDEN", reason);
+
+      setJobs((currentJobs) =>
+        currentJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                my_status: "HIDDEN",
+                status_updated_at: new Date().toISOString(),
+              }
+            : job,
+        ),
+      );
+
+      if (selectedJob?.id === jobId) {
+        setSelectedJob(null);
+      }
+
+      setHidingJob(null);
+
+      setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+      setTimeout(() => {
+        setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
+        setRemovingJobIds((prev) => {
+          const next = { ...prev };
+          delete next[jobId];
+          return next;
+        });
+      }, 300);
+    } catch (e: unknown) {
+      setStatusSaveError(
+        e instanceof Error ? e.message : "Unable to hide job.",
+      );
     } finally {
       setSavingStatus(false);
     }
@@ -540,6 +598,13 @@ export default function DecisionIntelligence() {
         ) : null}
 
         <JobCopilotWidget job={selectedJob} />
+
+        <HideReasonModal
+          job={hidingJob}
+          onConfirm={handleConfirmHide}
+          onCancel={() => setHidingJob(null)}
+          loading={savingStatus}
+        />
       </div>
     </div>
   );

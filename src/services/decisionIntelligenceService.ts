@@ -120,7 +120,16 @@ export async function getDecisionJobs(): Promise<DecisionJob[]> {
 export async function updateDecisionJobStatus(
   jobId: string,
   status: DecisionStatus,
+  hideReason?: string,
 ) {
+  if (hideReason) {
+    try {
+      localStorage.setItem(`job_hide_reason_${jobId}`, hideReason);
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
   const { error } = await supabase
     .from("my_jobs")
     .upsert(
