@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { EyeOff, X, Check } from "lucide-react";
+import { EyeOff, X } from "lucide-react";
 import type { DecisionJob } from "../../services/decisionIntelligenceService";
 
 interface HideReasonModalProps {
@@ -26,21 +26,25 @@ export default function HideReasonModal({
   onCancel,
   loading = false,
 }: HideReasonModalProps) {
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [customReason, setCustomReason] = useState<string>("");
 
   useEffect(() => {
-    setSelectedPreset("");
     setCustomReason("");
   }, [job]);
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirmCustom = useCallback(() => {
     if (!job || loading) return;
-    const fullReason = [selectedPreset, customReason.trim()]
-      .filter(Boolean)
-      .join(" - ") || "User marked as hidden";
+    const fullReason = customReason.trim() || "User marked as hidden";
     onConfirm(job.id, fullReason);
-  }, [job, loading, selectedPreset, customReason, onConfirm]);
+  }, [job, loading, customReason, onConfirm]);
+
+  const handlePresetClick = (presetLabel: string) => {
+    if (!job || loading) return;
+    const fullReason = customReason.trim()
+      ? `${presetLabel} - ${customReason.trim()}`
+      : presetLabel;
+    onConfirm(job.id, fullReason);
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -48,23 +52,15 @@ export default function HideReasonModal({
         onCancel();
       } else if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
-        handleConfirm();
+        handleConfirmCustom();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel, handleConfirm]);
+  }, [onCancel, handleConfirmCustom]);
 
   if (!job) return null;
-
-  const handleSelectPreset = (label: string) => {
-    if (selectedPreset === label) {
-      setSelectedPreset("");
-    } else {
-      setSelectedPreset(label);
-    }
-  };
 
   return (
     <div
@@ -102,30 +98,28 @@ export default function HideReasonModal({
 
         <div className="hide-reason-body">
           <label className="hide-reason-label">
-            Select a primary reason:
+            Click an option to hide instantly:
           </label>
           <div className="hide-reason-presets-grid">
-            {COMMON_REASONS.map((preset) => {
-              const isSelected = selectedPreset === preset.label;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  className={`hide-reason-preset-btn ${isSelected ? "selected" : ""}`}
-                  onClick={() => handleSelectPreset(preset.label)}
-                >
-                  <span className="hide-reason-preset-icon">{preset.icon}</span>
-                  <span className="hide-reason-preset-text">{preset.label}</span>
-                  {isSelected && <Check size={14} className="hide-reason-check-icon" />}
-                </button>
-              );
-            })}
+            {COMMON_REASONS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className="hide-reason-preset-btn"
+                onClick={() => handlePresetClick(preset.label)}
+                disabled={loading}
+                title={`Hide with reason: ${preset.label}`}
+              >
+                <span className="hide-reason-preset-icon">{preset.icon}</span>
+                <span className="hide-reason-preset-text">{preset.label}</span>
+              </button>
+            ))}
           </div>
 
           <div className="hide-reason-custom-section">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <label className="hide-reason-label">
-                Additional notes or feedback (optional):
+                Or type custom feedback:
               </label>
               <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 600 }}>
                 Ctrl + Enter to confirm
@@ -133,16 +127,16 @@ export default function HideReasonModal({
             </div>
             <textarea
               className="hide-reason-textarea"
-              placeholder="e.g. Requires 5+ yrs Java, but my focus is Data Analysis with Python / Power BI..."
+              placeholder="Type custom reason if not listed above..."
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
                   e.preventDefault();
-                  handleConfirm();
+                  handleConfirmCustom();
                 }
               }}
-              rows={3}
+              rows={2}
             />
           </div>
         </div>
@@ -156,22 +150,24 @@ export default function HideReasonModal({
           >
             Cancel
           </button>
-          <button
-            type="button"
-            className="hide-reason-btn-confirm"
-            onClick={handleConfirm}
-            disabled={loading}
-            title="Press Ctrl + Enter to confirm"
-          >
-            {loading ? (
-              "Hiding..."
-            ) : (
-              <>
-                <EyeOff size={14} style={{ marginRight: "0.35rem" }} />
-                Confirm & Hide
-              </>
-            )}
-          </button>
+          {customReason.trim() && (
+            <button
+              type="button"
+              className="hide-reason-btn-confirm"
+              onClick={handleConfirmCustom}
+              disabled={loading}
+              title="Press Ctrl + Enter to confirm"
+            >
+              {loading ? (
+                "Hiding..."
+              ) : (
+                <>
+                  <EyeOff size={14} style={{ marginRight: "0.35rem" }} />
+                  Confirm & Hide
+                </>
+              )}
+            </button>
+          )}
         </footer>
       </div>
     </div>
