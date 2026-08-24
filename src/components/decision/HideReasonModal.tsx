@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { EyeOff, X, Check } from "lucide-react";
 import type { DecisionJob } from "../../services/decisionIntelligenceService";
 
@@ -34,16 +34,27 @@ export default function HideReasonModal({
     setCustomReason("");
   }, [job]);
 
+  const handleConfirm = useCallback(() => {
+    if (!job || loading) return;
+    const fullReason = [selectedPreset, customReason.trim()]
+      .filter(Boolean)
+      .join(" - ") || "User marked as hidden";
+    onConfirm(job.id, fullReason);
+  }, [job, loading, selectedPreset, customReason, onConfirm]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onCancel();
+      } else if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        handleConfirm();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  }, [onCancel, handleConfirm]);
 
   if (!job) return null;
 
@@ -53,13 +64,6 @@ export default function HideReasonModal({
     } else {
       setSelectedPreset(label);
     }
-  };
-
-  const handleConfirm = () => {
-    const fullReason = [selectedPreset, customReason.trim()]
-      .filter(Boolean)
-      .join(" - ") || "User marked as hidden";
-    onConfirm(job.id, fullReason);
   };
 
   return (
@@ -119,14 +123,25 @@ export default function HideReasonModal({
           </div>
 
           <div className="hide-reason-custom-section">
-            <label className="hide-reason-label">
-              Additional notes or feedback (optional):
-            </label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <label className="hide-reason-label">
+                Additional notes or feedback (optional):
+              </label>
+              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                Ctrl + Enter to confirm
+              </span>
+            </div>
             <textarea
               className="hide-reason-textarea"
               placeholder="e.g. Requires 5+ yrs Java, but my focus is Data Analysis with Python / Power BI..."
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  handleConfirm();
+                }
+              }}
               rows={3}
             />
           </div>
@@ -146,6 +161,7 @@ export default function HideReasonModal({
             className="hide-reason-btn-confirm"
             onClick={handleConfirm}
             disabled={loading}
+            title="Press Ctrl + Enter to confirm"
           >
             {loading ? (
               "Hiding..."

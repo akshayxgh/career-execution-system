@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   decisionStatuses,
   type DecisionJob,
@@ -88,11 +88,30 @@ export default function DecisionJobModal({
   });
   const [noteSaved, setNoteSaved] = useState(false);
 
-  const handleSaveNotes = (newNotes?: string) => {
+  const handleSaveNotes = useCallback((newNotes?: string) => {
     const textToSave = newNotes !== undefined ? newNotes : notes;
     localStorage.setItem(`job_notes_${job.id}`, textToSave);
     setNoteSaved(true);
-  };
+  }, [job.id, notes]);
+
+  const handleSaveAll = useCallback(() => {
+    handleSaveNotes();
+    onSaveStatus(selectedStatus);
+  }, [handleSaveNotes, onSaveStatus, selectedStatus]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      } else if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        handleSaveAll();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, handleSaveAll]);
 
   const resumeName = useMemo(() => {
     if (job.resume && job.resume.recommended && job.resume.recommended.name) {
@@ -244,6 +263,12 @@ export default function DecisionJobModal({
                   setNotes(e.target.value);
                   setNoteSaved(false);
                 }}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    handleSaveAll();
+                  }
+                }}
                 onBlur={() => handleSaveNotes()}
               />
             </section>
@@ -306,11 +331,9 @@ export default function DecisionJobModal({
           <button
             type="button"
             className="decision-modal-save"
-            onClick={() => {
-              handleSaveNotes();
-              onSaveStatus(selectedStatus);
-            }}
+            onClick={handleSaveAll}
             disabled={saving}
+            title="Save changes (Ctrl + Enter)"
           >
             {saving ? "Saving..." : "Save"}
           </button>
