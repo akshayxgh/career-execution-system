@@ -1,10 +1,12 @@
-import type { ReactNode } from "react";
-import { RotateCcw } from "lucide-react";
+import { useState, useMemo, type ReactNode } from "react";
+import { RotateCcw, Filter } from "lucide-react";
 import type {
   DecisionJob,
   DecisionStatus,
 } from "../../services/decisionIntelligenceService";
 import DecisionJobRow from "./DecisionJobRow";
+import ColumnFilterPopover from "./ColumnFilterPopover";
+import type { FilterColumnKey, ColumnFiltersState } from "../../types/decisionFilters";
 
 export type DecisionSortColumn =
   | "score"
@@ -19,6 +21,7 @@ export type DecisionSortDirection = "asc" | "desc";
 
 interface DecisionTableProps {
   jobs: DecisionJob[];
+  allJobs: DecisionJob[];
   currentPage: number;
   totalPages: number;
   totalResults: number;
@@ -32,51 +35,119 @@ interface DecisionTableProps {
   onPreviousPage: () => void;
   onNextPage: () => void;
   removingJobIds?: Record<string, boolean>;
+  filters: ColumnFiltersState;
+  onApplyFilter: (updated: Partial<ColumnFiltersState>) => void;
+  onClearColumnFilter: (column: FilterColumnKey) => void;
+  onResetAllFilters: () => void;
+  activeFiltersCount: number;
 }
 
-interface SortableHeaderProps {
-  column: DecisionSortColumn;
+interface TableHeaderCellProps {
+  columnKey: FilterColumnKey;
+  sortColumn?: DecisionSortColumn;
   label: string;
-  activeColumn: DecisionSortColumn | null;
+  activeSortColumn: DecisionSortColumn | null;
   direction: DecisionSortDirection;
-  onSort: (column: DecisionSortColumn) => void;
+  onSort?: (column: DecisionSortColumn) => void;
+  filters: ColumnFiltersState;
+  onApplyFilter: (updated: Partial<ColumnFiltersState>) => void;
+  onClearColumnFilter: (column: FilterColumnKey) => void;
+  allJobs: DecisionJob[];
+  activePopover: FilterColumnKey | null;
+  onTogglePopover: (column: FilterColumnKey) => void;
+  onClosePopover: () => void;
   className?: string;
   prefix?: ReactNode;
 }
 
-function SortableHeader({
-  column,
+function TableHeaderCell({
+  columnKey,
+  sortColumn,
   label,
-  activeColumn,
+  activeSortColumn,
   direction,
   onSort,
+  filters,
+  onApplyFilter,
+  onClearColumnFilter,
+  allJobs,
+  activePopover,
+  onTogglePopover,
+  onClosePopover,
   className = "",
   prefix,
-}: SortableHeaderProps) {
-  const isActive = activeColumn === column;
+}: TableHeaderCellProps) {
+  const isSortActive = sortColumn && activeSortColumn === sortColumn;
+  const isFilterActive = useMemo(() => {
+    if (columnKey === "score") return filters.scoreMin !== "" || filters.scoreMax !== "";
+    if (columnKey === "jobTitle") return filters.jobTitle.trim() !== "";
+    if (columnKey === "posted") return filters.postedDates.length > 0;
+    if (columnKey === "analyzed") return filters.analyzedDates.length > 0;
+    if (columnKey === "scraper") return filters.scrapers.length > 0;
+    if (columnKey === "experience") return filters.experience.trim() !== "";
+    if (columnKey === "salary") return filters.salary.trim() !== "";
+    if (columnKey === "status") return filters.statuses.length > 0;
+    return false;
+  }, [columnKey, filters]);
+
+  const isOpen = activePopover === columnKey;
 
   return (
-    <div className={`decision-th ${className}`}>
+    <div className={`decision-th ${className}`} style={{ position: "relative" }}>
       {prefix}
-      <button
-        type="button"
-        className="decision-sort-button"
-        onClick={() => onSort(column)}
-        aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
-      >
-        <span>{label}</span>
-        {isActive ? (
-          <span className="decision-sort-indicator">
-            {direction === "asc" ? "▲" : "▼"}
-          </span>
-        ) : null}
-      </button>
+      <div className="decision-th-inner">
+        {sortColumn && onSort ? (
+          <button
+            type="button"
+            className="decision-sort-button"
+            onClick={() => onSort(sortColumn)}
+            aria-sort={isSortActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+          >
+            <span>{label}</span>
+            {isSortActive ? (
+              <span className="decision-sort-indicator">
+                {direction === "asc" ? "▲" : "▼"}
+              </span>
+            ) : null}
+          </button>
+        ) : (
+          <span className="decision-th-text">{label}</span>
+        )}
+
+        <button
+          type="button"
+          className={`decision-filter-trigger ${isFilterActive ? "active" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePopover(columnKey);
+          }}
+          title={`Filter ${label}`}
+          aria-label={`Filter ${label}`}
+        >
+          <Filter size={11} />
+          {isFilterActive && <span className="decision-filter-active-pip" />}
+        </button>
+      </div>
+
+      {isOpen && (
+        <ColumnFilterPopover
+          column={columnKey}
+          label={label}
+          filters={filters}
+          onApplyFilter={onApplyFilter}
+          onClearColumnFilter={onClearColumnFilter}
+          onClose={onClosePopover}
+          allJobs={allJobs}
+          isFilterActive={isFilterActive}
+        />
+      )}
     </div>
   );
 }
 
 export default function DecisionTable({
   jobs,
+  allJobs,
   currentPage,
   totalPages,
   totalResults,
@@ -90,7 +161,22 @@ export default function DecisionTable({
   onPreviousPage,
   onNextPage,
   removingJobIds = {},
+  filters,
+  onApplyFilter,
+  onClearColumnFilter,
+  onResetAllFilters,
+  activeFiltersCount,
 }: DecisionTableProps) {
+  const [activePopover, setActivePopover] = useState<FilterColumnKey | null>(null);
+
+  const handleTogglePopover = (col: FilterColumnKey) => {
+    setActivePopover((prev) => (prev === col ? null : col));
+  };
+
+  const handleClosePopover = () => {
+    setActivePopover(null);
+  };
+
   const pageStart = totalResults === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const pageEnd = Math.min(currentPage * rowsPerPage, totalResults);
 
@@ -134,14 +220,17 @@ export default function DecisionTable({
           >
             Status {sortColumn === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
           </button>
-          {sortColumn && (
+          {(sortColumn || activeFiltersCount > 0) && (
             <button
               type="button"
               className="decision-sort-chip decision-sort-reset"
-              onClick={onResetSorting}
-              title="Reset sorting"
+              onClick={() => {
+                onResetSorting();
+                onResetAllFilters();
+              }}
+              title="Reset sorting and filters"
             >
-              <RotateCcw size={12} /> Reset
+              <RotateCcw size={12} /> Reset {activeFiltersCount > 0 ? `(${activeFiltersCount} filters)` : ""}
             </button>
           )}
         </div>
@@ -150,71 +239,147 @@ export default function DecisionTable({
       <div className="decision-table-scroll">
         <div className="decision-table">
           <div className="decision-table-header">
-            <SortableHeader
-              column="score"
+            <TableHeaderCell
+              columnKey="score"
+              sortColumn="score"
               label="Score"
-              activeColumn={sortColumn}
+              activeSortColumn={sortColumn}
               direction={sortDirection}
               onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
               className="decision-th-score"
               prefix={
                 <button
                   type="button"
                   className="decision-reset-button"
-                  onClick={onResetSorting}
-                  title="Reset Sorting & Filters"
-                  aria-label="Reset Sorting & Filters"
+                  onClick={() => {
+                    onResetSorting();
+                    onResetAllFilters();
+                  }}
+                  title="Reset Sorting & All Filters"
+                  aria-label="Reset Sorting & All Filters"
                 >
                   <RotateCcw className="decision-reset-icon" />
                 </button>
               }
             />
-            <div className="decision-th">
-              Job Title
-            </div>
-            <SortableHeader
-              column="posted"
-              label="Posted"
-              activeColumn={sortColumn}
+
+            <TableHeaderCell
+              columnKey="jobTitle"
+              label="Job Title"
+              activeSortColumn={sortColumn}
               direction={sortDirection}
-              onSort={onSort}
-            />
-            <SortableHeader
-              column="analyzed"
-              label="Analyzed"
-              activeColumn={sortColumn}
-              direction={sortDirection}
-              onSort={onSort}
-            />
-            <SortableHeader
-              column="scraper"
-              label="Scraper"
-              activeColumn={sortColumn}
-              direction={sortDirection}
-              onSort={onSort}
-            />
-            <SortableHeader
-              column="experience"
-              label="Experience"
-              activeColumn={sortColumn}
-              direction={sortDirection}
-              onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
             />
 
-            <SortableHeader
-              column="salary"
+            <TableHeaderCell
+              columnKey="posted"
+              sortColumn="posted"
+              label="Posted"
+              activeSortColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
+            />
+
+            <TableHeaderCell
+              columnKey="analyzed"
+              sortColumn="analyzed"
+              label="Analyzed"
+              activeSortColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
+            />
+
+            <TableHeaderCell
+              columnKey="scraper"
+              sortColumn="scraper"
+              label="Scraper"
+              activeSortColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
+            />
+
+            <TableHeaderCell
+              columnKey="experience"
+              sortColumn="experience"
+              label="Experience"
+              activeSortColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
+            />
+
+            <TableHeaderCell
+              columnKey="salary"
+              sortColumn="salary"
               label="Salary"
-              activeColumn={sortColumn}
+              activeSortColumn={sortColumn}
               direction={sortDirection}
               onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
             />
-            <SortableHeader
-              column="status"
+
+            <TableHeaderCell
+              columnKey="status"
+              sortColumn="status"
               label="Status"
-              activeColumn={sortColumn}
+              activeSortColumn={sortColumn}
               direction={sortDirection}
               onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
             />
+
             <div className="decision-th">
               Details
             </div>
@@ -232,7 +397,19 @@ export default function DecisionTable({
             ))
           ) : (
             <div className="decision-empty">
-              No jobs match your search.
+              No jobs match your active filters or search.
+              {activeFiltersCount > 0 && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={onResetAllFilters}
+                    style={{ fontSize: "0.8rem", padding: "0.4rem 0.85rem" }}
+                  >
+                    <RotateCcw size={13} style={{ marginRight: "0.35rem" }} /> Clear All Filters
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -10,6 +10,12 @@ import {
   updateDecisionJobStatus,
 } from "../services/decisionIntelligenceService";
 import JobCopilotWidget from "../components/copilot/JobCopilotWidget";
+import {
+  type ColumnFiltersState,
+  type FilterColumnKey,
+  initialColumnFilters,
+} from "../types/decisionFilters";
+import { formatToISTShortDate } from "../utils/dateUtils";
 
 const ROWS_PER_PAGE = 25;
 
@@ -23,6 +29,38 @@ type SortColumn =
   | "status";
 type SortDirection = "asc" | "desc";
 
+function formatPostedDate(postedDate: string | null) {
+  if (!postedDate) return "—";
+  return formatToISTShortDate(postedDate);
+}
+
+function formatScraperName(scraper: string | null | undefined, source: string) {
+  const val = scraper || source || "—";
+  if (val.toLowerCase().includes("recommended")) return "Recommended";
+  if (val.toLowerCase().includes("portal")) return "Portals";
+  if (val.toLowerCase().includes("career")) return "Career";
+  if (val.toLowerCase().includes("link")) return "Links";
+  return val;
+}
+
+function formatSalary(salary: string | null) {
+  if (!salary) return "—";
+  const matches = salary.match(/\d+/g);
+  if (!matches || matches.length === 0) return salary;
+
+  const formatAmount = (value: string) => {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return value;
+    const lakhs = amount / 100000;
+    const formatted = Number.isInteger(lakhs)
+      ? lakhs.toString()
+      : lakhs.toFixed(2).replace(/\.?0+$/, "");
+    return `₹${formatted}L`;
+  };
+
+  if (matches.length === 1) return formatAmount(matches[0]);
+  return `${formatAmount(matches[0])} – ${formatAmount(matches[1])}`;
+}
 
 function getDateValue(value: string | null) {
   if (!value) {
@@ -80,6 +118,7 @@ export default function DecisionIntelligence() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialColumnFilters);
   const [page, setPage] = useState(1);
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -105,29 +144,101 @@ export default function DecisionIntelligence() {
     loadJobs();
   }, []);
 
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (columnFilters.scoreMin !== "" || columnFilters.scoreMax !== "") count++;
+    if (columnFilters.jobTitle.trim() !== "") count++;
+    if (columnFilters.experience.trim() !== "") count++;
+    if (columnFilters.salary.trim() !== "") count++;
+    if (columnFilters.postedDates.length > 0) count++;
+    if (columnFilters.analyzedDates.length > 0) count++;
+    if (columnFilters.scrapers.length > 0) count++;
+    if (columnFilters.statuses.length > 0) count++;
+    return count;
+  }, [columnFilters]);
+
   const filteredJobs = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) {
-      return jobs;
-    }
-
     return jobs.filter((job) => {
-      const title = job.title.toLowerCase();
-      const company = job.company_name.toLowerCase();
-      const source = (job.source || "").toLowerCase();
-      const email = (job.hr_email || "").toLowerCase();
-      const description = (job.description || "").toLowerCase();
+      // 1. Global Search (matches title, company, source, hr_email, description, AND URL)
+      if (query) {
+        const title = job.title.toLowerCase();
+        const company = job.company_name.toLowerCase();
+        const source = (job.source || "").toLowerCase();
+        const email = (job.hr_email || "").toLowerCase();
+        const description = (job.description || "").toLowerCase();
+        const url = (job.url || "").toLowerCase();
 
-      return (
-        title.includes(query) ||
-        company.includes(query) ||
-        source.includes(query) ||
-        email.includes(query) ||
-        description.includes(query)
-      );
+        const matchesQuery =
+          title.includes(query) ||
+          company.includes(query) ||
+          source.includes(query) ||
+          email.includes(query) ||
+          description.includes(query) ||
+          url.includes(query);
+
+        if (!matchesQuery) return false;
+      }
+
+      // 2. Score Filter (Numeric filter: scoreMin, scoreMax)
+      if (columnFilters.scoreMin !== "") {
+        const minVal = Number(columnFilters.scoreMin);
+        if (!Number.isNaN(minVal) && job.score < minVal) return false;
+      }
+      if (columnFilters.scoreMax !== "") {
+        const maxVal = Number(columnFilters.scoreMax);
+        if (!Number.isNaN(maxVal) && job.score > maxVal) return false;
+      }
+
+      // 3. Job Title & Company Filter (Case-insensitive contains)
+      if (columnFilters.jobTitle.trim() !== "") {
+        const q = columnFilters.jobTitle.trim().toLowerCase();
+        const combined = `${job.title} ${job.company_name}`.toLowerCase();
+        if (!combined.includes(q)) return false;
+      }
+
+      // 4. Experience Filter (Case-insensitive contains)
+      if (columnFilters.experience.trim() !== "") {
+        const q = columnFilters.experience.trim().toLowerCase();
+        const exp = (job.experience || "—").toLowerCase();
+        if (!exp.includes(q)) return false;
+      }
+
+      // 5. Salary Filter (Case-insensitive contains)
+      if (columnFilters.salary.trim() !== "") {
+        const q = columnFilters.salary.trim().toLowerCase();
+        const sal = (job.salary || "—").toLowerCase();
+        const formattedSal = formatSalary(job.salary).toLowerCase();
+        if (!sal.includes(q) && !formattedSal.includes(q)) return false;
+      }
+
+      // 6. Posted Date Filter (Multi-date select)
+      if (columnFilters.postedDates.length > 0) {
+        const pDate = formatPostedDate(job.posted_date);
+        if (!columnFilters.postedDates.includes(pDate)) return false;
+      }
+
+      // 7. Analyzed Date Filter (Multi-date select)
+      if (columnFilters.analyzedDates.length > 0) {
+        const aDate = formatToISTShortDate(job.analyzed_at);
+        if (!columnFilters.analyzedDates.includes(aDate)) return false;
+      }
+
+      // 8. Scraper Filter (Multi-option select)
+      if (columnFilters.scrapers.length > 0) {
+        const scraperName = formatScraperName(job.scraper, job.source);
+        if (!columnFilters.scrapers.includes(scraperName)) return false;
+      }
+
+      // 9. Status Filter (Multi-option select)
+      if (columnFilters.statuses.length > 0) {
+        if (!columnFilters.statuses.includes(job.my_status)) return false;
+      }
+
+      return true;
     });
-  }, [jobs, search]);
+  }, [jobs, search, columnFilters]);
 
   const sortedJobs = useMemo(() => {
     if (!sortColumn) {
@@ -168,7 +279,6 @@ export default function DecisionIntelligence() {
       }
 
       if (sortColumn === "experience") {
-
         result = compareNullableValues(
           getMinimumNumber(a.experience),
           getMinimumNumber(b.experience),
@@ -201,6 +311,43 @@ export default function DecisionIntelligence() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleApplyFilter = (updated: Partial<ColumnFiltersState>) => {
+    setColumnFilters((prev) => ({ ...prev, ...updated }));
+    setPage(1);
+  };
+
+  const handleClearColumnFilter = (col: FilterColumnKey) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      if (col === "score") {
+        next.scoreMin = "";
+        next.scoreMax = "";
+      } else if (col === "jobTitle") {
+        next.jobTitle = "";
+      } else if (col === "experience") {
+        next.experience = "";
+      } else if (col === "salary") {
+        next.salary = "";
+      } else if (col === "posted") {
+        next.postedDates = [];
+      } else if (col === "analyzed") {
+        next.analyzedDates = [];
+      } else if (col === "scraper") {
+        next.scrapers = [];
+      } else if (col === "status") {
+        next.statuses = [];
+      }
+      return next;
+    });
+    setPage(1);
+  };
+
+  const handleResetAllFilters = () => {
+    setColumnFilters(initialColumnFilters);
+    setSearch("");
     setPage(1);
   };
 
@@ -282,7 +429,6 @@ export default function DecisionIntelligence() {
 
     try {
       await updateDecisionJobStatus(jobId, status);
-      
 
       setJobs((currentJobs) =>
         currentJobs.map((job) =>
@@ -349,11 +495,17 @@ export default function DecisionIntelligence() {
       <div className="decision-shell">
         <div className="decision-topbar">
           <DecisionHeader count={jobs.length} />
-          <DecisionToolbar search={search} onSearchChange={handleSearchChange} />
+          <DecisionToolbar
+            search={search}
+            onSearchChange={handleSearchChange}
+            activeFiltersCount={activeFiltersCount}
+            onResetAllFilters={handleResetAllFilters}
+          />
         </div>
 
         <DecisionTable
           jobs={visibleJobs}
+          allJobs={jobs}
           currentPage={currentPage}
           totalPages={totalPages}
           totalResults={sortedJobs.length}
@@ -367,6 +519,11 @@ export default function DecisionIntelligence() {
           onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
           onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
           removingJobIds={removingJobIds}
+          filters={columnFilters}
+          onApplyFilter={handleApplyFilter}
+          onClearColumnFilter={handleClearColumnFilter}
+          onResetAllFilters={handleResetAllFilters}
+          activeFiltersCount={activeFiltersCount}
         />
 
         {selectedJob ? (

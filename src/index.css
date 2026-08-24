@@ -490,6 +490,485 @@ h3 { font-size: 1.25rem; }
   height: 0.9rem;
 }
 
+/* Column Filters & Dropdowns */
+.decision-th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.decision-th-text {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.decision-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.65;
+  transition: all 0.18s ease;
+}
+
+.decision-th:hover .decision-filter-trigger,
+.decision-filter-trigger:hover,
+.decision-filter-trigger.active {
+  opacity: 1;
+}
+
+.decision-filter-trigger:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.decision-filter-trigger.active {
+  color: var(--accent-primary);
+  opacity: 1;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.decision-filter-active-pip {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  box-shadow: 0 0 4px var(--accent-primary);
+}
+
+/* Toolbar Filter Badge */
+.decision-toolbar-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-primary);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.decision-toolbar-filter-badge:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+/* Popover Floating Box */
+.decision-filter-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  width: 260px;
+  min-width: 240px;
+  max-width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  color: var(--text-main);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+  animation: filterPopoverFadeIn 0.15s ease-out;
+}
+
+.decision-th:nth-last-child(-n+4) .decision-filter-popover {
+  left: auto;
+  right: 0;
+}
+
+@keyframes filterPopoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.decision-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+}
+
+.decision-filter-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.decision-filter-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.decision-filter-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.decision-filter-body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Score Filter Specifics */
+.decision-filter-score-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.decision-filter-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.decision-filter-preset-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.decision-filter-preset-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.decision-filter-preset-btn {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.decision-filter-preset-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.decision-filter-preset-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+}
+
+.decision-filter-range-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.decision-filter-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.decision-filter-input-group label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.decision-filter-input-group input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-dark);
+  color: var(--text-main);
+  outline: none;
+}
+
+.decision-filter-input-group input:focus {
+  border-color: var(--accent-primary);
+}
+
+.decision-filter-range-divider {
+  padding-bottom: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Search Box in filter popovers */
+.decision-filter-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-dark);
+}
+
+.decision-filter-search-icon {
+  color: var(--text-muted);
+  flex: none;
+}
+
+.decision-filter-search-box input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.decision-filter-input-clear {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.decision-filter-input-clear:hover {
+  color: var(--danger);
+}
+
+/* Checkbox Checklist */
+.decision-filter-checklist-header {
+  padding: 0.25rem 0.15rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.decision-filter-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.decision-filter-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  user-select: none;
+  transition: background-color 0.12s ease;
+}
+
+.decision-filter-checkbox-label:hover {
+  background: var(--bg-hover);
+}
+
+.decision-filter-checkbox-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+.decision-filter-checkbox-label.select-all {
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.decision-filter-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decision-filter-item-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+}
+
+.decision-filter-no-results {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Quick tag buttons for text filter */
+.decision-filter-quick-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+}
+
+.decision-filter-quick-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.decision-filter-tag-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.decision-filter-tag-btn:hover {
+  border-color: var(--accent-primary);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-primary);
+}
+
+.decision-filter-tag-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decision-filter-tag-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+}
+
+/* Popover Footer */
+.decision-filter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-hover);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+}
+
+.decision-filter-btn-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.decision-filter-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.decision-filter-btn-cancel {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.decision-filter-btn-cancel:hover {
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.decision-filter-btn-apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border: none;
+  background: var(--accent-primary);
+  color: #ffffff;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.decision-filter-btn-apply:hover {
+  background: var(--accent-hover);
+}
+
 .decision-row {
   cursor: pointer;
   overflow: hidden;

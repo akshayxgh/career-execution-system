@@ -1,13 +1,17 @@
-import { Search } from "lucide-react";
+import { Search, RotateCcw, Filter } from "lucide-react";
 
 interface DecisionToolbarProps {
   search: string;
   onSearchChange: (value: string) => void;
+  activeFiltersCount?: number;
+  onResetAllFilters?: () => void;
 }
 
 export default function DecisionToolbar({
   search,
   onSearchChange,
+  activeFiltersCount = 0,
+  onResetAllFilters,
 }: DecisionToolbarProps) {
   return (
     <div className="decision-toolbar">
@@ -17,9 +21,22 @@ export default function DecisionToolbar({
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Search title, company or source"
+          placeholder="Search title, company, URL or source..."
         />
       </label>
+
+      {activeFiltersCount > 0 && onResetAllFilters && (
+        <button
+          type="button"
+          className="decision-toolbar-filter-badge"
+          onClick={onResetAllFilters}
+          title="Click to clear all column filters"
+        >
+          <Filter size={13} />
+          <span>{activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""} active</span>
+          <RotateCcw size={12} style={{ marginLeft: "0.25rem" }} />
+        </button>
+      )}
     </div>
   );
 }
