@@ -77,6 +77,23 @@ export async function getDecisionJobs(): Promise<DecisionJob[]> {
 
   if (jobs.length > 0) {
     try {
+      const { data: jobMeta, error: metaErr } = await supabase
+
+        .from("jobs")
+        .select("id, external_id")
+        .in("id", jobs.map(j => j.id));
+
+      if (!metaErr && jobMeta) {
+        const metaMap = new Map<string, string>();
+        jobMeta.forEach(row => {
+          if (row.external_id) metaMap.set(row.id, row.external_id);
+        });
+
+        jobs.forEach(job => {
+          job.external_id = metaMap.get(job.id) || null;
+        });
+      }
+
       const { data: analysisData, error: analysisErr } = await supabase
         .from("job_analysis")
         .select("job_id, resume")
@@ -93,8 +110,9 @@ export async function getDecisionJobs(): Promise<DecisionJob[]> {
         });
       }
     } catch (e) {
-      console.error("Failed to merge resume recommendations inside getDecisionJobs:", e);
+      console.error("Failed to merge job metadata inside getDecisionJobs:", e);
     }
+
   }
 
   return jobs.sort((a, b) => {

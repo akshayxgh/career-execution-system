@@ -225,9 +225,13 @@ export default function DecisionJobModal({
                     fontFamily: "monospace"
                   }}
                   title="Click to copy Job ID"
-                  onClick={() => {
-                    navigator.clipboard.writeText(cleanJobId(job.external_id, job.id));
-                    alert(`Copied Job ID: ${cleanJobId(job.external_id, job.id)}`);
+                  onClick={(e) => {
+                    const idToCopy = cleanJobId(job.external_id, job.id);
+                    navigator.clipboard.writeText(idToCopy);
+                    const btn = e.currentTarget;
+                    const orig = btn.innerText;
+                    btn.innerText = "✓ Copied!";
+                    setTimeout(() => { btn.innerText = orig; }, 1200);
                   }}
                 >
                   📋 #{cleanJobId(job.external_id, job.id)}
@@ -235,6 +239,7 @@ export default function DecisionJobModal({
               )}
             </div>
           </div>
+
 
 
           <dl className="decision-modal-meta">

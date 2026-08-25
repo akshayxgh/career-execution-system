@@ -120,23 +120,31 @@ export default function DecisionJobRow({
             {cleanJobId(job.external_id, job.id) && (
               <span
                 style={{
-                  fontSize: "0.68rem",
-                  padding: "0.1rem 0.35rem",
-                  background: "rgba(255, 255, 255, 0.07)",
+                  fontSize: "0.72rem",
+                  padding: "0.12rem 0.45rem",
+                  background: "rgba(56, 189, 248, 0.12)",
+                  border: "1px solid rgba(56, 189, 248, 0.25)",
                   borderRadius: "4px",
-                  color: "var(--text-muted, #94a3b8)",
-                  cursor: "copy",
-                  fontFamily: "monospace"
+                  color: "#38bdf8",
+                  cursor: "pointer",
+                  fontFamily: "monospace",
+                  userSelect: "none"
                 }}
                 title="Click to copy Job ID"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigator.clipboard.writeText(cleanJobId(job.external_id, job.id));
+                  const targetId = cleanJobId(job.external_id, job.id);
+                  navigator.clipboard.writeText(targetId);
+                  const el = e.currentTarget;
+                  const orig = el.innerText;
+                  el.innerText = "✓ Copied";
+                  setTimeout(() => { el.innerText = orig; }, 1000);
                 }}
               >
                 #{cleanJobId(job.external_id, job.id)}
               </span>
             )}
+
           </div>
         </div>
 
