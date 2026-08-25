@@ -122,31 +122,27 @@ export async function updateDecisionJobStatus(
   status: DecisionStatus,
   hideReason?: string,
 ) {
+  const payload: Record<string, any> = {
+    job_id: jobId,
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
   if (hideReason) {
-    try {
-      localStorage.setItem(`job_hide_reason_${jobId}`, hideReason);
-    } catch {
-      // Ignore storage errors
-    }
+    payload.notes = hideReason;
   }
 
   const { error } = await supabase
     .from("my_jobs")
-    .upsert(
-      {
-        job_id: jobId,
-        status,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "job_id",
-      },
-    );
+    .upsert(payload, {
+      onConflict: "job_id",
+    });
 
   if (error) {
     throw error;
   }
 }
+
 
 export interface AppliedJobFromDB {
   id: string;

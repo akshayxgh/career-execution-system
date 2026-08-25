@@ -84,20 +84,34 @@ export default function DecisionJobModal({
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const [notes, setNotes] = useState<string>(() => {
-    return localStorage.getItem(`job_notes_${job.id}`) || (job as any).notes || "";
+    return (job as any).notes || localStorage.getItem(`job_notes_${job.id}`) || "";
   });
   const [noteSaved, setNoteSaved] = useState(false);
 
-  const handleSaveNotes = useCallback((newNotes?: string) => {
+  const handleSaveNotes = useCallback(async (newNotes?: string) => {
     const textToSave = newNotes !== undefined ? newNotes : notes;
-    localStorage.setItem(`job_notes_${job.id}`, textToSave);
-    setNoteSaved(true);
-  }, [job.id, notes]);
+    try {
+      localStorage.setItem(`job_notes_${job.id}`, textToSave);
+      await supabase.from("my_jobs").upsert(
+        {
+          job_id: job.id,
+          status: selectedStatus || job.my_status,
+          notes: textToSave,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "job_id" }
+      );
+      setNoteSaved(true);
+    } catch (err) {
+      console.error("Failed to save notes to Supabase:", err);
+    }
+  }, [job.id, job.my_status, notes, selectedStatus]);
 
-  const handleSaveAll = useCallback(() => {
-    handleSaveNotes();
+  const handleSaveAll = useCallback(async () => {
+    await handleSaveNotes();
     onSaveStatus(selectedStatus);
   }, [handleSaveNotes, onSaveStatus, selectedStatus]);
+
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
