@@ -33,6 +33,13 @@ function formatScraperName(scraper: string | null | undefined, source: string) {
   return val;
 }
 
+function cleanJobId(externalId?: string | null, id?: string) {
+  const raw = externalId || id || "";
+  // Strip common scraper prefixes like 'kpmg_', 'naukri_', 'tcs_', 'ey_'
+  return raw.replace(/^[a-zA-Z0-9]+_/, "") || raw;
+}
+
+
 
 function formatSalary(salary: string | null) {
   if (!salary) {
@@ -108,8 +115,31 @@ export default function DecisionJobRow({
         ) : null}
         <div className="decision-title-wrap">
           <div className="decision-job-title">{job.title}</div>
-          <div className="decision-job-company-sub">{job.company_name}</div>
+          <div className="decision-job-company-sub" style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+            <span>{job.company_name}</span>
+            {cleanJobId(job.external_id, job.id) && (
+              <span
+                style={{
+                  fontSize: "0.68rem",
+                  padding: "0.1rem 0.35rem",
+                  background: "rgba(255, 255, 255, 0.07)",
+                  borderRadius: "4px",
+                  color: "var(--text-muted, #94a3b8)",
+                  cursor: "copy",
+                  fontFamily: "monospace"
+                }}
+                title="Click to copy Job ID"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(cleanJobId(job.external_id, job.id));
+                }}
+              >
+                #{cleanJobId(job.external_id, job.id)}
+              </span>
+            )}
+          </div>
         </div>
+
       </div>
 
       <div className="decision-cell decision-muted-cell">{formatPostedDate(job.posted_date)}</div>

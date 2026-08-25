@@ -69,6 +69,12 @@ function getScoreClass(score: number) {
   return "score-red";
 }
 
+function cleanJobId(externalId?: string | null, id?: string) {
+  const raw = externalId || id || "";
+  return raw.replace(/^[a-zA-Z0-9]+_/, "") || raw;
+}
+
+
 export default function DecisionJobModal({
   job,
   saving,
@@ -200,8 +206,36 @@ export default function DecisionJobModal({
           <div className="decision-modal-title-card">
             <div className="decision-modal-ribbon">{job.my_status}</div>
             <h2 id="decision-modal-title">{job.title}</h2>
-            <p>{job.company_name}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.2rem" }}>
+              <p style={{ margin: 0 }}>{job.company_name}</p>
+              {cleanJobId(job.external_id, job.id) && (
+                <button
+                  type="button"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: "4px",
+                    color: "var(--accent-primary, #38bdf8)",
+                    fontSize: "0.75rem",
+                    padding: "0.15rem 0.45rem",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                    fontFamily: "monospace"
+                  }}
+                  title="Click to copy Job ID"
+                  onClick={() => {
+                    navigator.clipboard.writeText(cleanJobId(job.external_id, job.id));
+                    alert(`Copied Job ID: ${cleanJobId(job.external_id, job.id)}`);
+                  }}
+                >
+                  📋 #{cleanJobId(job.external_id, job.id)}
+                </button>
+              )}
+            </div>
           </div>
+
 
           <dl className="decision-modal-meta">
             <div>

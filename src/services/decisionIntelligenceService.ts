@@ -2,7 +2,9 @@ import { supabase } from "../lib/supabase";
 
 export interface DecisionJob {
   id: string;
+  external_id?: string | null;
   company_id: string | null;
+
 
   title: string;
   company_name: string;
