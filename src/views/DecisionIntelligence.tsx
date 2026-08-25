@@ -163,7 +163,7 @@ export default function DecisionIntelligence() {
     const query = search.trim().toLowerCase();
 
     return jobs.filter((job) => {
-      // 1. Global Search (matches title, company, source, hr_email, description, AND URL)
+      // 1. Global Search (matches title, company, source, hr_email, description, external_id, AND URL)
       if (query) {
         const title = job.title.toLowerCase();
         const company = job.company_name.toLowerCase();
@@ -171,6 +171,8 @@ export default function DecisionIntelligence() {
         const email = (job.hr_email || "").toLowerCase();
         const description = (job.description || "").toLowerCase();
         const url = (job.url || "").toLowerCase();
+        const externalId = (job.external_id || "").toLowerCase();
+        const cleanId = (job.external_id || "").replace(/^[a-zA-Z0-9]+_/, "").toLowerCase();
 
         const matchesQuery =
           title.includes(query) ||
@@ -178,10 +180,13 @@ export default function DecisionIntelligence() {
           source.includes(query) ||
           email.includes(query) ||
           description.includes(query) ||
+          externalId.includes(query) ||
+          cleanId.includes(query) ||
           url.includes(query);
 
         if (!matchesQuery) return false;
       }
+
 
       // 2. Score Filter (Numeric filter: scoreMin, scoreMax)
       if (columnFilters.scoreMin !== "") {

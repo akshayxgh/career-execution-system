@@ -171,7 +171,9 @@ export interface AppliedJobFromDB {
   job_id: string;
   jobs: {
     company_id: string | null;
+    external_id?: string | null;
     title: string;
+
     company_name: string;
     location: string | null;
     description: string | null;
@@ -206,6 +208,7 @@ export async function getAppliedJobs(): Promise<AppliedJobFromDB[]> {
       job_id,
       jobs:jobs(
         company_id,
+        external_id,
         title,
         company_name,
         location,
@@ -220,6 +223,7 @@ export async function getAppliedJobs(): Promise<AppliedJobFromDB[]> {
         search_location,
 
         job_analysis:job_analysis(
+
           score,
           reason,
           recommendation,

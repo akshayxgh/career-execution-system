@@ -109,11 +109,23 @@ Return ONLY valid raw JSON without markdown formatting or code blocks.`;
     });
   };
 
-  const filteredInterviews = state.interviews.filter(i => 
-    i.company.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    i.questionsAsked.some(q => q.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    i.lessonsLearned.some(l => l.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredInterviews = state.interviews.filter(i => {
+    const q = searchTerm.toLowerCase();
+    const company = (i.company || '').toLowerCase();
+    const round = (i.round || '').toLowerCase();
+    const jobId = ((i as any).jobId || (i as any).external_id || '').toLowerCase();
+    const cleanId = jobId.replace(/^[a-zA-Z0-9]+_/, '');
+
+    return (
+      company.includes(q) || 
+      round.includes(q) ||
+      jobId.includes(q) ||
+      cleanId.includes(q) ||
+      i.questionsAsked.some(question => question.toLowerCase().includes(q)) ||
+      i.lessonsLearned.some(lesson => lesson.toLowerCase().includes(q))
+    );
+  });
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

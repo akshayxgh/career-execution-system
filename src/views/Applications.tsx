@@ -143,8 +143,11 @@ export const Applications = () => {
       const dbApp = app.raw as AppliedJobFromDB;
       const email = (dbApp.jobs?.job_analysis?.hr_email || '').toLowerCase();
       const desc = (dbApp.jobs?.description || '').toLowerCase();
-      return email.includes(q) || desc.includes(q);
+      const extId = (dbApp.jobs?.external_id || '').toLowerCase();
+      const cleanId = (dbApp.jobs?.external_id || '').replace(/^[a-zA-Z0-9]+_/, '').toLowerCase();
+      return email.includes(q) || desc.includes(q) || extId.includes(q) || cleanId.includes(q);
     } else {
+
       const manualApp = app.raw as any;
       const contact = (manualApp.recruiterContact || '').toLowerCase();
       const notes = (manualApp.notes || '').toLowerCase();
