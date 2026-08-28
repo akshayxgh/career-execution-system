@@ -152,19 +152,10 @@ export const ProjectTracker = () => {
     }
   };
 
-  const handleTechInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (val.includes(',')) {
-      const parts = val.split(',');
-      const completeParts = parts.slice(0, -1).map(p => p.trim()).filter(Boolean);
-      const lastPart = parts[parts.length - 1];
-
-      if (completeParts.length > 0) {
-        addTechItems(completeParts.join(','));
-      }
-      setTechInput(lastPart.trimStart());
-    } else {
-      setTechInput(val);
+  const handleTechBlur = () => {
+    if (techInput.trim()) {
+      addTechItems(techInput);
+      setTechInput('');
     }
   };
 
@@ -201,19 +192,10 @@ export const ProjectTracker = () => {
     }
   };
 
-  const handleResourceInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (val.includes(',')) {
-      const parts = val.split(',');
-      const completeParts = parts.slice(0, -1).map(p => p.trim()).filter(Boolean);
-      const lastPart = parts[parts.length - 1];
-
-      if (completeParts.length > 0) {
-        addResourceItems(completeParts.join(','));
-      }
-      setResourceInput(lastPart.trimStart());
-    } else {
-      setResourceInput(val);
+  const handleResourceBlur = () => {
+    if (resourceInput.trim()) {
+      addResourceItems(resourceInput);
+      setResourceInput('');
     }
   };
 
@@ -853,20 +835,14 @@ export const ProjectTracker = () => {
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
                   className="input"
-                  placeholder="e.g. MySQL, Python, SQL (press Enter or comma)"
+                  placeholder="e.g. MySQL, Python, SQL (press Enter or tab out to add)"
                   value={techInput}
-                  onChange={handleTechInputChange}
+                  onChange={e => setTechInput(e.target.value)}
+                  onBlur={handleTechBlur}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') {
+                    if (e.key === 'Enter') {
                       e.preventDefault();
                       handleAddTech();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData.getData('text');
-                    if (pasted.includes(',')) {
-                      e.preventDefault();
-                      addTechItems(pasted);
                     }
                   }}
                 />
@@ -893,20 +869,14 @@ export const ProjectTracker = () => {
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
                   className="input"
-                  placeholder="e.g. https://kaggle.com/dataset, https://notion.so/docs (press Enter or comma)"
+                  placeholder="e.g. https://kaggle.com/dataset, https://notion.so/docs (press Enter or tab out to add)"
                   value={resourceInput}
-                  onChange={handleResourceInputChange}
+                  onChange={e => setResourceInput(e.target.value)}
+                  onBlur={handleResourceBlur}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') {
+                    if (e.key === 'Enter') {
                       e.preventDefault();
                       handleAddResource();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData.getData('text');
-                    if (pasted.includes(',')) {
-                      e.preventDefault();
-                      addResourceItems(pasted);
                     }
                   }}
                 />
