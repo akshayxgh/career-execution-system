@@ -70,6 +70,7 @@ export interface Project {
   technologiesUsed: string[];
   githubLink: string;
   portfolioLink: string;
+  resources?: string[];
   lessonsLearned: string;
 }
 
