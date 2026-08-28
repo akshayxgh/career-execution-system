@@ -3,8 +3,9 @@ import { EyeOff, X } from "lucide-react";
 import type { DecisionJob } from "../../services/decisionIntelligenceService";
 
 interface HideReasonModalProps {
-  job: DecisionJob | null;
-  onConfirm: (jobId: string, reason: string) => void;
+  job?: DecisionJob | null;
+  jobsToHide?: DecisionJob[];
+  onConfirm: (reason: string) => void;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -22,28 +23,33 @@ const COMMON_REASONS = [
 
 export default function HideReasonModal({
   job,
+  jobsToHide = [],
   onConfirm,
   onCancel,
   loading = false,
 }: HideReasonModalProps) {
   const [customReason, setCustomReason] = useState<string>("");
 
+  const activeJob = job || (jobsToHide.length === 1 ? jobsToHide[0] : null);
+  const isBulk = jobsToHide.length > 1;
+  const isVisible = Boolean(activeJob || isBulk);
+
   useEffect(() => {
     setCustomReason("");
-  }, [job]);
+  }, [job, jobsToHide]);
 
   const handleConfirmCustom = useCallback(() => {
-    if (!job || loading) return;
+    if (!isVisible || loading) return;
     const fullReason = customReason.trim() || "User marked as hidden";
-    onConfirm(job.id, fullReason);
-  }, [job, loading, customReason, onConfirm]);
+    onConfirm(fullReason);
+  }, [isVisible, loading, customReason, onConfirm]);
 
   const handlePresetClick = (presetLabel: string) => {
-    if (!job || loading) return;
+    if (!isVisible || loading) return;
     const fullReason = customReason.trim()
       ? `${presetLabel} - ${customReason.trim()}`
       : presetLabel;
-    onConfirm(job.id, fullReason);
+    onConfirm(fullReason);
   };
 
   useEffect(() => {
@@ -60,7 +66,8 @@ export default function HideReasonModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onCancel, handleConfirmCustom]);
 
-  if (!job) return null;
+  if (!isVisible) return null;
+
 
   return (
     <div
@@ -80,9 +87,19 @@ export default function HideReasonModal({
               <EyeOff size={18} />
             </div>
             <div>
-              <h2 className="hide-reason-title">Reason to Hide Job</h2>
+              <h2 className="hide-reason-title">
+                {isBulk ? `Reason to Hide ${jobsToHide.length} Jobs` : "Reason to Hide Job"}
+              </h2>
               <p className="hide-reason-subtitle">
-                {job.title} • <span className="hide-reason-company">{job.company_name}</span>
+                {isBulk ? (
+                  <span>
+                    Selected {jobsToHide.length} jobs will be marked as hidden
+                  </span>
+                ) : activeJob ? (
+                  <span>
+                    {activeJob.title} • <span className="hide-reason-company">{activeJob.company_name}</span>
+                  </span>
+                ) : null}
               </p>
             </div>
           </div>

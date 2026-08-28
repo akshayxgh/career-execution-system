@@ -12,6 +12,8 @@ interface DecisionJobRowProps {
   onOpenJob: (job: DecisionJob) => void;
   onStatusChange: (jobId: string, status: DecisionStatus) => void;
   isRemoving?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (jobId: string) => void;
 }
 
 function formatPostedDate(postedDate: string | null) {
@@ -79,6 +81,8 @@ export default function DecisionJobRow({
   onOpenJob,
   onStatusChange,
   isRemoving = false,
+  isSelected = false,
+  onToggleSelect,
 }: DecisionJobRowProps) {
   const rowTone =
     job.recommendation === "Apply"
@@ -103,10 +107,21 @@ export default function DecisionJobRow({
           handleRowClick();
         }
       }}
-      className={`decision-row ${rowTone} ${isRemoving ? "decision-row-removing" : ""}`}
+      className={`decision-row ${rowTone} ${isSelected ? "decision-row-selected" : ""} ${isRemoving ? "decision-row-removing" : ""}`}
     >
       <div className="decision-cell decision-score-cell">
-        <ScoreBadge score={job.score} />
+        <ScoreBadge
+          score={job.score}
+          isSelected={isSelected}
+          onToggleSelect={
+            onToggleSelect
+              ? (e) => {
+                  e.stopPropagation();
+                  onToggleSelect(job.id);
+                }
+              : undefined
+          }
+        />
       </div>
 
       <div className="decision-cell decision-title-cell">

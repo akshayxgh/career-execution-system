@@ -163,6 +163,38 @@ export async function updateDecisionJobStatus(
   }
 }
 
+export async function updateMultipleDecisionJobStatus(
+  jobIds: string[],
+  status: DecisionStatus,
+  hideReason?: string,
+) {
+  if (!jobIds.length) return;
+
+  const now = new Date().toISOString();
+  const payloads = jobIds.map((jobId) => {
+    const item: Record<string, any> = {
+      job_id: jobId,
+      status,
+      updated_at: now,
+    };
+    if (hideReason) {
+      item.notes = hideReason;
+    }
+    return item;
+  });
+
+  const { error } = await supabase
+    .from("my_jobs")
+    .upsert(payloads, {
+      onConflict: "job_id",
+    });
+
+  if (error) {
+    throw error;
+  }
+}
+
+
 
 export interface AppliedJobFromDB {
   id: string;

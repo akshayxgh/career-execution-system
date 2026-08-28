@@ -8,6 +8,7 @@ import {
   type DecisionJob,
   type DecisionStatus,
   updateDecisionJobStatus,
+  updateMultipleDecisionJobStatus,
 } from "../services/decisionIntelligenceService";
 import JobCopilotWidget from "../components/copilot/JobCopilotWidget";
 import HideReasonModal from "../components/decision/HideReasonModal";
@@ -128,6 +129,8 @@ export default function DecisionIntelligence() {
   const [statusSaveError, setStatusSaveError] = useState("");
   const [removingJobIds, setRemovingJobIds] = useState<Record<string, boolean>>({});
   const [hidingJob, setHidingJob] = useState<DecisionJob | null>(null);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [isBulkHiding, setIsBulkHiding] = useState(false);
 
   const loadJobs = async () => {
     try {
@@ -316,6 +319,45 @@ export default function DecisionIntelligence() {
   const pageStart = (currentPage - 1) * ROWS_PER_PAGE;
   const visibleJobs = sortedJobs.slice(pageStart, pageStart + ROWS_PER_PAGE);
 
+  const isAllSelected = useMemo(() => {
+    if (sortedJobs.length === 0) return false;
+    return sortedJobs.every((j) => selectedJobIds.has(j.id));
+  }, [sortedJobs, selectedJobIds]);
+
+  const handleToggleSelectJob = (jobId: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedJobIds(new Set());
+    } else {
+      setSelectedJobIds(new Set(sortedJobs.map((j) => j.id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedJobIds(new Set());
+  };
+
+  const handleTriggerBulkHide = () => {
+    if (selectedJobIds.size === 0) return;
+    setIsBulkHiding(true);
+  };
+
+  const selectedJobsToHide = useMemo(() => {
+    if (!isBulkHiding) return [];
+    return jobs.filter((j) => selectedJobIds.has(j.id));
+  }, [isBulkHiding, jobs, selectedJobIds]);
+
   const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
@@ -490,43 +532,88 @@ export default function DecisionIntelligence() {
     }
   };
 
-  const handleConfirmHide = async (jobId: string, reason: string) => {
+  const handleConfirmHide = async (reason: string) => {
     setSavingStatus(true);
     setStatusSaveError("");
 
     try {
-      await updateDecisionJobStatus(jobId, "HIDDEN", reason);
+      if (isBulkHiding && selectedJobIds.size > 0) {
+        const ids = Array.from(selectedJobIds);
+        await updateMultipleDecisionJobStatus(ids, "HIDDEN", reason);
 
-      setJobs((currentJobs) =>
-        currentJobs.map((job) =>
-          job.id === jobId
-            ? {
-                ...job,
-                my_status: "HIDDEN",
-                status_updated_at: new Date().toISOString(),
-              }
-            : job,
-        ),
-      );
+        const now = new Date().toISOString();
+        const idMap = new Set(ids);
 
-      if (selectedJob?.id === jobId) {
-        setSelectedJob(null);
-      }
+        setJobs((currentJobs) =>
+          currentJobs.map((job) =>
+            idMap.has(job.id)
+              ? {
+                  ...job,
+                  my_status: "HIDDEN",
+                  status_updated_at: now,
+                }
+              : job,
+          ),
+        );
 
-      setHidingJob(null);
+        if (selectedJob && idMap.has(selectedJob.id)) {
+          setSelectedJob(null);
+        }
 
-      setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
-      setTimeout(() => {
-        setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
-        setRemovingJobIds((prev) => {
-          const next = { ...prev };
-          delete next[jobId];
-          return next;
+        setIsBulkHiding(false);
+        setSelectedJobIds(new Set());
+
+        const removingMap: Record<string, boolean> = {};
+        ids.forEach((id) => {
+          removingMap[id] = true;
         });
-      }, 300);
+        setRemovingJobIds((prev) => ({ ...prev, ...removingMap }));
+
+        setTimeout(() => {
+          setJobs((currentJobs) => currentJobs.filter((job) => !idMap.has(job.id)));
+          setRemovingJobIds((prev) => {
+            const next = { ...prev };
+            ids.forEach((id) => {
+              delete next[id];
+            });
+            return next;
+          });
+        }, 300);
+      } else if (hidingJob) {
+        const jobId = hidingJob.id;
+        await updateDecisionJobStatus(jobId, "HIDDEN", reason);
+
+        setJobs((currentJobs) =>
+          currentJobs.map((job) =>
+            job.id === jobId
+              ? {
+                  ...job,
+                  my_status: "HIDDEN",
+                  status_updated_at: new Date().toISOString(),
+                }
+              : job,
+          ),
+        );
+
+        if (selectedJob?.id === jobId) {
+          setSelectedJob(null);
+        }
+
+        setHidingJob(null);
+
+        setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+        setTimeout(() => {
+          setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId));
+          setRemovingJobIds((prev) => {
+            const next = { ...prev };
+            delete next[jobId];
+            return next;
+          });
+        }, 300);
+      }
     } catch (e: unknown) {
       setStatusSaveError(
-        e instanceof Error ? e.message : "Unable to hide job.",
+        e instanceof Error ? e.message : "Unable to hide jobs.",
       );
     } finally {
       setSavingStatus(false);
@@ -566,6 +653,13 @@ export default function DecisionIntelligence() {
             onSearchChange={handleSearchChange}
             activeFiltersCount={activeFiltersCount}
             onResetAllFilters={handleResetAllFilters}
+            selectedCount={selectedJobIds.size}
+            totalResults={sortedJobs.length}
+            isAllSelected={isAllSelected}
+            isPartiallySelected={selectedJobIds.size > 0 && !isAllSelected}
+            onToggleSelectAll={handleToggleSelectAll}
+            onBulkHide={handleTriggerBulkHide}
+            onClearSelection={handleClearSelection}
           />
         </div>
 
@@ -590,6 +684,12 @@ export default function DecisionIntelligence() {
           onClearColumnFilter={handleClearColumnFilter}
           onResetAllFilters={handleResetAllFilters}
           activeFiltersCount={activeFiltersCount}
+          selectedJobIds={selectedJobIds}
+          onToggleSelectJob={handleToggleSelectJob}
+          onToggleSelectAll={handleToggleSelectAll}
+          isAllSelected={isAllSelected}
+          onBulkHide={handleTriggerBulkHide}
+          onClearSelection={handleClearSelection}
         />
 
         {selectedJob ? (
@@ -606,8 +706,12 @@ export default function DecisionIntelligence() {
 
         <HideReasonModal
           job={hidingJob}
+          jobsToHide={selectedJobsToHide}
           onConfirm={handleConfirmHide}
-          onCancel={() => setHidingJob(null)}
+          onCancel={() => {
+            setHidingJob(null);
+            setIsBulkHiding(false);
+          }}
           loading={savingStatus}
         />
       </div>

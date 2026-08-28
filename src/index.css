@@ -419,7 +419,7 @@ h3 { font-size: 1.25rem; }
 .decision-table-header,
 .decision-row {
   display: grid;
-  grid-template-columns: 76px minmax(180px, 1.8fr) 75px 105px 120px 100px 95px 105px 100px;
+  grid-template-columns: 100px minmax(180px, 1.8fr) 75px 105px 120px 100px 95px 105px 100px;
 }
 
 
@@ -453,7 +453,8 @@ h3 { font-size: 1.25rem; }
 }
 
 .decision-th-score {
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: 0.4rem;
 }
 
 .decision-sort-button {
@@ -1100,6 +1101,134 @@ h3 { font-size: 1.25rem; }
 .score-badge-red {
   background: #ef4444;
   color: #ffffff;
+}
+
+.score-badge-selectable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  user-select: none;
+}
+
+.score-badge-selectable:hover {
+  transform: scale(1.12);
+  box-shadow: 0 6px 14px rgb(0 0 0 / 0.2);
+  filter: brightness(1.1);
+}
+
+.score-badge-selected {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4), 0 4px 12px rgba(2, 132, 199, 0.5) !important;
+  transform: scale(1.08);
+}
+
+.decision-row-selected {
+  background: rgba(14, 165, 233, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.12) !important;
+}
+
+.decision-select-all-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.decision-select-all-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.decision-toolbar-selection {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.65rem;
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.18s ease-out;
+}
+
+.decision-bulk-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.decision-th-job-title,
+.decision-th-job-title .decision-th-inner {
+  justify-content: center !important;
+}
+
+.decision-bulk-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.decision-bulk-count {
+  background: #38bdf8;
+  color: #0f172a;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.decision-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.decision-bulk-hide-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.decision-bulk-hide-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.decision-bulk-cancel-btn {
+  padding: 0.45rem 0.85rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.decision-bulk-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
 }
 
 .decision-status-select {

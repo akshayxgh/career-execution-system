@@ -1,5 +1,5 @@
 import { useState, useMemo, type ReactNode } from "react";
-import { RotateCcw, Filter } from "lucide-react";
+import { RotateCcw, Filter, CheckSquare, Square, MinusSquare } from "lucide-react";
 import type {
   DecisionJob,
   DecisionStatus,
@@ -31,7 +31,7 @@ interface DecisionTableProps {
   onSort: (column: DecisionSortColumn) => void;
   onStatusChange: (jobId: string, status: DecisionStatus) => void;
   onOpenJob: (job: DecisionJob) => void;
-  onResetSorting: () => void;
+  onResetSorting?: () => void;
   onPreviousPage: () => void;
   onNextPage: () => void;
   removingJobIds?: Record<string, boolean>;
@@ -40,6 +40,14 @@ interface DecisionTableProps {
   onClearColumnFilter: (column: FilterColumnKey) => void;
   onResetAllFilters: () => void;
   activeFiltersCount: number;
+
+  // Selection Props
+  selectedJobIds: Set<string>;
+  onToggleSelectJob: (jobId: string) => void;
+  onToggleSelectAll: () => void;
+  isAllSelected: boolean;
+  onBulkHide?: () => void;
+  onClearSelection?: () => void;
 }
 
 interface TableHeaderCellProps {
@@ -156,7 +164,6 @@ export default function DecisionTable({
   sortDirection,
   onSort,
   onOpenJob,
-  onResetSorting,
   onStatusChange,
   onPreviousPage,
   onNextPage,
@@ -166,6 +173,10 @@ export default function DecisionTable({
   onClearColumnFilter,
   onResetAllFilters,
   activeFiltersCount,
+  selectedJobIds,
+  onToggleSelectJob,
+  onToggleSelectAll,
+  isAllSelected,
 }: DecisionTableProps) {
   const [activePopover, setActivePopover] = useState<FilterColumnKey | null>(null);
 
@@ -179,6 +190,8 @@ export default function DecisionTable({
 
   const pageStart = totalResults === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const pageEnd = Math.min(currentPage * rowsPerPage, totalResults);
+  const selectedCount = selectedJobIds.size;
+  const isPartiallySelected = selectedCount > 0 && !isAllSelected;
 
   return (
     <section className="decision-table-frame">
@@ -220,19 +233,6 @@ export default function DecisionTable({
           >
             Status {sortColumn === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
           </button>
-          {(sortColumn || activeFiltersCount > 0) && (
-            <button
-              type="button"
-              className="decision-sort-chip decision-sort-reset"
-              onClick={() => {
-                onResetSorting();
-                onResetAllFilters();
-              }}
-              title="Reset sorting and filters"
-            >
-              <RotateCcw size={12} /> Reset {activeFiltersCount > 0 ? `(${activeFiltersCount} filters)` : ""}
-            </button>
-          )}
         </div>
       </div>
 
@@ -257,15 +257,28 @@ export default function DecisionTable({
               prefix={
                 <button
                   type="button"
-                  className="decision-reset-button"
-                  onClick={() => {
-                    onResetSorting();
-                    onResetAllFilters();
+                  className={`decision-select-all-btn ${selectedCount > 0 ? "active" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSelectAll();
                   }}
-                  title="Reset Sorting & All Filters"
-                  aria-label="Reset Sorting & All Filters"
+                  title={
+                    isAllSelected
+                      ? "Deselect All Filtered Jobs"
+                      : isPartiallySelected
+                      ? `Select All (${totalResults} jobs)`
+                      : `Select All (${totalResults} jobs)`
+                  }
+                  aria-label="Select All Checkbox"
+                  style={{ marginRight: "0.25rem" }}
                 >
-                  <RotateCcw className="decision-reset-icon" />
+                  {isAllSelected ? (
+                    <CheckSquare size={16} style={{ color: "#38bdf8" }} />
+                  ) : isPartiallySelected ? (
+                    <MinusSquare size={16} style={{ color: "#38bdf8" }} />
+                  ) : (
+                    <Square size={16} style={{ color: "#64748b" }} />
+                  )}
                 </button>
               }
             />
@@ -282,6 +295,7 @@ export default function DecisionTable({
               activePopover={activePopover}
               onTogglePopover={handleTogglePopover}
               onClosePopover={handleClosePopover}
+              className="decision-th-job-title"
             />
 
             <TableHeaderCell
@@ -319,7 +333,7 @@ export default function DecisionTable({
             <TableHeaderCell
               columnKey="scraper"
               sortColumn="scraper"
-              label="Scraper"
+              label="Source"
               activeSortColumn={sortColumn}
               direction={sortDirection}
               onSort={onSort}
@@ -393,6 +407,8 @@ export default function DecisionTable({
                 onOpenJob={onOpenJob} 
                 onStatusChange={onStatusChange} 
                 isRemoving={removingJobIds[job.id]}
+                isSelected={selectedJobIds.has(job.id)}
+                onToggleSelect={onToggleSelectJob}
               />
             ))
           ) : (
