@@ -23,6 +23,7 @@ const ROWS_PER_PAGE = 25;
 
 type SortColumn =
   | "score"
+  | "location"
   | "posted"
   | "analyzed"
   | "scraper"
@@ -153,6 +154,7 @@ export default function DecisionIntelligence() {
     let count = 0;
     if (columnFilters.scoreMin !== "" || columnFilters.scoreMax !== "") count++;
     if (columnFilters.jobTitle.trim() !== "") count++;
+    if (columnFilters.location.trim() !== "") count++;
     if (columnFilters.experience.trim() !== "") count++;
     if (columnFilters.salary.trim() !== "") count++;
     if (columnFilters.postedDates.length > 0) count++;
@@ -166,10 +168,11 @@ export default function DecisionIntelligence() {
     const query = search.trim().toLowerCase();
 
     return jobs.filter((job) => {
-      // 1. Global Search (matches title, company, source, hr_email, description, external_id, AND URL)
+      // 1. Global Search (matches title, company, location, source, hr_email, description, external_id, AND URL)
       if (query) {
         const title = job.title.toLowerCase();
         const company = job.company_name.toLowerCase();
+        const loc = (job.location || "").toLowerCase();
         const source = (job.source || "").toLowerCase();
         const email = (job.hr_email || "").toLowerCase();
         const description = (job.description || "").toLowerCase();
@@ -180,6 +183,7 @@ export default function DecisionIntelligence() {
         const matchesQuery =
           title.includes(query) ||
           company.includes(query) ||
+          loc.includes(query) ||
           source.includes(query) ||
           email.includes(query) ||
           description.includes(query) ||
@@ -208,14 +212,21 @@ export default function DecisionIntelligence() {
         if (!combined.includes(q)) return false;
       }
 
-      // 4. Experience Filter (Case-insensitive contains)
+      // 4. Location Filter (Case-insensitive contains)
+      if (columnFilters.location.trim() !== "") {
+        const q = columnFilters.location.trim().toLowerCase();
+        const loc = (job.location || "—").toLowerCase();
+        if (!loc.includes(q)) return false;
+      }
+
+      // 5. Experience Filter (Case-insensitive contains)
       if (columnFilters.experience.trim() !== "") {
         const q = columnFilters.experience.trim().toLowerCase();
         const exp = (job.experience || "—").toLowerCase();
         if (!exp.includes(q)) return false;
       }
 
-      // 5. Salary Filter (Case-insensitive contains)
+      // 6. Salary Filter (Case-insensitive contains)
       if (columnFilters.salary.trim() !== "") {
         const q = columnFilters.salary.trim().toLowerCase();
         const sal = (job.salary || "—").toLowerCase();
@@ -223,25 +234,25 @@ export default function DecisionIntelligence() {
         if (!sal.includes(q) && !formattedSal.includes(q)) return false;
       }
 
-      // 6. Posted Date Filter (Multi-date select)
+      // 7. Posted Date Filter (Multi-date select)
       if (columnFilters.postedDates.length > 0) {
         const pDate = formatPostedDate(job.posted_date);
         if (!columnFilters.postedDates.includes(pDate)) return false;
       }
 
-      // 7. Analyzed Date Filter (Multi-date select)
+      // 8. Analyzed Date Filter (Multi-date select)
       if (columnFilters.analyzedDates.length > 0) {
         const aDate = formatToISTShortDate(job.analyzed_at);
         if (!columnFilters.analyzedDates.includes(aDate)) return false;
       }
 
-      // 8. Scraper Filter (Multi-option select)
+      // 9. Scraper Filter (Multi-option select)
       if (columnFilters.scrapers.length > 0) {
         const scraperName = formatScraperName(job.scraper, job.source);
         if (!columnFilters.scrapers.includes(scraperName)) return false;
       }
 
-      // 9. Status Filter (Multi-option select)
+      // 10. Status Filter (Multi-option select)
       if (columnFilters.statuses.length > 0) {
         if (!columnFilters.statuses.includes(job.my_status)) return false;
       }
@@ -262,6 +273,12 @@ export default function DecisionIntelligence() {
 
       if (sortColumn === "score") {
         result = (a.score - b.score) * directionModifier;
+      }
+
+      if (sortColumn === "location") {
+        const aLoc = (a.location || "").toLowerCase();
+        const bLoc = (b.location || "").toLowerCase();
+        result = aLoc.localeCompare(bLoc) * directionModifier;
       }
 
       if (sortColumn === "posted") {
@@ -376,6 +393,8 @@ export default function DecisionIntelligence() {
         next.scoreMax = "";
       } else if (col === "jobTitle") {
         next.jobTitle = "";
+      } else if (col === "location") {
+        next.location = "";
       } else if (col === "experience") {
         next.experience = "";
       } else if (col === "salary") {

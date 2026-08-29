@@ -419,7 +419,7 @@ h3 { font-size: 1.25rem; }
 .decision-table-header,
 .decision-row {
   display: grid;
-  grid-template-columns: 100px minmax(180px, 1.8fr) 75px 105px 120px 100px 95px 105px 100px;
+  grid-template-columns: 100px minmax(180px, 1.8fr) minmax(110px, 1.1fr) 75px 105px 120px 100px 95px 105px 100px;
 }
 
 

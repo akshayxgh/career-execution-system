@@ -1,6 +1,7 @@
 export type FilterColumnKey =
   | "score"
   | "jobTitle"
+  | "location"
   | "posted"
   | "analyzed"
   | "scraper"
@@ -12,6 +13,7 @@ export interface ColumnFiltersState {
   scoreMin: string;
   scoreMax: string;
   jobTitle: string;
+  location: string;
   experience: string;
   salary: string;
   postedDates: string[];
@@ -24,6 +26,7 @@ export const initialColumnFilters: ColumnFiltersState = {
   scoreMin: "",
   scoreMax: "",
   jobTitle: "",
+  location: "",
   experience: "",
   salary: "",
   postedDates: [],

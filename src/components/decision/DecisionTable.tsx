@@ -10,6 +10,7 @@ import type { FilterColumnKey, ColumnFiltersState } from "../../types/decisionFi
 
 export type DecisionSortColumn =
   | "score"
+  | "location"
   | "posted"
   | "analyzed"
   | "scraper"
@@ -89,6 +90,7 @@ function TableHeaderCell({
   const isFilterActive = useMemo(() => {
     if (columnKey === "score") return filters.scoreMin !== "" || filters.scoreMax !== "";
     if (columnKey === "jobTitle") return filters.jobTitle.trim() !== "";
+    if (columnKey === "location") return filters.location.trim() !== "";
     if (columnKey === "posted") return filters.postedDates.length > 0;
     if (columnKey === "analyzed") return filters.analyzedDates.length > 0;
     if (columnKey === "scraper") return filters.scrapers.length > 0;
@@ -296,6 +298,22 @@ export default function DecisionTable({
               onTogglePopover={handleTogglePopover}
               onClosePopover={handleClosePopover}
               className="decision-th-job-title"
+            />
+
+            <TableHeaderCell
+              columnKey="location"
+              sortColumn="location"
+              label="Location"
+              activeSortColumn={sortColumn}
+              direction={sortDirection}
+              onSort={onSort}
+              filters={filters}
+              onApplyFilter={onApplyFilter}
+              onClearColumnFilter={onClearColumnFilter}
+              allJobs={allJobs}
+              activePopover={activePopover}
+              onTogglePopover={handleTogglePopover}
+              onClosePopover={handleClosePopover}
             />
 
             <TableHeaderCell

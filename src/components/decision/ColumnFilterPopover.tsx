@@ -46,6 +46,7 @@ export default function ColumnFilterPopover({
   const [localScoreMax, setLocalScoreMax] = useState(filters.scoreMax);
   const [localTextQuery, setLocalTextQuery] = useState(() => {
     if (column === "jobTitle") return filters.jobTitle;
+    if (column === "location") return filters.location;
     if (column === "experience") return filters.experience;
     if (column === "salary") return filters.salary;
     return "";
@@ -104,6 +105,11 @@ export default function ColumnFilterPopover({
         const val = job.my_status;
         countsMap.set(val, (countsMap.get(val) || 0) + 1);
       });
+    } else if (column === "location") {
+      allJobs.forEach((job) => {
+        const val = job.location?.trim() || "—";
+        countsMap.set(val, (countsMap.get(val) || 0) + 1);
+      });
     } else if (column === "experience") {
       allJobs.forEach((job) => {
         const val = job.experience?.trim() || "—";
@@ -134,6 +140,8 @@ export default function ColumnFilterPopover({
       onApplyFilter({ scoreMin: localScoreMin, scoreMax: localScoreMax });
     } else if (column === "jobTitle") {
       onApplyFilter({ jobTitle: localTextQuery });
+    } else if (column === "location") {
+      onApplyFilter({ location: localTextQuery });
     } else if (column === "experience") {
       onApplyFilter({ experience: localTextQuery });
     } else if (column === "salary") {

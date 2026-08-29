@@ -1,4 +1,4 @@
-import { ExternalLink, Mail } from "lucide-react";
+import { ExternalLink, Mail, MapPin } from "lucide-react";
 import type {
   DecisionJob,
   DecisionStatus,
@@ -132,6 +132,25 @@ export default function DecisionJobRow({
           <div className="decision-job-title">{job.title}</div>
           <div className="decision-job-company-sub" style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
             <span>{job.company_name}</span>
+            {job.location && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.2rem",
+                  fontSize: "0.72rem",
+                  color: "#94a3b8",
+                  maxWidth: "180px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }}
+                title={job.location}
+              >
+                <MapPin size={11} style={{ color: "#38bdf8", flexShrink: 0 }} />
+                {job.location}
+              </span>
+            )}
             {cleanJobId(job.external_id, job.id) && (
               <span
                 style={{
@@ -163,6 +182,17 @@ export default function DecisionJobRow({
           </div>
         </div>
 
+      </div>
+
+      <div className="decision-cell decision-location-cell" title={job.location || "—"}>
+        {job.location ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <MapPin size={12} style={{ color: "#38bdf8", flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.location}</span>
+          </div>
+        ) : (
+          <span>—</span>
+        )}
       </div>
 
       <div className="decision-cell decision-muted-cell">{formatPostedDate(job.posted_date)}</div>
