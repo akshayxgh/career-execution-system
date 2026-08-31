@@ -1214,6 +1214,30 @@ h3 { font-size: 1.25rem; }
   transform: translateY(-1px);
 }
 
+.decision-bulk-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+  transition: all 0.15s ease;
+}
+
+.decision-bulk-export-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
 .decision-bulk-cancel-btn {
   padding: 0.45rem 0.85rem;
   background: rgba(255, 255, 255, 0.1);

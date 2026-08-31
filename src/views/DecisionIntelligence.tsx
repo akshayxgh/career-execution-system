@@ -18,6 +18,7 @@ import {
   initialColumnFilters,
 } from "../types/decisionFilters";
 import { formatToISTShortDate } from "../utils/dateUtils";
+import { exportJobsToCSV } from "../utils/csvExportUtils";
 
 const ROWS_PER_PAGE = 25;
 
@@ -659,6 +660,12 @@ export default function DecisionIntelligence() {
     );
   }
 
+  const handleExportSelectedCSV = () => {
+    if (selectedJobIds.size === 0) return;
+    const selectedJobs = jobs.filter((j) => selectedJobIds.has(j.id));
+    exportJobsToCSV(selectedJobs, `selected_jobs_${selectedJobs.length}`);
+  };
+
   return (
     <div className="decision-page">
       <div className="decision-shell">
@@ -678,6 +685,7 @@ export default function DecisionIntelligence() {
             isPartiallySelected={selectedJobIds.size > 0 && !isAllSelected}
             onToggleSelectAll={handleToggleSelectAll}
             onBulkHide={handleTriggerBulkHide}
+            onExportCSV={handleExportSelectedCSV}
             onClearSelection={handleClearSelection}
           />
         </div>

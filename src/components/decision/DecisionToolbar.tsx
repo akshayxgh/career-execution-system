@@ -1,4 +1,4 @@
-import { Search, Filter, EyeOff, CheckSquare, Square, MinusSquare } from "lucide-react";
+import { Search, Filter, EyeOff, Download, CheckSquare, Square, MinusSquare } from "lucide-react";
 
 interface DecisionToolbarProps {
   search: string;
@@ -11,6 +11,7 @@ interface DecisionToolbarProps {
   isPartiallySelected?: boolean;
   onToggleSelectAll?: () => void;
   onBulkHide?: () => void;
+  onExportCSV?: () => void;
   onClearSelection?: () => void;
 }
 
@@ -25,6 +26,7 @@ export default function DecisionToolbar({
   isPartiallySelected = false,
   onToggleSelectAll,
   onBulkHide,
+  onExportCSV,
   onClearSelection,
 }: DecisionToolbarProps) {
   return (
@@ -59,6 +61,16 @@ export default function DecisionToolbar({
               onClick={onBulkHide}
             >
               <EyeOff size={13} /> Hide ({selectedCount})
+            </button>
+          )}
+          {onExportCSV && (
+            <button
+              type="button"
+              className="decision-bulk-export-btn"
+              onClick={onExportCSV}
+              title={`Export ${selectedCount} selected job${selectedCount > 1 ? "s" : ""} to CSV`}
+            >
+              <Download size={13} /> Export CSV
             </button>
           )}
           {onClearSelection && (
