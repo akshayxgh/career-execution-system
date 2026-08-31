@@ -285,8 +285,8 @@ export default function ColumnFilterPopover({
           </div>
         )}
 
-        {/* 2. TEXT FILTER (Job Title, Experience, Salary - Case Insensitive contains) */}
-        {(column === "jobTitle" || column === "experience" || column === "salary") && (
+        {/* 2. TEXT FILTER (Job Title, Location, Experience, Salary - Case Insensitive contains) */}
+        {(column === "jobTitle" || column === "location" || column === "experience" || column === "salary") && (
           <div className="decision-filter-text-content">
             <div className="decision-filter-search-box">
               <Search size={14} className="decision-filter-search-icon" />
