@@ -64,7 +64,8 @@ const defaultState: StoreState = {
     pl300TargetDate: null
   },
   learningTracks: initialTracks,
-  concepts: []
+  concepts: [],
+  questionBank: []
 };
 
 interface StoreContextType {
@@ -85,14 +86,14 @@ const [loading, setLoading] = useState(true);
       const cloudState = await loadState();
 
       if (cloudState) {
-        setState({ ...defaultState, ...cloudState });
+        setState({ ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] });
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
 
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
-            setState({ ...defaultState, ...parsed });
+            setState({ ...defaultState, ...parsed, questionBank: parsed.questionBank || [] });
           } catch (e) {
             console.error("Failed to parse local storage data", e);
           }

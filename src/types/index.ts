@@ -139,6 +139,37 @@ export interface Concept {
   interviewQuestions?: { question: string; answer: string }[];
 }
 
+export type QuestionEnrichmentStatus = 'pending' | 'enriching' | 'completed';
+export type QuestionConfidence = 'unseen' | 'struggled' | 'hesitant' | 'mastered';
+export type QuestionDifficulty = 'Easy' | 'Medium' | 'Hard';
+
+export interface HumanAnswer {
+  pitch: string;          // 30-second verbal pitch (how to say it out loud)
+  steps: string[];        // Step-by-step execution or DAX/SQL recipe
+  proTip: string;         // Senior gotcha / bonus point / performance nuance
+  codeSnippet?: string;   // Optional DAX / SQL / Python snippet
+}
+
+export interface QuestionBankItem {
+  id: string;
+  question: string;
+  company: string;
+  tool?: string;          // e.g. 'Power BI', 'SQL', 'Python', 'Fabric', 'Excel', 'General'
+  role: string;
+  topic: string;
+  tags: string[];
+  aliases?: string[];     // Alternative phrasing or question variations merged from duplicate posts
+  difficulty: QuestionDifficulty;
+  humanAnswer?: HumanAnswer;
+  rawSource?: string;
+  enrichmentStatus: QuestionEnrichmentStatus;
+  confidence: QuestionConfidence;
+  frequencyCount: number;
+  companiesAsked: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StoreState {
   applications: JobApplication[];
   interviews: Interview[];
@@ -151,4 +182,5 @@ export interface StoreState {
   settings: UserSettings;
   learningTracks: LearningTrack[];
   concepts: Concept[];
+  questionBank: QuestionBankItem[];
 }

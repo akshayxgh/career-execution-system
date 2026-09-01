@@ -9,6 +9,7 @@ import { Dashboard } from './views/Dashboard';
 import { LearningTracks } from './views/LearningTracks';
 import { Applications } from './views/Applications';
 import { Interviews } from './views/Interviews';
+import { QuestionBank } from './views/QuestionBank';
 import { Weaknesses } from './views/Weaknesses';
 import { PL300Tracker } from './views/PL300Tracker';
 import { ConceptLibrary } from './views/ConceptLibrary';
@@ -38,6 +39,7 @@ function App() {
             <Route path="tracks" element={<LearningTracks />} />
             <Route path="applications" element={<Applications />} />
             <Route path="interviews" element={<Interviews />} />
+            <Route path="question-bank" element={<QuestionBank />} />
             <Route path="weaknesses" element={<Weaknesses />} />
             <Route path="pl300" element={<PL300Tracker />} />
             <Route path="concept-library" element={<ConceptLibrary />} />
