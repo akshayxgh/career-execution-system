@@ -290,18 +290,30 @@ export class CopilotService {
           signal: controller.signal,
         });
       } else {
-        // Direct Google Gemini REST API with Automatic Model Fallback
-        const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
-        const actualModel = model.includes("/") ? model.split("/").pop() : model;
+        // Direct Google Gemini REST API with Multi-Version (v1beta & v1) and Multi-Model Auto-Resolution
+        const cleanBase = baseUrl.replace(/\/+$/, "");
+        const baseWithoutVer = cleanBase.replace(/\/(v1beta|v1)$/, "");
 
-        const modelsToTry = [
-          actualModel,
+        const candidateModels = [
+          model ? (model.includes("/") ? model.split("/").pop() : model) : null,
           "gemini-2.0-flash",
-          "gemini-1.5-flash-latest",
           "gemini-2.5-flash",
+          "gemini-1.5-flash-latest",
           "gemini-1.5-flash-8b",
           "gemini-1.5-flash",
+          "gemini-pro",
         ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
+
+        // Build list of URLs to try across API versions
+        const candidateUrls: Array<{ url: string; label: string }> = [];
+        for (const ver of ["v1beta", "v1"]) {
+          for (const m of candidateModels) {
+            candidateUrls.push({
+              url: `${baseWithoutVer}/${ver}/models/${m}:generateContent?key=${apiKey}`,
+              label: `${ver}/${m}`,
+            });
+          }
+        }
 
         const parts: any[] = [{ text: prompt }];
 
@@ -338,10 +350,9 @@ export class CopilotService {
         let lastErrorDetails = "";
         let successfulResponse: Response | null = null;
 
-        for (const candidateModel of modelsToTry) {
-          const url = `${normalizedBaseUrl}/models/${candidateModel}:generateContent?key=${apiKey}`;
+        for (const candidate of candidateUrls) {
           try {
-            const res = await fetch(url, {
+            const res = await fetch(candidate.url, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -357,14 +368,14 @@ export class CopilotService {
 
             if (res.ok) {
               successfulResponse = res;
+              console.log(`[CopilotService] Successfully connected to Gemini endpoint: ${candidate.label}`);
               break;
             }
 
-            // If 404 (model not found), log and try next model
+            // If 404 (model not found on this version), try next endpoint
             if (res.status === 404) {
               const errJson = await res.json().catch(() => ({}));
               lastErrorDetails = errJson?.error?.message || "Model not found";
-              console.warn(`[CopilotService] Model '${candidateModel}' returned 404, attempting fallback...`);
               continue;
             }
 
@@ -378,7 +389,9 @@ export class CopilotService {
         }
 
         if (!successfulResponse) {
-          throw new Error(`Gemini API error (404): None of the available models (${modelsToTry.join(", ")}) were found. ${lastErrorDetails}`);
+          throw new Error(
+            `Gemini API error: None of the available models/versions were accessible with your API key (${lastErrorDetails || "Model not found"}). Please verify that 'Generative Language API' is enabled in Google AI Studio or check your API key.`
+          );
         }
 
         response = successfulResponse;
