@@ -290,10 +290,18 @@ export class CopilotService {
           signal: controller.signal,
         });
       } else {
-        // Direct Google Gemini REST API
+        // Direct Google Gemini REST API with Automatic Model Fallback
         const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
         const actualModel = model.includes("/") ? model.split("/").pop() : model;
-        const url = `${normalizedBaseUrl}/models/${actualModel || "gemini-1.5-flash"}:generateContent?key=${apiKey}`;
+
+        const modelsToTry = [
+          actualModel,
+          "gemini-2.0-flash",
+          "gemini-1.5-flash-latest",
+          "gemini-2.5-flash",
+          "gemini-1.5-flash-8b",
+          "gemini-1.5-flash",
+        ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
 
         const parts: any[] = [{ text: prompt }];
 
@@ -327,19 +335,53 @@ export class CopilotService {
           }
         }
 
-        response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [{ parts }],
-            generationConfig: {
-              maxOutputTokens: 2500,
-            },
-          }),
-          signal: controller.signal,
-        });
+        let lastErrorDetails = "";
+        let successfulResponse: Response | null = null;
+
+        for (const candidateModel of modelsToTry) {
+          const url = `${normalizedBaseUrl}/models/${candidateModel}:generateContent?key=${apiKey}`;
+          try {
+            const res = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                contents: [{ parts }],
+                generationConfig: {
+                  maxOutputTokens: 2500,
+                },
+              }),
+              signal: controller.signal,
+            });
+
+            if (res.ok) {
+              successfulResponse = res;
+              break;
+            }
+
+            // If 404 (model not found), log and try next model
+            if (res.status === 404) {
+              const errJson = await res.json().catch(() => ({}));
+              lastErrorDetails = errJson?.error?.message || "Model not found";
+              console.warn(`[CopilotService] Model '${candidateModel}' returned 404, attempting fallback...`);
+              continue;
+            }
+
+            // Other error (400, 401, 429), stop and process
+            successfulResponse = res;
+            break;
+          } catch (fetchErr: any) {
+            if (fetchErr.name === "AbortError") throw fetchErr;
+            lastErrorDetails = fetchErr.message || "Network error";
+          }
+        }
+
+        if (!successfulResponse) {
+          throw new Error(`Gemini API error (404): None of the available models (${modelsToTry.join(", ")}) were found. ${lastErrorDetails}`);
+        }
+
+        response = successfulResponse;
       }
 
       clearTimeout(timeoutId);
