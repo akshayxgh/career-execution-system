@@ -1,5 +1,5 @@
 import { loadState, saveState } from "../services/cloudStorage";
-import { setCustomApiKey } from "../config/copilotConfig";
+import { setCustomApiKey, setDualApiKeys } from "../config/copilotConfig";
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { StoreState, LearningTrack } from '../types';
 
@@ -88,15 +88,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       if (cloudState) {
         const merged = { ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] };
-        // If cloudState has an AI API key, sync to browser localStorage
-        if (merged.settings?.aiApiKey) {
+        // If cloudState has AI API keys, sync to browser localStorage
+        if (merged.settings?.geminiApiKey || merged.settings?.groqApiKey) {
+          setDualApiKeys({
+            geminiKey: merged.settings.geminiApiKey,
+            groqKey: merged.settings.groqApiKey,
+          });
+        } else if (merged.settings?.aiApiKey) {
           setCustomApiKey(merged.settings.aiApiKey);
-        } else {
-          // If local machine has a key, populate into state so it saves to cloud
-          const localKey = localStorage.getItem("ai_api_key") || localStorage.getItem("gemini_api_key") || localStorage.getItem("groq_api_key");
-          if (localKey) {
-            merged.settings = { ...merged.settings, aiApiKey: localKey };
-          }
         }
         setState(merged);
       } else {
@@ -106,7 +105,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           try {
             const parsed = JSON.parse(saved);
             const merged = { ...defaultState, ...parsed, questionBank: parsed.questionBank || [] };
-            if (merged.settings?.aiApiKey) {
+            if (merged.settings?.geminiApiKey || merged.settings?.groqApiKey) {
+              setDualApiKeys({
+                geminiKey: merged.settings.geminiApiKey,
+                groqKey: merged.settings.groqApiKey,
+              });
+            } else if (merged.settings?.aiApiKey) {
               setCustomApiKey(merged.settings.aiApiKey);
             }
             setState(merged);

@@ -223,45 +223,69 @@ export class CopilotService {
     images?: Array<{ data: string; mimeType: string }> | string,
     singleMimeType: string = "image/jpeg"
   ): Promise<string> {
-    const { apiKey, baseUrl, model, provider, timeoutMs } = COPILOT_CONFIG;
+    const hasImages = Boolean(images && (typeof images === "string" ? images.length > 0 : images.length > 0));
 
-    const cleanApiKey = (apiKey || "").trim().replace(/^['"]|['"]$/g, "");
+    // Dynamic Dual-Engine Auto-Routing:
+    // If images are provided -> Route to Gemini (Vision/OCR king)
+    // If pure text -> Route to Groq (500+ tok/s Ultra-Fast reasoning)
+    let activeKey = COPILOT_CONFIG.apiKey;
+    let activeProvider = COPILOT_CONFIG.provider;
+    let activeBaseUrl = COPILOT_CONFIG.baseUrl;
+    let activeModel = COPILOT_CONFIG.model;
+
+    if (hasImages) {
+      if (COPILOT_CONFIG.geminiApiKey) {
+        activeKey = COPILOT_CONFIG.geminiApiKey;
+        activeProvider = "Gemini";
+        activeBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
+        activeModel = "gemini-3.6-flash";
+      }
+    } else {
+      if (COPILOT_CONFIG.groqApiKey) {
+        activeKey = COPILOT_CONFIG.groqApiKey;
+        activeProvider = "Groq";
+        activeBaseUrl = "https://api.groq.com/openai/v1";
+        activeModel = "openai/gpt-oss-120b";
+      }
+    }
+
+    const cleanApiKey = (activeKey || "").trim().replace(/^['"]|['"]$/g, "");
 
     if (!cleanApiKey) {
       throw new Error(
-        "AI API key is missing. Please check VITE_OPENROUTER_API_KEY or VITE_GEMINI_API_KEY in your .env file or Vercel settings."
+        "AI API key is missing. Please enter your Gemini or Groq key in the AI Key Settings (🔑 in sidebar)."
       );
     }
 
     const startTime = Date.now();
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const timeoutId = setTimeout(() => controller.abort(), COPILOT_CONFIG.timeoutMs);
 
     const isGroq =
-      provider === "Groq" ||
+      activeProvider === "Groq" ||
       cleanApiKey.startsWith("gsk_") ||
-      baseUrl.includes("groq.com");
+      activeBaseUrl.includes("groq.com");
 
     const isGrok =
-      provider === "Grok" ||
-      provider === "xAI" ||
+      activeProvider === "Grok" ||
+      activeProvider === "xAI" ||
       cleanApiKey.startsWith("xai-") ||
-      baseUrl.includes("api.x.ai");
+      activeBaseUrl.includes("api.x.ai");
 
     const isOpenAICompatible =
       isGroq ||
       isGrok ||
-      provider === "OpenRouter" ||
+      activeProvider === "OpenRouter" ||
       cleanApiKey.startsWith("sk-or-") ||
       cleanApiKey.startsWith("sk-") ||
-      baseUrl.includes("openrouter.ai");
+      activeBaseUrl.includes("openrouter.ai");
 
     let response: Response;
 
     try {
       if (isOpenAICompatible) {
         // Groq / Grok (xAI) / OpenRouter / OpenAI Compatible Payload
-        const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+        const normalizedBaseUrl = activeBaseUrl.replace(/\/+$/, "");
         const url = `${normalizedBaseUrl}/chat/completions`;
 
         let userContent: any = prompt;
@@ -295,7 +319,7 @@ export class CopilotService {
         const candidateModelsToTry: string[] = [];
         if (isGroq) {
           candidateModelsToTry.push(
-            model || "openai/gpt-oss-120b",
+            activeModel || "openai/gpt-oss-120b",
             "openai/gpt-oss-20b",
             "qwen/qwen3.8-27b",
             "groq/compound-mini",
@@ -303,9 +327,9 @@ export class CopilotService {
             "llama-3.1-8b-instant"
           );
         } else if (isGrok) {
-          candidateModelsToTry.push(model || "grok-2-vision-1212", "grok-2-latest", "grok-beta");
+          candidateModelsToTry.push(activeModel || "grok-2-vision-1212", "grok-2-latest", "grok-beta");
         } else {
-          candidateModelsToTry.push(model || "google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free");
+          candidateModelsToTry.push(activeModel || "google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free");
         }
 
         let lastErrData = "";
@@ -331,7 +355,7 @@ export class CopilotService {
 
             if (res.ok) {
               successfulRes = res;
-              console.log(`[CopilotService] Successfully connected to model: ${candidateModel}`);
+              console.log(`[CopilotService] Successfully connected to Groq model: ${candidateModel}`);
               break;
             }
 
@@ -357,16 +381,16 @@ export class CopilotService {
         response = successfulRes;
       } else {
         // Direct Google Gemini REST API with Multi-Version (v1beta & v1) and Multi-Model Auto-Resolution
-        const cleanBase = baseUrl.replace(/\/+$/, "");
+        const cleanBase = activeBaseUrl.replace(/\/+$/, "");
         const baseWithoutVer = cleanBase.replace(/\/(v1beta|v1)$/, "");
 
         const candidateModels = [
-          model ? (model.includes("/") ? model.split("/").pop() : model) : null,
-          "gemini-2.5-flash",
-          "gemini-flash-latest",
+          activeModel ? (activeModel.includes("/") ? activeModel.split("/").pop() : activeModel) : null,
           "gemini-3.6-flash",
+          "gemini-flash-latest",
           "gemini-3.7-flash",
-          "gemini-2.0-flash",
+          "gemini-3.8-flash",
+          "gemini-2.5-flash",
           "gemini-pro-latest",
         ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
 
@@ -504,9 +528,9 @@ export class CopilotService {
       }
 
       const responseTimeMs = Date.now() - startTime;
-      console.log(`[CopilotService Debug] Response received from ${provider || "AI Provider"}:`, {
-        provider,
-        model,
+      console.log(`[CopilotService Debug] Response received from ${activeProvider || "AI Provider"}:`, {
+        provider: activeProvider,
+        model: activeModel,
         responseTimeMs,
         responseLength: content.length,
       });

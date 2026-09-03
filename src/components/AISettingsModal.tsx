@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Key, CheckCircle, AlertCircle, Eye, EyeOff, X, RefreshCw } from 'lucide-react';
+import { Key, CheckCircle, Eye, EyeOff, X, RefreshCw, Zap, Image } from 'lucide-react';
 import { useStore } from '../store/StoreContext';
-import { COPILOT_CONFIG, setCustomApiKey } from '../config/copilotConfig';
+import { COPILOT_CONFIG, setDualApiKeys } from '../config/copilotConfig';
 import { copilotService } from '../services/copilotService';
 
 interface AISettingsModalProps {
@@ -11,69 +11,96 @@ interface AISettingsModalProps {
 
 export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClose }) => {
   const { state, updateState } = useStore();
-  const [apiKey, setApiKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [statusMessage, setStatusMessage] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
+  const [showGemini, setShowGemini] = useState(false);
+  const [showGroq, setShowGroq] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [geminiStatus, setGeminiStatus] = useState<string>('');
+  const [groqStatus, setGroqStatus] = useState<string>('');
+  const [saveMessage, setSaveMessage] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
-      const current = state.settings?.aiApiKey || COPILOT_CONFIG.apiKey || '';
-      setApiKey(current);
-      setStatus('idle');
-      setStatusMessage('');
+      const gKey = state.settings?.geminiApiKey || COPILOT_CONFIG.geminiApiKey || '';
+      const grKey = state.settings?.groqApiKey || COPILOT_CONFIG.groqApiKey || '';
+      setGeminiKey(gKey);
+      setGroqKey(grKey);
+      setGeminiStatus('');
+      setGroqStatus('');
+      setSaveMessage('');
     }
-  }, [isOpen, state.settings?.aiApiKey]);
+  }, [isOpen, state.settings?.geminiApiKey, state.settings?.groqApiKey]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    const clean = apiKey.trim();
-    setCustomApiKey(clean);
+    const cleanGemini = geminiKey.trim();
+    const cleanGroq = groqKey.trim();
+
+    setDualApiKeys({ geminiKey: cleanGemini, groqKey: cleanGroq });
     updateState({
       settings: {
         ...state.settings,
-        aiApiKey: clean,
+        geminiApiKey: cleanGemini,
+        groqApiKey: cleanGroq,
+        aiApiKey: cleanGroq || cleanGemini,
       },
     });
-    setStatus('success');
-    setStatusMessage('Key saved and synced to Supabase across all your devices!');
+
+    setSaveMessage('Keys saved and synced to Supabase profile across all devices!');
     setTimeout(() => {
       onClose();
     }, 1200);
   };
 
-  const handleTestConnection = async () => {
-    const clean = apiKey.trim();
-    if (!clean) {
-      setStatus('error');
-      setStatusMessage('Please enter an API key first.');
-      return;
-    }
+  const handleTestEngines = async () => {
+    setIsTesting(true);
+    setGeminiStatus('Testing Gemini OCR...');
+    setGroqStatus('Testing Groq Chat...');
 
-    try {
-      setStatus('testing');
-      setStatusMessage('Testing connection with provider...');
-      setCustomApiKey(clean);
+    // Save temporarily to test
+    setDualApiKeys({ geminiKey: geminiKey.trim(), groqKey: groqKey.trim() });
 
-      const reply = await copilotService.generateMultimodalResponse('Respond with OK');
-      if (reply) {
-        setStatus('success');
-        setStatusMessage(`Connected successfully! Provider: ${COPILOT_CONFIG.provider} (${COPILOT_CONFIG.model})`);
+    // Test Groq Text
+    if (groqKey.trim()) {
+      try {
+        const groqReply = await copilotService.generateMultimodalResponse('Respond with OK');
+        if (groqReply) {
+          setGroqStatus('🟢 Groq (openai/gpt-oss-120b) Connected! 500+ tok/s');
+        }
+      } catch (err: any) {
+        setGroqStatus(`🔴 Groq: ${err.message || 'Connection failed'}`);
       }
-    } catch (err: any) {
-      setStatus('error');
-      setStatusMessage(err.message || 'Failed to connect. Please verify your key.');
+    } else {
+      setGroqStatus('⚪ No Groq key provided (will use Gemini for chat fallback)');
     }
+
+    // Test Gemini Vision
+    if (geminiKey.trim()) {
+      try {
+        const testPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        const geminiReply = await copilotService.generateMultimodalResponse('Describe image', testPng, 'image/png');
+        if (geminiReply) {
+          setGeminiStatus('🟢 Gemini 3.6 Flash (Vision & OCR) Connected!');
+        }
+      } catch (err: any) {
+        setGeminiStatus(`🔴 Gemini: ${err.message || 'Connection failed'}`);
+      }
+    } else {
+      setGeminiStatus('⚪ No Gemini key provided');
+    }
+
+    setIsTesting(false);
   };
 
   return (
     <div className="qb-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="qb-modal" style={{ maxWidth: 480 }}>
+      <div className="qb-modal" style={{ maxWidth: 520 }}>
         <div className="qb-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <Key size={20} style={{ color: 'var(--accent-primary)' }} />
-            <h3 style={{ margin: 0 }}>AI Copilot Key Settings</h3>
+            <h3 style={{ margin: 0 }}>Hybrid AI Dual-Engine Settings</h3>
           </div>
           <button className="qb-modal-close" onClick={onClose}>
             <X size={18} />
@@ -81,25 +108,30 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-            Your API key is securely synced to your private Supabase profile. It will automatically follow you on any computer, phone, or laptop!
+          <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
+            Your keys are securely synced to your private Supabase profile (<span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>user_id: Akshay</span>). They automatically follow you on any computer, phone, or laptop with zero setup!
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
-              API Key (Gemini, Groq, or OpenRouter)
-            </label>
+          {/* Gemini OCR Engine */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: 'var(--bg-dark)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Image size={15} style={{ color: '#60a5fa' }} />
+                1. Vision & Screenshot OCR Engine (Gemini Key)
+              </label>
+              <span style={{ fontSize: '0.72rem', color: '#60a5fa', fontWeight: 500 }}>gemini-3.6-flash</span>
+            </div>
             <div style={{ position: 'relative' }}>
               <input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="AQ.Ab8... or gsk_... or sk-..."
+                type={showGemini ? 'text' : 'password'}
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="AQ.Ab8RN6... or AIzaSy..."
                 style={{
                   width: '100%',
-                  padding: '0.65rem 2.5rem 0.65rem 0.75rem',
-                  fontSize: '0.85rem',
-                  background: 'var(--bg-dark)',
+                  padding: '0.55rem 2.5rem 0.55rem 0.75rem',
+                  fontSize: '0.82rem',
+                  background: 'var(--bg-main)',
                   border: '1px solid var(--border-color)',
                   borderRadius: 'var(--radius-sm)',
                   color: 'var(--text-main)',
@@ -108,7 +140,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
               />
               <button
                 type="button"
-                onClick={() => setShowKey(!showKey)}
+                onClick={() => setShowGemini(!showGemini)}
                 style={{
                   position: 'absolute',
                   right: '0.6rem',
@@ -120,12 +152,67 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
                   color: 'var(--text-muted)',
                 }}
               >
-                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showGemini ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+            {geminiStatus && (
+              <div style={{ fontSize: '0.76rem', color: geminiStatus.startsWith('🟢') ? '#10b981' : geminiStatus.startsWith('🔴') ? '#ef4444' : 'var(--text-muted)' }}>
+                {geminiStatus}
+              </div>
+            )}
           </div>
 
-          {statusMessage && (
+          {/* Groq Text & Chat Engine */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: 'var(--bg-dark)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Zap size={15} style={{ color: '#f59e0b' }} />
+                2. Fast Enrichment & AI Copilot Chat (Groq Key)
+              </label>
+              <span style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 500 }}>500+ tok/s</span>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showGroq ? 'text' : 'password'}
+                value={groqKey}
+                onChange={(e) => setGroqKey(e.target.value)}
+                placeholder="gsk_..."
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 2.5rem 0.55rem 0.75rem',
+                  fontSize: '0.82rem',
+                  background: 'var(--bg-main)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-main)',
+                  fontFamily: 'monospace',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowGroq(!showGroq)}
+                style={{
+                  position: 'absolute',
+                  right: '0.6rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                {showGroq ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+            {groqStatus && (
+              <div style={{ fontSize: '0.76rem', color: groqStatus.startsWith('🟢') ? '#10b981' : groqStatus.startsWith('🔴') ? '#ef4444' : 'var(--text-muted)' }}>
+                {groqStatus}
+              </div>
+            )}
+          </div>
+
+          {saveMessage && (
             <div
               style={{
                 fontSize: '0.82rem',
@@ -134,24 +221,12 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                background:
-                  status === 'success'
-                    ? 'rgba(16, 185, 129, 0.12)'
-                    : status === 'error'
-                    ? 'rgba(239, 68, 68, 0.12)'
-                    : 'rgba(99, 102, 241, 0.12)',
-                color:
-                  status === 'success'
-                    ? '#10b981'
-                    : status === 'error'
-                    ? '#ef4444'
-                    : 'var(--accent-primary)',
+                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#10b981',
               }}
             >
-              {status === 'testing' && <RefreshCw size={14} className="spin" />}
-              {status === 'success' && <CheckCircle size={14} />}
-              {status === 'error' && <AlertCircle size={14} />}
-              <span>{statusMessage}</span>
+              <CheckCircle size={15} />
+              <span>{saveMessage}</span>
             </div>
           )}
 
@@ -159,11 +234,12 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={handleTestConnection}
-              disabled={status === 'testing'}
-              style={{ fontSize: '0.82rem' }}
+              onClick={handleTestEngines}
+              disabled={isTesting}
+              style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              ⚡ Test Connection
+              {isTesting ? <RefreshCw size={14} className="spin" /> : <Zap size={14} />}
+              {isTesting ? 'Testing...' : '⚡ Test Both Engines'}
             </button>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" className="btn btn-secondary" onClick={onClose} style={{ fontSize: '0.82rem' }}>
