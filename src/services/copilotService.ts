@@ -237,6 +237,11 @@ export class CopilotService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+    const isGroq =
+      provider === "Groq" ||
+      cleanApiKey.startsWith("gsk_") ||
+      baseUrl.includes("groq.com");
+
     const isGrok =
       provider === "Grok" ||
       provider === "xAI" ||
@@ -244,6 +249,7 @@ export class CopilotService {
       baseUrl.includes("api.x.ai");
 
     const isOpenAICompatible =
+      isGroq ||
       isGrok ||
       provider === "OpenRouter" ||
       cleanApiKey.startsWith("sk-or-") ||
@@ -254,7 +260,7 @@ export class CopilotService {
       let response: Response;
 
       if (isOpenAICompatible) {
-        // Grok (xAI) / OpenRouter / OpenAI Compatible Payload
+        // Groq / Grok (xAI) / OpenRouter / OpenAI Compatible Payload
         const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
         const url = `${normalizedBaseUrl}/chat/completions`;
 
@@ -284,7 +290,15 @@ export class CopilotService {
           }
         }
 
-        const effectiveModel = model || (isGrok ? "grok-2-vision-1212" : "google/gemini-2.0-flash-exp:free");
+        const effectiveModel =
+          model ||
+          (isGroq
+            ? images
+              ? "llama-3.2-90b-vision-preview"
+              : "llama-3.3-70b-versatile"
+            : isGrok
+            ? "grok-2-vision-1212"
+            : "google/gemini-2.0-flash-exp:free");
 
         response = await fetch(url, {
           method: "POST",
