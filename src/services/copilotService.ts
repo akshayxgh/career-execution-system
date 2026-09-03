@@ -237,7 +237,14 @@ export class CopilotService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const isOpenRouter =
+    const isGrok =
+      provider === "Grok" ||
+      provider === "xAI" ||
+      cleanApiKey.startsWith("xai-") ||
+      baseUrl.includes("api.x.ai");
+
+    const isOpenAICompatible =
+      isGrok ||
       provider === "OpenRouter" ||
       cleanApiKey.startsWith("sk-or-") ||
       cleanApiKey.startsWith("sk-") ||
@@ -246,8 +253,8 @@ export class CopilotService {
     try {
       let response: Response;
 
-      if (isOpenRouter) {
-        // OpenRouter / OpenAI Compatible Payload
+      if (isOpenAICompatible) {
+        // Grok (xAI) / OpenRouter / OpenAI Compatible Payload
         const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
         const url = `${normalizedBaseUrl}/chat/completions`;
 
@@ -277,6 +284,8 @@ export class CopilotService {
           }
         }
 
+        const effectiveModel = model || (isGrok ? "grok-2-vision-1212" : "google/gemini-2.0-flash-exp:free");
+
         response = await fetch(url, {
           method: "POST",
           headers: {
@@ -286,9 +295,9 @@ export class CopilotService {
             "X-Title": "Career Execution System",
           },
           body: JSON.stringify({
-            model: model || "google/gemini-2.0-flash-exp:free",
+            model: effectiveModel,
             messages: [{ role: "user", content: userContent }],
-            max_tokens: 2500, // Explicitly limit token reservation to avoid OpenRouter 402 credit errors
+            max_tokens: 2500, // Explicitly limit token reservation to avoid credit errors
           }),
           signal: controller.signal,
         });
@@ -430,7 +439,7 @@ export class CopilotService {
       const data = await response.json();
       let content = "";
 
-      if (isOpenRouter) {
+      if (isOpenAICompatible) {
         content = data?.choices?.[0]?.message?.content || "";
       } else {
         content = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
