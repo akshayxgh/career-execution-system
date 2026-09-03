@@ -290,30 +290,77 @@ export class CopilotService {
           }
         }
 
-        let effectiveModel = model;
+        const candidateModelsToTry: string[] = [];
         if (isGroq) {
-          if (!model || model === "llama-3.2-90b-vision-preview") {
-            effectiveModel = images ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+          if (images) {
+            candidateModelsToTry.push(
+              "llama-3.2-11b-vision-preview",
+              "llama-3.2-90b-vision-preview",
+              "llama-3.1-8b-instant"
+            );
+          } else {
+            candidateModelsToTry.push(
+              "llama-3.1-70b-versatile",
+              "llama-3.1-8b-instant",
+              "llama-3.3-70b-versatile",
+              "mixtral-8x7b-32768",
+              "llama3-70b-8192",
+              "gemma2-9b-it"
+            );
           }
-        } else if (!effectiveModel) {
-          effectiveModel = isGrok ? "grok-2-vision-1212" : "google/gemini-2.0-flash-exp:free";
+        } else if (isGrok) {
+          candidateModelsToTry.push(model || "grok-2-vision-1212", "grok-2-latest", "grok-beta");
+        } else {
+          candidateModelsToTry.push(model || "google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free");
         }
 
-        response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${cleanApiKey}`,
-            "HTTP-Referer": window.location.origin || "http://localhost:5173",
-            "X-Title": "Career Execution System",
-          },
-          body: JSON.stringify({
-            model: effectiveModel,
-            messages: [{ role: "user", content: userContent }],
-            max_tokens: 2500, // Explicitly limit token reservation to avoid credit errors
-          }),
-          signal: controller.signal,
-        });
+        let lastErrData = "";
+        let successfulRes: Response | null = null;
+
+        for (const candidateModel of candidateModelsToTry) {
+          try {
+            const res = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${cleanApiKey}`,
+                "HTTP-Referer": window.location.origin || "http://localhost:5173",
+                "X-Title": "Career Execution System",
+              },
+              body: JSON.stringify({
+                model: candidateModel,
+                messages: [{ role: "user", content: userContent }],
+                max_tokens: 2500,
+              }),
+              signal: controller.signal,
+            });
+
+            if (res.ok) {
+              successfulRes = res;
+              console.log(`[CopilotService] Successfully connected to model: ${candidateModel}`);
+              break;
+            }
+
+            if (res.status === 404) {
+              const errJson = await res.json().catch(() => ({}));
+              lastErrData = errJson?.error?.message || "Model not found";
+              console.warn(`[CopilotService] Model '${candidateModel}' 404 not found, trying next candidate...`);
+              continue;
+            }
+
+            successfulRes = res;
+            break;
+          } catch (fetchErr: any) {
+            if (fetchErr.name === "AbortError") throw fetchErr;
+            lastErrData = fetchErr.message || "Network error";
+          }
+        }
+
+        if (!successfulRes) {
+          throw new Error(`AI request failed: None of the models (${candidateModelsToTry.join(", ")}) were accessible. ${lastErrData}`);
+        }
+
+        response = successfulRes;
       } else {
         // Direct Google Gemini REST API with Multi-Version (v1beta & v1) and Multi-Model Auto-Resolution
         const cleanBase = baseUrl.replace(/\/+$/, "");
