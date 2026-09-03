@@ -292,22 +292,14 @@ export class CopilotService {
 
         const candidateModelsToTry: string[] = [];
         if (isGroq) {
-          if (images) {
-            candidateModelsToTry.push(
-              "llama-3.2-11b-vision-preview",
-              "llama-3.2-90b-vision-preview",
-              "llama-3.1-8b-instant"
-            );
-          } else {
-            candidateModelsToTry.push(
-              "llama-3.1-70b-versatile",
-              "llama-3.1-8b-instant",
-              "llama-3.3-70b-versatile",
-              "mixtral-8x7b-32768",
-              "llama3-70b-8192",
-              "gemma2-9b-it"
-            );
-          }
+          candidateModelsToTry.push(
+            model || "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
+            "groq/compound-mini",
+            "llama-3.1-70b-versatile",
+            "llama-3.1-8b-instant"
+          );
         } else if (isGrok) {
           candidateModelsToTry.push(model || "grok-2-vision-1212", "grok-2-latest", "grok-beta");
         } else {
@@ -368,12 +360,12 @@ export class CopilotService {
 
         const candidateModels = [
           model ? (model.includes("/") ? model.split("/").pop() : model) : null,
-          "gemini-2.0-flash",
           "gemini-2.5-flash",
-          "gemini-1.5-flash-latest",
-          "gemini-1.5-flash-8b",
-          "gemini-1.5-flash",
-          "gemini-pro",
+          "gemini-flash-latest",
+          "gemini-3.6-flash",
+          "gemini-3.7-flash",
+          "gemini-2.0-flash",
+          "gemini-pro-latest",
         ].filter((m, i, arr): m is string => Boolean(m) && arr.indexOf(m) === i);
 
         // Build list of URLs to try across API versions
