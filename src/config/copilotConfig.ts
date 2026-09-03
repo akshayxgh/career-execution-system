@@ -26,7 +26,7 @@ export const COPILOT_CONFIG = {
   },
   get model() {
     const prov = this.provider;
-    if (prov === "Groq") return import.meta.env.VITE_GROQ_MODEL || "llama-3.2-90b-vision-preview";
+    if (prov === "Groq") return import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile";
     if (prov === "Grok") return import.meta.env.VITE_GROK_MODEL || "grok-2-vision-1212";
     if (prov === "OpenRouter") return import.meta.env.VITE_OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
     return import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";

@@ -290,15 +290,14 @@ export class CopilotService {
           }
         }
 
-        const effectiveModel =
-          model ||
-          (isGroq
-            ? images
-              ? "llama-3.2-90b-vision-preview"
-              : "llama-3.3-70b-versatile"
-            : isGrok
-            ? "grok-2-vision-1212"
-            : "google/gemini-2.0-flash-exp:free");
+        let effectiveModel = model;
+        if (isGroq) {
+          if (!model || model === "llama-3.2-90b-vision-preview") {
+            effectiveModel = images ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+          }
+        } else if (!effectiveModel) {
+          effectiveModel = isGrok ? "grok-2-vision-1212" : "google/gemini-2.0-flash-exp:free";
+        }
 
         response = await fetch(url, {
           method: "POST",
