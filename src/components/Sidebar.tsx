@@ -17,11 +17,14 @@ import {
   LogOut,
   Sun,
   Moon,
+  Key,
 } from 'lucide-react';
+import { AISettingsModal } from './AISettingsModal';
 import './Sidebar.css';
 
 export const Sidebar = () => {
   const navigate = useNavigate();
+  const [showAiSettings, setShowAiSettings] = useState(false);
 
   // Automatic Day / Night Theme Adapter based on current time
   const getAutoTheme = (): 'day' | 'night' => {
@@ -94,6 +97,17 @@ export const Sidebar = () => {
           <button
             type="button"
             className="sidebar-theme-toggle"
+            onClick={() => setShowAiSettings(true)}
+            title="AI Copilot API Key Settings (Synced across devices)"
+            aria-label="AI Key Settings"
+            style={{ color: 'var(--accent-primary)' }}
+          >
+            <Key size={18} />
+          </button>
+
+          <button
+            type="button"
+            className="sidebar-theme-toggle"
             onClick={toggleTheme}
             title={theme === 'day' ? 'Switch to Night Mode' : 'Switch to Day Mode'}
             aria-label="Toggle Day/Night Theme"
@@ -119,6 +133,8 @@ export const Sidebar = () => {
         <div className="sidebar-section-divider">INTELLIGENCE</div>
         {renderLinks(intelligenceLinks)}
       </nav>
+
+      <AISettingsModal isOpen={showAiSettings} onClose={() => setShowAiSettings(false)} />
     </aside>
   );
 };

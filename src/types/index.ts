@@ -108,6 +108,8 @@ export interface SkillAssessment {
 
 export interface UserSettings {
   pl300TargetDate: string | null;
+  aiApiKey?: string;
+  aiProvider?: string;
 }
 
 export type TrackStatus = 'Not Started' | 'Learning' | 'Practicing' | 'Interview Ready' | 'Mastered';

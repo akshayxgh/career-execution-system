@@ -1,4 +1,5 @@
 import { loadState, saveState } from "../services/cloudStorage";
+import { setCustomApiKey } from "../config/copilotConfig";
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { StoreState, LearningTrack } from '../types';
 
@@ -76,24 +77,39 @@ interface StoreContextType {
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
-export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
-const [state, setState] = useState<StoreState>(defaultState);
-const [loading, setLoading] = useState(true);
+export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<StoreState>(defaultState);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function initialize() {
       const cloudState = await loadState();
 
       if (cloudState) {
-        setState({ ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] });
+        const merged = { ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] };
+        // If cloudState has an AI API key, sync to browser localStorage
+        if (merged.settings?.aiApiKey) {
+          setCustomApiKey(merged.settings.aiApiKey);
+        } else {
+          // If local machine has a key, populate into state so it saves to cloud
+          const localKey = localStorage.getItem("ai_api_key") || localStorage.getItem("gemini_api_key") || localStorage.getItem("groq_api_key");
+          if (localKey) {
+            merged.settings = { ...merged.settings, aiApiKey: localKey };
+          }
+        }
+        setState(merged);
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
 
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
-            setState({ ...defaultState, ...parsed, questionBank: parsed.questionBank || [] });
+            const merged = { ...defaultState, ...parsed, questionBank: parsed.questionBank || [] };
+            if (merged.settings?.aiApiKey) {
+              setCustomApiKey(merged.settings.aiApiKey);
+            }
+            setState(merged);
           } catch (e) {
             console.error("Failed to parse local storage data", e);
           }
