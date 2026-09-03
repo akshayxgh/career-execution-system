@@ -64,77 +64,137 @@ export const decisionStatuses: DecisionStatus[] = [
 ];
 
 
-export async function getDecisionJobs(): Promise<DecisionJob[]> {
-  const { data, error } = await supabase
-    .from("vw_decision_intelligence")
-    .select("*");
+const DECISION_JOBS_CACHE_KEY = "decision_jobs_cache";
 
-  if (error) {
-    throw error;
+export function getCachedDecisionJobs(): DecisionJob[] {
+  try {
+    const raw = localStorage.getItem(DECISION_JOBS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("Failed to read decision jobs cache:", e);
   }
+  return [];
+}
 
-  const jobs = (data ?? []) as DecisionJob[];
-
-  if (jobs.length > 0) {
-    try {
-      const { data: jobMeta, error: metaErr } = await supabase
-
-        .from("jobs")
-        .select("id, external_id")
-        .in("id", jobs.map(j => j.id));
-
-      if (!metaErr && jobMeta) {
-        const metaMap = new Map<string, string>();
-        jobMeta.forEach(row => {
-          if (row.external_id) metaMap.set(row.id, row.external_id);
-        });
-
-        jobs.forEach(job => {
-          job.external_id = metaMap.get(job.id) || null;
-        });
-      }
-
-      const { data: analysisData, error: analysisErr } = await supabase
-        .from("job_analysis")
-        .select("job_id, resume")
-        .in("job_id", jobs.map(j => j.id));
-
-      if (!analysisErr && analysisData) {
-        const resumeMap = new Map<string, any>();
-        analysisData.forEach(row => {
-          resumeMap.set(row.job_id, row.resume);
-        });
-
-        jobs.forEach(job => {
-          job.resume = resumeMap.get(job.id) || null;
-        });
-      }
-    } catch (e) {
-      console.error("Failed to merge job metadata inside getDecisionJobs:", e);
-    }
-
-  }
-
-  return jobs.sort((a, b) => {
-    // NEW always comes before SAVED
-    if (a.my_status !== b.my_status) {
-      return a.my_status === "NEW" ? -1 : 1;
-    }
-
-    // NEW -> newest posted job first (LIFO)
-    if (a.my_status === "NEW") {
-      const aDate = new Date(a.analyzed_at ?? 0).getTime();
-      const bDate = new Date(b.analyzed_at ?? 0).getTime();
-
-      return bDate - aDate;
-    }
-
-    // SAVED -> oldest saved first (FIFO)
-    const aSaved = new Date(a.status_updated_at ?? 0).getTime();
-    const bSaved = new Date(b.status_updated_at ?? 0).getTime();
-
-    return aSaved - bSaved;
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, errorMsg: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(errorMsg)), ms);
+    Promise.resolve(promise)
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
   });
+}
+
+export async function getDecisionJobs(): Promise<DecisionJob[]> {
+  try {
+    const query = supabase
+      .from("vw_decision_intelligence")
+      .select("*");
+
+    const { data, error } = await withTimeout(
+      query,
+      9000,
+      "Supabase query timed out. Retrying with cache..."
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    const jobs = (data ?? []) as DecisionJob[];
+
+    if (jobs.length > 0) {
+      // Chunk IDs to avoid huge URL length in PostgREST
+      const allIds = jobs.map((j) => j.id).filter(Boolean);
+      const chunkSize = 40;
+      const chunks: string[][] = [];
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        chunks.push(allIds.slice(i, i + chunkSize));
+      }
+
+      const metaMap = new Map<string, string>();
+      const resumeMap = new Map<string, any>();
+
+      // Fetch metadata and analysis in parallel for chunks
+      await Promise.allSettled(
+        chunks.map(async (chunk) => {
+          const [metaRes, analysisRes] = await Promise.allSettled([
+            withTimeout(
+              supabase.from("jobs").select("id, external_id").in("id", chunk),
+              5000,
+              "Meta query timeout"
+            ),
+            withTimeout(
+              supabase.from("job_analysis").select("job_id, resume").in("job_id", chunk),
+              5000,
+              "Analysis query timeout"
+            ),
+          ]);
+
+          if (metaRes.status === "fulfilled" && metaRes.value.data) {
+            metaRes.value.data.forEach((row: any) => {
+              if (row.external_id) metaMap.set(row.id, row.external_id);
+            });
+          }
+
+          if (analysisRes.status === "fulfilled" && analysisRes.value.data) {
+            analysisRes.value.data.forEach((row: any) => {
+              if (row.resume) resumeMap.set(row.job_id, row.resume);
+            });
+          }
+        })
+      );
+
+      jobs.forEach((job) => {
+        if (metaMap.has(job.id)) job.external_id = metaMap.get(job.id) || null;
+        if (resumeMap.has(job.id)) job.resume = resumeMap.get(job.id) || null;
+      });
+    }
+
+    const sortedJobs = jobs.sort((a, b) => {
+      // NEW always comes before SAVED
+      if (a.my_status !== b.my_status) {
+        return a.my_status === "NEW" ? -1 : 1;
+      }
+
+      // NEW -> newest posted job first (LIFO)
+      if (a.my_status === "NEW") {
+        const aDate = new Date(a.analyzed_at ?? 0).getTime();
+        const bDate = new Date(b.analyzed_at ?? 0).getTime();
+        return bDate - aDate;
+      }
+
+      // SAVED -> oldest saved first (FIFO)
+      const aSaved = new Date(a.status_updated_at ?? 0).getTime();
+      const bSaved = new Date(b.status_updated_at ?? 0).getTime();
+      return aSaved - bSaved;
+    });
+
+    try {
+      localStorage.setItem(DECISION_JOBS_CACHE_KEY, JSON.stringify(sortedJobs));
+    } catch (cacheErr) {
+      console.warn("Unable to save jobs to localStorage cache:", cacheErr);
+    }
+
+    return sortedJobs;
+  } catch (err) {
+    console.error("Failed to fetch fresh decision jobs:", err);
+    const cached = getCachedDecisionJobs();
+    if (cached.length > 0) {
+      console.log(`[DecisionIntelligence] Serving ${cached.length} cached jobs due to network error/timeout.`);
+      return cached;
+    }
+    throw err;
+  }
 }
 
 export async function updateDecisionJobStatus(

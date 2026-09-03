@@ -5,6 +5,7 @@ import DecisionTable from "../components/decision/DecisionTable";
 import DecisionToolbar from "../components/decision/DecisionToolbar";
 import {
   getDecisionJobs,
+  getCachedDecisionJobs,
   type DecisionJob,
   type DecisionStatus,
   updateDecisionJobStatus,
@@ -118,8 +119,9 @@ function compareNullableValues<T>(
 }
 
 export default function DecisionIntelligence() {
-  const [jobs, setJobs] = useState<DecisionJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInitial = useMemo(() => getCachedDecisionJobs(), []);
+  const [jobs, setJobs] = useState<DecisionJob[]>(cachedInitial);
+  const [loading, setLoading] = useState(cachedInitial.length === 0);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialColumnFilters);
@@ -134,21 +136,28 @@ export default function DecisionIntelligence() {
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [isBulkHiding, setIsBulkHiding] = useState(false);
 
-  const loadJobs = async () => {
+  const loadJobs = async (showLoadingState = true) => {
     try {
-      setLoading(true);
+      if (showLoadingState && jobs.length === 0) {
+        setLoading(true);
+      }
       setError("");
 
-      setJobs(await getDecisionJobs());
+      const freshJobs = await getDecisionJobs();
+      setJobs(freshJobs);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error");
+      if (jobs.length === 0) {
+        setError(e instanceof Error ? e.message : "Error fetching jobs");
+      } else {
+        console.warn("Background revalidation failed:", e);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadJobs();
+    loadJobs(cachedInitial.length === 0);
   }, []);
 
   const activeFiltersCount = useMemo(() => {
