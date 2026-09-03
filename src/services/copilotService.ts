@@ -256,23 +256,24 @@ export class CopilotService {
       cleanApiKey.startsWith("sk-") ||
       baseUrl.includes("openrouter.ai");
 
-    try {
-      let response: Response;
+    let response: Response;
 
+    try {
       if (isOpenAICompatible) {
         // Groq / Grok (xAI) / OpenRouter / OpenAI Compatible Payload
         const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
         const url = `${normalizedBaseUrl}/chat/completions`;
 
-        const userContent: any[] = [{ type: "text", text: prompt }];
+        let userContent: any = prompt;
 
         if (images) {
+          const imageParts: any[] = [{ type: "text", text: prompt }];
           if (typeof images === "string") {
             const rawUri = images.startsWith("data:")
               ? images
               : `data:${singleMimeType};base64,${images.replace(/^data:image\/[a-z0-9+.-]+;base64,/, "")}`;
             const compressed = await compressImageForVision(rawUri);
-            userContent.push({
+            imageParts.push({
               type: "image_url",
               image_url: { url: compressed },
             });
@@ -282,12 +283,13 @@ export class CopilotService {
                 ? img.data
                 : `data:${img.mimeType || singleMimeType};base64,${img.data.replace(/^data:image\/[a-z0-9+.-]+;base64,/, "")}`;
               const compressed = await compressImageForVision(rawUri);
-              userContent.push({
+              imageParts.push({
                 type: "image_url",
                 image_url: { url: compressed },
               });
             }
           }
+          userContent = imageParts;
         }
 
         const candidateModelsToTry: string[] = [];

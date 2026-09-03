@@ -131,7 +131,7 @@ export const QuestionBank: React.FC = () => {
   const [pastedImages, setPastedImages] = useState<Array<{ id: string; data: string; mime: string }>>([]);
   const [rawText, setRawText] = useState('');
   const [companyHint, setCompanyHint] = useState('');
-  const [roleHint, setRoleHint] = useState('Power BI / Data Engineer');
+  const [roleHint, setRoleHint] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [parseError, setParseError] = useState('');
 
