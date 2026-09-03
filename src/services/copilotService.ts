@@ -225,9 +225,11 @@ export class CopilotService {
   ): Promise<string> {
     const { apiKey, baseUrl, model, provider, timeoutMs } = COPILOT_CONFIG;
 
-    if (!apiKey) {
+    const cleanApiKey = (apiKey || "").trim().replace(/^['"]|['"]$/g, "");
+
+    if (!cleanApiKey) {
       throw new Error(
-        "AI API key is missing. Please check VITE_OPENROUTER_API_KEY or VITE_GEMINI_API_KEY in your .env file."
+        "AI API key is missing. Please check VITE_OPENROUTER_API_KEY or VITE_GEMINI_API_KEY in your .env file or Vercel settings."
       );
     }
 
@@ -237,7 +239,8 @@ export class CopilotService {
 
     const isOpenRouter =
       provider === "OpenRouter" ||
-      apiKey.startsWith("sk-or-") ||
+      cleanApiKey.startsWith("sk-or-") ||
+      cleanApiKey.startsWith("sk-") ||
       baseUrl.includes("openrouter.ai");
 
     try {
@@ -278,7 +281,7 @@ export class CopilotService {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${cleanApiKey}`,
             "HTTP-Referer": window.location.origin || "http://localhost:5173",
             "X-Title": "Career Execution System",
           },
@@ -309,7 +312,7 @@ export class CopilotService {
         for (const ver of ["v1beta", "v1"]) {
           for (const m of candidateModels) {
             candidateUrls.push({
-              url: `${baseWithoutVer}/${ver}/models/${m}:generateContent?key=${apiKey}`,
+              url: `${baseWithoutVer}/${ver}/models/${m}:generateContent?key=${encodeURIComponent(cleanApiKey)}`,
               label: `${ver}/${m}`,
             });
           }
@@ -356,7 +359,7 @@ export class CopilotService {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "x-goog-api-key": apiKey,
+                "x-goog-api-key": cleanApiKey,
               },
               body: JSON.stringify({
                 contents: [{ parts }],
