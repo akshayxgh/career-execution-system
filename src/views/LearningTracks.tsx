@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   Plus, BookOpen, Clock, ChevronDown, ChevronRight, 
   Flame, Award, TrendingUp, Search, 
-  Pencil, Trash2, X, HelpCircle, ArrowRight
+  Pencil, Trash2, X, HelpCircle, ArrowRight,
+  RefreshCw, FileText, Sparkles
 } from 'lucide-react';
 import { getStreak } from '../utils/scoreCalculator';
 import { isSameWeek } from 'date-fns';
@@ -13,15 +14,16 @@ import { Link } from 'react-router-dom';
 import { DailyRoutineTracker } from '../components/DailyRoutineTracker';
 
 export const LearningTracks = () => {
-  const { state, updateState } = useStore();
+  const { state, updateState, syncWithCloud, isSyncing, lastSyncedAt } = useStore();
   
   // UI States
-  const [showLogForm, setShowLogForm] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [addingModuleTrackId, setAddingModuleTrackId] = useState<string | null>(null);
   const [newModuleName, setNewModuleName] = useState('');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -176,6 +178,13 @@ export const LearningTracks = () => {
     updateState({ learningTracks: state.learningTracks.filter(t => t.id !== trackId) });
   };
 
+  // Manual cloud sync
+  const handleManualSync = async () => {
+    const ok = await syncWithCloud();
+    setSyncFeedback(ok ? 'Synced with Supabase Cloud!' : 'Sync failed, check connection');
+    setTimeout(() => setSyncFeedback(null), 3000);
+  };
+
   // Study Log Handlers
   const toggleLogExpansion = (id: string) => {
     const newExpanded = new Set(expandedLogs);
@@ -200,8 +209,7 @@ export const LearningTracks = () => {
       notes: log.notes || '',
       completed: log.completed ?? true
     });
-    setShowLogForm(true);
-    window.scrollTo({ top: 120, behavior: 'smooth' });
+    setShowLogModal(true);
   };
 
   const handleDeleteLog = (id: string, e?: React.MouseEvent) => {
@@ -214,7 +222,7 @@ export const LearningTracks = () => {
   };
 
   const resetForm = () => {
-    setShowLogForm(false);
+    setShowLogModal(false);
     setEditingLogId(null);
     setLogData({
       date: new Date().toISOString().split('T')[0],
@@ -226,6 +234,13 @@ export const LearningTracks = () => {
       notes: '',
       completed: true
     });
+  };
+
+  const appendNoteSnippet = (snippet: string) => {
+    setLogData(prev => ({
+      ...prev,
+      notes: prev.notes ? `${prev.notes}\n${snippet}` : snippet
+    }));
   };
 
   const handleLogSubmit = (e: React.FormEvent) => {
@@ -278,7 +293,20 @@ export const LearningTracks = () => {
           <h1 style={{ marginBottom: '0.25rem' }}>Learning Tracks</h1>
           <p className="text-muted">Master key technical domains, track study hours, and monitor interview readiness.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Cloud Sync Status & Action */}
+          <button 
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            style={{ fontSize: '0.8rem', padding: '0.45rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            title="Sync all learning tracks and study history with Supabase Cloud across browsers"
+          >
+            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
+            {isSyncing ? 'Syncing...' : syncFeedback || (lastSyncedAt ? 'Cloud Synced' : 'Sync Cloud')}
+          </button>
+
           <button 
             className="btn btn-secondary"
             onClick={() => setShowTrackModal(true)}
@@ -289,15 +317,11 @@ export const LearningTracks = () => {
           <button 
             className="btn btn-primary" 
             onClick={() => {
-              if (showLogForm) {
-                resetForm();
-              } else {
-                setShowLogForm(true);
-              }
+              setEditingLogId(null);
+              setShowLogModal(true);
             }}
           >
-            {showLogForm ? <X size={16} /> : <Plus size={16} />} 
-            {showLogForm ? 'Close Form' : 'Log Study Session'}
+            <Plus size={16} /> Log Study Session
           </button>
         </div>
       </header>
@@ -357,146 +381,6 @@ export const LearningTracks = () => {
 
       {/* Daily 4-Pillar Focus Routine Tracker */}
       <DailyRoutineTracker />
-
-      {/* Log Study Session Form */}
-      {showLogForm && (
-        <div className="card" style={{ borderLeft: '4px solid var(--info)', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div>
-              <h3 style={{ margin: 0 }}>{editingLogId ? 'Edit Study Session' : 'Log Study Session'}</h3>
-              <p className="text-xs text-muted" style={{ marginTop: '0.25rem' }}>
-                {editingLogId ? 'Update your previously recorded study session.' : 'Record the time spent, topics covered, and self-assessed confidence.'}
-              </p>
-            </div>
-            <button 
-              className="btn btn-secondary" 
-              style={{ padding: '0.25rem 0.5rem' }} 
-              onClick={resetForm}
-              title="Cancel and close form"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <form onSubmit={handleLogSubmit} className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Date</label>
-              <input 
-                type="date" 
-                required 
-                className="input" 
-                value={logData.date} 
-                onChange={e => setLogData({ ...logData, date: e.target.value })} 
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Subject / Track</label>
-              <select 
-                className="select" 
-                value={logData.subject} 
-                onChange={e => setLogData({ ...logData, subject: e.target.value })}
-              >
-                {state.learningTracks.map(t => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-                <option value="General Prep">General Prep</option>
-                <option value="Interview Practice">Interview Practice</option>
-                <option value="Portfolio Projects">Portfolio Projects</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Topic Covered</label>
-              <input 
-                required 
-                className="input" 
-                placeholder="e.g. Advanced DAX: CALCULATE & Filter Context" 
-                value={logData.topic} 
-                onChange={e => setLogData({ ...logData, topic: e.target.value })} 
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Planned Hours</label>
-              <input 
-                type="number" 
-                step="0.25" 
-                min="0"
-                className="input" 
-                placeholder="1.0"
-                value={logData.plannedHours ?? 1} 
-                onChange={e => setLogData({ ...logData, plannedHours: Math.max(0, Number(e.target.value)) })} 
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Actual Hours Spent</label>
-              <input 
-                type="number" 
-                step="0.25" 
-                min="0.25" 
-                required 
-                className="input" 
-                placeholder="1.0"
-                value={logData.actualHours} 
-                onChange={e => setLogData({ ...logData, actualHours: Math.max(0.1, Number(e.target.value)) })} 
-              />
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                <label className="text-sm text-muted">Confidence Score</label>
-                <span className={`badge ${
-                  (logData.confidenceScore || 5) >= 8 ? 'badge-success' : 
-                  (logData.confidenceScore || 5) >= 5 ? 'badge-warning' : 'badge-danger'
-                }`}>
-                  {logData.confidenceScore}/10
-                </span>
-              </div>
-              <input 
-                type="range" 
-                min="1" 
-                max="10" 
-                className="input" 
-                style={{ padding: '0.25rem 0', cursor: 'pointer' }}
-                value={logData.confidenceScore || 5} 
-                onChange={e => setLogData({ ...logData, confidenceScore: Number(e.target.value) })} 
-              />
-            </div>
-
-            <div style={{ gridColumn: 'span 3' }}>
-              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
-                Session Notes & Key Takeaways
-              </label>
-              <textarea 
-                className="textarea" 
-                rows={3} 
-                placeholder="Formulas practiced, edge cases, blockers solved, or questions to revisit..." 
-                value={logData.notes} 
-                onChange={e => setLogData({ ...logData, notes: e.target.value })}
-              ></textarea>
-            </div>
-
-            <div style={{ gridColumn: 'span 3', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                <input 
-                  type="checkbox" 
-                  checked={logData.completed ?? true} 
-                  onChange={e => setLogData({ ...logData, completed: e.target.checked })} 
-                />
-                Session goals achieved
-              </label>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
-                <button type="submit" className="btn btn-primary">
-                  {editingLogId ? 'Update Session' : 'Save Session'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* Learning Track Cards Grid */}
       <section>
@@ -836,15 +720,27 @@ export const LearningTracks = () => {
                           </span>
                         </td>
 
-                        {/* Topic */}
+                        {/* Topic & Notes Indicator */}
                         <td style={{ padding: '0.75rem 1rem', maxWidth: '300px' }}>
                           <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.topic}>
                             {log.topic}
                           </div>
-                          {hasNotes && !isExpanded && (
-                            <div className="text-xs text-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {log.notes}
+                          {hasNotes ? (
+                            <div className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+                              <FileText size={12} className="text-accent-primary" />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                                {log.notes}
+                              </span>
                             </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', marginTop: '0.2rem', border: 'none', background: 'transparent', color: 'var(--accent-primary)', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
+                              onClick={e => handleStartEditLog(log, e)}
+                            >
+                              <Plus size={11} /> Add Notes
+                            </button>
                           )}
                         </td>
 
@@ -875,7 +771,7 @@ export const LearningTracks = () => {
                               className="btn btn-secondary" 
                               style={{ padding: '0.25rem 0.4rem' }} 
                               onClick={e => handleStartEditLog(log, e)}
-                              title="Edit this log"
+                              title="Edit this study session"
                             >
                               <Pencil size={13} />
                             </button>
@@ -904,13 +800,24 @@ export const LearningTracks = () => {
                               padding: '0.85rem 1rem',
                               fontSize: '0.85rem'
                             }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                                <strong style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-                                  Session Takeaways & Insights
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <strong style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <FileText size={13} className="text-accent-primary" /> Session Notes & Takeaways
                                 </strong>
-                                <span className="text-xs text-muted">
-                                  {variance > 0 ? `+${variance.toFixed(1)}h over planned` : variance < 0 ? `${variance.toFixed(1)}h under planned` : 'On plan'}
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <span className="text-xs text-muted">
+                                    {variance > 0 ? `+${variance.toFixed(1)}h over planned` : variance < 0 ? `${variance.toFixed(1)}h under planned` : 'On plan'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    style={{ fontSize: '0.725rem', padding: '0.15rem 0.45rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                    onClick={e => handleStartEditLog(log, e)}
+                                    title="Edit notes"
+                                  >
+                                    <Pencil size={11} /> Edit Notes
+                                  </button>
+                                </div>
                               </div>
                               <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-main)', lineHeight: 1.6 }}>
                                 {log.notes}
@@ -927,6 +834,193 @@ export const LearningTracks = () => {
           </div>
         )}
       </div>
+
+      {/* Study Session Modal (Create & Edit) */}
+      {showLogModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1100,
+          padding: '1rem'
+        }}>
+          <div className="card" style={{ maxWidth: '680px', width: '100%', maxHeight: '90vh', overflowY: 'auto', borderTop: '4px solid var(--accent-primary)', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {editingLogId ? <Pencil size={20} className="text-accent-primary" /> : <Plus size={20} className="text-accent-primary" />}
+                  {editingLogId ? 'Edit Study Session' : 'Log Study Session'}
+                </h3>
+                <p className="text-xs text-muted" style={{ marginTop: '0.25rem' }}>
+                  {editingLogId ? 'Update your recorded hours, topic, confidence, and notes.' : 'Record the time spent, topics covered, and self-assessed confidence.'}
+                </p>
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                style={{ padding: '0.25rem 0.4rem' }} 
+                onClick={resetForm}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleLogSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Date *</label>
+                  <input 
+                    type="date" 
+                    required 
+                    className="input" 
+                    value={logData.date} 
+                    onChange={e => setLogData({ ...logData, date: e.target.value })} 
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Subject / Track</label>
+                  <select 
+                    className="select" 
+                    value={logData.subject} 
+                    onChange={e => setLogData({ ...logData, subject: e.target.value })}
+                  >
+                    {state.learningTracks.map(t => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                    ))}
+                    <option value="General Prep">General Prep</option>
+                    <option value="Interview Practice">Interview Practice</option>
+                    <option value="Portfolio Projects">Portfolio Projects</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Topic Covered *</label>
+                  <input 
+                    required 
+                    className="input" 
+                    placeholder="e.g. CALCULATE & Filter Context" 
+                    value={logData.topic} 
+                    onChange={e => setLogData({ ...logData, topic: e.target.value })} 
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Planned Hours</label>
+                  <input 
+                    type="number" 
+                    step="0.25" 
+                    min="0"
+                    className="input" 
+                    placeholder="1.0"
+                    value={logData.plannedHours ?? 1} 
+                    onChange={e => setLogData({ ...logData, plannedHours: Math.max(0, Number(e.target.value)) })} 
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Actual Hours Spent *</label>
+                  <input 
+                    type="number" 
+                    step="0.25" 
+                    min="0.25" 
+                    required 
+                    className="input" 
+                    placeholder="1.0"
+                    value={logData.actualHours} 
+                    onChange={e => setLogData({ ...logData, actualHours: Math.max(0.1, Number(e.target.value)) })} 
+                  />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <label className="text-sm text-muted">Confidence Score</label>
+                    <span className={`badge ${
+                      (logData.confidenceScore || 5) >= 8 ? 'badge-success' : 
+                      (logData.confidenceScore || 5) >= 5 ? 'badge-warning' : 'badge-danger'
+                    }`}>
+                      {logData.confidenceScore}/10
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="10" 
+                    className="input" 
+                    style={{ padding: '0.25rem 0', cursor: 'pointer' }}
+                    value={logData.confidenceScore || 5} 
+                    onChange={e => setLogData({ ...logData, confidenceScore: Number(e.target.value) })} 
+                  />
+                </div>
+              </div>
+
+              {/* Prominent Notes Section with Formatting Helpers */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <label className="text-sm text-muted" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <FileText size={16} className="text-accent-primary" /> Session Notes, Takeaways & Code Snippets
+                  </label>
+                  
+                  {/* Quick Tag Insert Helpers */}
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    <span className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <Sparkles size={11} /> Quick Insert:
+                    </span>
+                    {[
+                      { label: '+ Key Takeaway', snippet: '\n• Key Takeaway: ' },
+                      { label: '+ Code Snippet', snippet: '\n```sql\n-- Code Snippet\n\n```\n' },
+                      { label: '+ Problem Solved', snippet: '\n• Problem Solved: ' },
+                      { label: '+ Interview Pitch', snippet: '\n• Interview Pitch: ' }
+                    ].map(tag => (
+                      <button
+                        key={tag.label}
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.675rem', padding: '0.15rem 0.35rem' }}
+                        onClick={() => appendNoteSnippet(tag.snippet)}
+                      >
+                        {tag.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea 
+                  className="textarea" 
+                  rows={4} 
+                  placeholder="Formulas practiced, DAX patterns, SQL optimization tricks, interview pitches, or key takeaways..." 
+                  value={logData.notes} 
+                  onChange={e => setLogData({ ...logData, notes: e.target.value })}
+                  style={{ fontFamily: 'inherit', lineHeight: 1.5 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={logData.completed ?? true} 
+                    onChange={e => setLogData({ ...logData, completed: e.target.checked })} 
+                  />
+                  Session goals achieved
+                </label>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={resetForm}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">
+                    {editingLogId ? 'Update Session' : 'Save Session'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Custom Track Modal */}
       {showTrackModal && (

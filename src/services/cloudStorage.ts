@@ -10,9 +10,9 @@ export async function loadState() {
     .single();
 
     if (error) {
-    console.error("Cloud save failed:", error);
+    console.error("Cloud load failed:", error);
     } else {
-    console.log("Cloud save successful");
+    console.log("Cloud load successful");
     }
 
   return data?.data ?? null;

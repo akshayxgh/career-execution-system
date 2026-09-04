@@ -74,6 +74,9 @@ interface StoreContextType {
   updateState: (newState: Partial<StoreState>) => void;
   exportData: () => void;
   importData: (jsonData: string) => void;
+  syncWithCloud: () => Promise<boolean>;
+  isSyncing: boolean;
+  lastSyncedAt: Date | null;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -81,6 +84,36 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<StoreState>(defaultState);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+
+  const syncWithCloud = async (): Promise<boolean> => {
+    try {
+      setIsSyncing(true);
+      const cloudState = await loadState();
+      if (cloudState) {
+        const merged = { ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] };
+        if (merged.settings?.geminiApiKey || merged.settings?.groqApiKey) {
+          setDualApiKeys({
+            geminiKey: merged.settings.geminiApiKey,
+            groqKey: merged.settings.groqApiKey,
+          });
+        } else if (merged.settings?.aiApiKey) {
+          setCustomApiKey(merged.settings.aiApiKey);
+        }
+        setState(merged);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        setLastSyncedAt(new Date());
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Cloud sync error:', err);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     async function initialize() {
@@ -98,6 +131,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           setCustomApiKey(merged.settings.aiApiKey);
         }
         setState(merged);
+        setLastSyncedAt(new Date());
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
 
@@ -124,6 +158,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     initialize();
+
+    // Auto-sync across browsers/tabs whenever user switches back to this window
+    const handleWindowFocus = () => {
+      syncWithCloud();
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -131,8 +175,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
-    const timer = setTimeout(() => {
-      saveState(state);
+    const timer = setTimeout(async () => {
+      try {
+        setIsSyncing(true);
+        await saveState(state);
+        setLastSyncedAt(new Date());
+      } catch (e) {
+        console.error('Error saving state to cloud:', e);
+      } finally {
+        setIsSyncing(false);
+      }
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -166,7 +218,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   return (
-    <StoreContext.Provider value={{ state, updateState, exportData, importData }}>
+    <StoreContext.Provider value={{ state, updateState, exportData, importData, syncWithCloud, isSyncing, lastSyncedAt }}>
       {children}
     </StoreContext.Provider>
   );

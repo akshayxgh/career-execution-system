@@ -25,12 +25,12 @@ const PILLARS: RoutinePillar[] = [
     id: 'sql',
     title: 'SQL Practice',
     subtitle: 'Queries, LeetCode, Window Fns',
-    targetMinutes: 90,
+    targetMinutes: 60, // Set to 60 min
     color: '#6366f1', // Indigo
     accentColor: 'rgba(99, 102, 241, 0.15)',
     icon: <Database size={20} />,
     subject: 'SQL Track',
-    defaultTopic: 'Daily SQL Practice (90m Target)'
+    defaultTopic: 'Daily SQL Practice (60m Target)'
   },
   {
     id: 'pbi',
@@ -76,6 +76,7 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [customTopic, setCustomTopic] = useState<string>('');
+  const [sessionNotes, setSessionNotes] = useState<string>('');
   const [quickPillarAdd, setQuickPillarAdd] = useState<'sql' | 'pbi' | 'apps' | 'interview' | null>(null);
   const [customMinutesInput, setCustomMinutesInput] = useState<number>(30);
 
@@ -124,14 +125,19 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
     return map;
   }, [state.studyLogs, todayStr]);
 
-  // Compute overall completion stats
-  const totalTargetMinutes = 315; // 90 + 90 + 90 + 45
+  // Compute overall completion stats (60 + 90 + 90 + 45 = 285m)
+  const totalTargetMinutes = 285;
   const totalLoggedMinutes = loggedMinutesMap.sql + loggedMinutesMap.pbi + loggedMinutesMap.apps + loggedMinutesMap.interview;
   const overallPercentage = Math.min(100, Math.round((totalLoggedMinutes / totalTargetMinutes) * 100));
   const allCompleted = PILLARS.every(p => loggedMinutesMap[p.id] >= p.targetMinutes);
 
-  // Quick log handler
-  const handleAddMinutes = (pillarId: 'sql' | 'pbi' | 'apps' | 'interview', minutes: number, topicNote?: string) => {
+  // Quick log handler with notes support
+  const handleAddMinutes = (
+    pillarId: 'sql' | 'pbi' | 'apps' | 'interview', 
+    minutes: number, 
+    topicNote?: string,
+    notesContent?: string
+  ) => {
     if (minutes <= 0) return;
     const pillar = PILLARS.find(p => p.id === pillarId)!;
     const hours = Number((minutes / 60).toFixed(2));
@@ -144,24 +150,26 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
       plannedHours: hours,
       actualHours: hours,
       confidenceScore: 8,
-      notes: `Logged via Daily 4-Pillar Focus Protocol (+${minutes} min)`,
+      notes: notesContent?.trim() || `Logged via Daily 4-Pillar Focus Protocol (+${minutes} min)`,
       completed: true
     };
 
     updateState({ studyLogs: [newLog, ...state.studyLogs] });
     setQuickPillarAdd(null);
     setCustomTopic('');
+    setSessionNotes('');
   };
 
-  // Timer complete & save handler
+  // Timer complete & save handler with notes support
   const handleFinishTimer = () => {
     if (!activeTimerPillar) return;
     const elapsedMinutes = Math.max(1, Math.round(timerSeconds / 60));
-    handleAddMinutes(activeTimerPillar, elapsedMinutes, customTopic);
+    handleAddMinutes(activeTimerPillar, elapsedMinutes, customTopic, sessionNotes);
     setIsTimerRunning(false);
     setTimerSeconds(0);
     setActiveTimerPillar(null);
     setCustomTopic('');
+    setSessionNotes('');
   };
 
   const formatTimerDisplay = (seconds: number) => {
@@ -187,7 +195,7 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
             )}
           </div>
           <p className="text-xs text-muted" style={{ marginTop: '0.25rem' }}>
-            Daily commitment: <strong>SQL (90m)</strong> • <strong>Power BI/DAX (90m)</strong> • <strong>Applications (90m)</strong> • <strong>Interview Prep (45m)</strong>
+            Daily commitment: <strong>SQL (60m)</strong> • <strong>Power BI/DAX (90m)</strong> • <strong>Applications (90m)</strong> • <strong>Interview Prep (45m)</strong> — <em>285 min total</em>
           </p>
         </div>
 
@@ -219,7 +227,7 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
         />
       </div>
 
-      {/* Active Focus Timer Banner (if running or paused) */}
+      {/* Active Focus Timer Banner with Notes Section */}
       {activeTimerPillar && (
         <div style={{ 
           marginBottom: '1.5rem', 
@@ -228,73 +236,95 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
           backgroundColor: 'var(--bg-hover)', 
           border: '1px solid var(--border-color)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem'
+          flexDirection: 'column',
+          gap: '0.75rem'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              borderRadius: '50%', 
-              backgroundColor: isTimerRunning ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-              color: isTimerRunning ? 'var(--success)' : 'var(--warning)',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center' 
-            }}>
-              <Clock size={20} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                borderRadius: '50%', 
+                backgroundColor: isTimerRunning ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                color: isTimerRunning ? 'var(--success)' : 'var(--warning)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <Clock size={20} />
+              </div>
+              <div>
+                <span className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  Live Focus Sprint
+                </span>
+                <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+                  {PILLARS.find(p => p.id === activeTimerPillar)?.title}
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                Live Focus Sprint
-              </span>
-              <div style={{ fontWeight: 700, fontSize: '1rem' }}>
-                {PILLARS.find(p => p.id === activeTimerPillar)?.title}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ fontSize: '1.75rem', fontFamily: 'monospace', fontWeight: 800 }}>
+                {formatTimerDisplay(timerSeconds)}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  style={{ padding: '0.4rem 0.75rem' }}
+                  onClick={() => setIsTimerRunning(!isTimerRunning)}
+                >
+                  {isTimerRunning ? <Pause size={16} /> : <Play size={16} />}
+                  {isTimerRunning ? 'Pause' : 'Resume'}
+                </button>
+
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  style={{ padding: '0.4rem 0.75rem' }}
+                  onClick={handleFinishTimer}
+                >
+                  <Check size={16} /> Finish & Log
+                </button>
+
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  style={{ padding: '0.4rem' }}
+                  onClick={() => {
+                    setIsTimerRunning(false);
+                    setTimerSeconds(0);
+                    setActiveTimerPillar(null);
+                    setSessionNotes('');
+                    setCustomTopic('');
+                  }}
+                  title="Discard timer"
+                >
+                  <RotateCcw size={15} />
+                </button>
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ fontSize: '1.75rem', fontFamily: 'monospace', fontWeight: 800 }}>
-              {formatTimerDisplay(timerSeconds)}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                style={{ padding: '0.4rem 0.75rem' }}
-                onClick={() => setIsTimerRunning(!isTimerRunning)}
-              >
-                {isTimerRunning ? <Pause size={16} /> : <Play size={16} />}
-                {isTimerRunning ? 'Pause' : 'Resume'}
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-primary" 
-                style={{ padding: '0.4rem 0.75rem' }}
-                onClick={handleFinishTimer}
-              >
-                <Check size={16} /> Finish & Log
-              </button>
-
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                style={{ padding: '0.4rem' }}
-                onClick={() => {
-                  setIsTimerRunning(false);
-                  setTimerSeconds(0);
-                  setActiveTimerPillar(null);
-                }}
-                title="Discard timer"
-              >
-                <RotateCcw size={15} />
-              </button>
-            </div>
+          {/* Session Notes for Timer */}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
+            <input 
+              type="text" 
+              placeholder="Topic covered (e.g. Window Functions, LeetCode 178)..." 
+              className="input" 
+              style={{ flex: 1, minWidth: '220px', fontSize: '0.8rem' }}
+              value={customTopic}
+              onChange={e => setCustomTopic(e.target.value)}
+            />
+            <input 
+              type="text" 
+              placeholder="Session notes / key takeaways / formulas practiced..." 
+              className="input" 
+              style={{ flex: 1.5, minWidth: '280px', fontSize: '0.8rem' }}
+              value={sessionNotes}
+              onChange={e => setSessionNotes(e.target.value)}
+            />
           </div>
         </div>
       )}
@@ -394,11 +424,21 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
                       <span className="text-xs text-muted">min</span>
                       <input 
                         type="text" 
-                        placeholder="Optional topic / note..." 
+                        placeholder="Topic (e.g. Window Fns)..." 
                         className="input" 
                         style={{ flex: 1, fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
                         value={customTopic}
                         onChange={e => setCustomTopic(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <textarea
+                        rows={2}
+                        placeholder="Session notes, takeaways, questions..."
+                        className="textarea"
+                        style={{ width: '100%', fontSize: '0.75rem', padding: '0.3rem 0.5rem', resize: 'vertical' }}
+                        value={sessionNotes}
+                        onChange={e => setSessionNotes(e.target.value)}
                       />
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
@@ -406,7 +446,7 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
                         type="button" 
                         className="btn btn-primary" 
                         style={{ flex: 1, fontSize: '0.75rem', padding: '0.25rem 0.4rem' }}
-                        onClick={() => handleAddMinutes(pillar.id, customMinutesInput, customTopic)}
+                        onClick={() => handleAddMinutes(pillar.id, customMinutesInput, customTopic, sessionNotes)}
                       >
                         + Add {customMinutesInput}m
                       </button>
@@ -414,7 +454,11 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
                         type="button" 
                         className="btn btn-secondary" 
                         style={{ fontSize: '0.75rem', padding: '0.25rem 0.4rem' }}
-                        onClick={() => setQuickPillarAdd(null)}
+                        onClick={() => {
+                          setQuickPillarAdd(null);
+                          setSessionNotes('');
+                          setCustomTopic('');
+                        }}
                       >
                         Cancel
                       </button>
