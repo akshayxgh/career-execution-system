@@ -344,6 +344,24 @@
   color: #fbbf24;
 }
 
+.qb-pill-date {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  font-weight: 500;
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0.9;
+}
+
+[data-theme="night"] .qb-pill-date {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
 /* Expandable Drawer Content */
 .qb-list-expanded-content {
   background: var(--bg-dark);

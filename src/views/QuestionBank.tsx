@@ -26,7 +26,8 @@ import {
   Edit3,
   X,
   GitMerge,
-  ShieldCheck
+  ShieldCheck,
+  Calendar,
 } from 'lucide-react';
 import {
   copilotService,
@@ -38,6 +39,20 @@ import {
   type ConsolidationCluster
 } from '../services/copilotService';
 import './QuestionBank.css';
+
+/**
+ * Formats ISO date string to readable format e.g. "04 Sep 2026"
+ */
+function formatQuestionDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Lightweight inline markdown renderer for bold (**text**), italics (*text*), and code (`code`).
@@ -1751,6 +1766,16 @@ export const QuestionBank: React.FC = () => {
                           title={`Reported at: ${item.companiesAsked?.join(', ')}`}
                         >
                           <Flame size={12} /> {item.frequencyCount}x Asked
+                        </span>
+                      )}
+
+                      {/* Created Date Badge */}
+                      {Boolean(item.createdAt && formatQuestionDate(item.createdAt)) && (
+                        <span
+                          className="qb-pill-tag qb-pill-date"
+                          title={`Added on ${formatQuestionDate(item.createdAt)}`}
+                        >
+                          <Calendar size={11} /> {formatQuestionDate(item.createdAt)}
                         </span>
                       )}
 
