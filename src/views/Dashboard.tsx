@@ -21,6 +21,7 @@ import {
   type AppliedJobFromDB,
 } from '../services/decisionIntelligenceService';
 import { formatToISTDate } from '../utils/dateUtils';
+import { DailyRoutineTracker } from '../components/DailyRoutineTracker';
 
 export const Dashboard = () => {
   const { state } = useStore();
@@ -233,6 +234,9 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Daily 4-Pillar Focus Routine Tracker */}
+      <DailyRoutineTracker />
 
       {/* 2nd Row: 3 Squeezed Cards (Spotlight, Action Checklist, Circle Heatmap Calendar) */}
       <div className="grid grid-cols-3 gap-6">
