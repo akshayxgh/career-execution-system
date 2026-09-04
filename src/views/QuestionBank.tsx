@@ -3,7 +3,7 @@ import { useStore } from '../store/StoreContext';
 import type { QuestionBankItem, QuestionConfidence, Weakness } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  HelpCircle,
+  FileQuestion,
   Plus,
   Search,
   Sparkles,
@@ -978,7 +978,7 @@ export const QuestionBank: React.FC = () => {
       <header className="qb-header">
         <div className="qb-title-group">
           <h1>
-            <Layers size={26} color="var(--accent-primary)" />
+            <FileQuestion size={26} color="var(--accent-primary)" />
             Interview Question Bank
           </h1>
           <p className="text-muted">
@@ -1381,7 +1381,7 @@ export const QuestionBank: React.FC = () => {
                 color: 'var(--text-muted)',
               }}
             >
-              <HelpCircle size={40} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+              <FileQuestion size={40} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
               <h3>No interview questions found</h3>
               <p style={{ marginTop: '0.5rem', marginBottom: '1.25rem' }}>
                 Paste a screenshot from LinkedIn, Glassdoor, or a text dump to get started.
