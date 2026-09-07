@@ -58,10 +58,37 @@ export const PipelineSurveillanceWidget: React.FC = () => {
     loadData();
   }, []);
 
+  const [yieldMode, setYieldMode] = useState<'datewise' | 'alltime'>('datewise');
+
   const activeDay = useMemo(() => {
     if (!summaries.length) return null;
     return summaries.find((s) => s.date === selectedDate) || summaries[0];
   }, [summaries, selectedDate]);
+
+  // Compute date-wise or all-time channel yield
+  const displayYields = useMemo(() => {
+    if (yieldMode === 'datewise') {
+      if (!activeDay || !activeDay.sources) return [];
+      return [...activeDay.sources]
+        .filter((s) => s.scraped > 0)
+        .sort((a, b) => b.apply_matches - a.apply_matches || b.conversion_pct - a.conversion_pct || b.scraped - a.scraped)
+        .map((s) => ({
+          name: s.source,
+          category: s.category,
+          scraped: s.scraped,
+          matches: s.apply_matches,
+          conversion_pct: s.conversion_pct,
+        }));
+    } else {
+      return channelYields.map((c) => ({
+        name: c.source_name,
+        category: c.category,
+        scraped: c.total_scraped,
+        matches: c.total_apply,
+        conversion_pct: c.conversion_pct,
+      }));
+    }
+  }, [yieldMode, activeDay, channelYields]);
 
   // Chart data: reverse to display chronological (oldest to newest)
   const chartData = useMemo(() => {
@@ -348,17 +375,54 @@ export const PipelineSurveillanceWidget: React.FC = () => {
             gap: '0.75rem',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <TrendingUp size={16} color="var(--accent-primary)" />
-              Top Channel & Company Yield
-            </h3>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              Ranked by total apply matches
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <TrendingUp size={16} color="var(--accent-primary)" />
+                Channel & Company Yield
+              </h3>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                {yieldMode === 'datewise' ? `Breakdown for ${activeDay.date}` : 'Aggregated across all runs'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--bg-card)', padding: '0.2rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => setYieldMode('datewise')}
+                style={{
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: yieldMode === 'datewise' ? 'var(--accent-primary)' : 'transparent',
+                  color: yieldMode === 'datewise' ? '#ffffff' : 'var(--text-muted)',
+                }}
+              >
+                Date-wise
+              </button>
+              <button
+                type="button"
+                onClick={() => setYieldMode('alltime')}
+                style={{
+                  padding: '0.2rem 0.5rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: yieldMode === 'alltime' ? 'var(--accent-primary)' : 'transparent',
+                  color: yieldMode === 'alltime' ? '#ffffff' : 'var(--text-muted)',
+                }}
+              >
+                All-Time
+              </button>
+            </div>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', maxHeight: '250px', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
@@ -369,64 +433,72 @@ export const PipelineSurveillanceWidget: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {channelYields.slice(0, 6).map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '0.55rem 0.2rem' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{item.source_name}</div>
-                      <span
-                        style={{
-                          fontSize: '0.65rem',
-                          padding: '0.1rem 0.35rem',
-                          borderRadius: '4px',
-                          background:
-                            item.category === 'career'
-                              ? 'rgba(99, 102, 241, 0.15)'
-                              : item.category.includes('recommend')
-                              ? 'rgba(5, 150, 105, 0.15)'
-                              : 'rgba(2, 132, 199, 0.15)',
-                          color:
-                            item.category === 'career'
-                              ? '#818cf8'
-                              : item.category.includes('recommend')
-                              ? 'var(--accent-primary)'
-                              : '#38bdf8',
-                        }}
-                      >
-                        {item.category.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.55rem 0.2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      {item.total_scraped}
-                    </td>
-                    <td style={{ padding: '0.55rem 0.2rem', textAlign: 'center', fontWeight: 700, color: 'var(--accent-primary)' }}>
-                      {item.total_apply}
-                    </td>
-                    <td style={{ padding: '0.55rem 0.2rem', textAlign: 'right' }}>
-                      <span
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '12px',
-                          fontWeight: 800,
-                          fontSize: '0.75rem',
-                          background:
-                            item.conversion_pct >= 20
-                              ? 'rgba(5, 150, 105, 0.2)'
-                              : item.conversion_pct >= 10
-                              ? 'rgba(2, 132, 199, 0.2)'
-                              : 'rgba(255, 255, 255, 0.08)',
-                          color:
-                            item.conversion_pct >= 20
-                              ? 'var(--accent-primary)'
-                              : item.conversion_pct >= 10
-                              ? '#38bdf8'
-                              : 'var(--text-muted)',
-                        }}
-                      >
-                        {item.conversion_pct}%
-                      </span>
+                {displayYields.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No source metrics recorded for this date.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  displayYields.slice(0, 10).map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '0.55rem 0.2rem' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{item.name}</div>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '4px',
+                            background:
+                              item.category === 'career'
+                                ? 'rgba(99, 102, 241, 0.15)'
+                                : item.category.includes('recommend')
+                                ? 'rgba(5, 150, 105, 0.15)'
+                                : 'rgba(2, 132, 199, 0.15)',
+                            color:
+                              item.category === 'career'
+                                ? '#818cf8'
+                                : item.category.includes('recommend')
+                                ? 'var(--accent-primary)'
+                                : '#38bdf8',
+                          }}
+                        >
+                          {item.category.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.55rem 0.2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        {item.scraped}
+                      </td>
+                      <td style={{ padding: '0.55rem 0.2rem', textAlign: 'center', fontWeight: 700, color: 'var(--accent-primary)' }}>
+                        {item.matches}
+                      </td>
+                      <td style={{ padding: '0.55rem 0.2rem', textAlign: 'right' }}>
+                        <span
+                          style={{
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '12px',
+                            fontWeight: 800,
+                            fontSize: '0.75rem',
+                            background:
+                              item.conversion_pct >= 20
+                                ? 'rgba(5, 150, 105, 0.2)'
+                                : item.conversion_pct >= 10
+                                ? 'rgba(2, 132, 199, 0.2)'
+                                : 'rgba(255, 255, 255, 0.08)',
+                            color:
+                              item.conversion_pct >= 20
+                                ? 'var(--accent-primary)'
+                                : item.conversion_pct >= 10
+                                ? '#38bdf8'
+                                : 'var(--text-muted)',
+                          }}
+                        >
+                          {item.conversion_pct}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
