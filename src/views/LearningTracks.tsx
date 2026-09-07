@@ -12,6 +12,7 @@ import { getStreak } from '../utils/scoreCalculator';
 import { isSameWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { DailyRoutineTracker } from '../components/DailyRoutineTracker';
+import { getOperationalISTDate } from '../utils/dateUtils';
 
 export const LearningTracks = () => {
   const { state, updateState, syncWithCloud, isSyncing, lastSyncedAt } = useStore();
@@ -34,10 +35,10 @@ export const LearningTracks = () => {
   const [newTrackName, setNewTrackName] = useState('');
   const [newTrackModules, setNewTrackModules] = useState('');
 
-  // Study Log Form State
+  // Study Log Form State (Uses operational date so logs after midnight count towards the shift)
   const defaultSubject = state.learningTracks[0]?.name || 'Power BI Track';
   const [logData, setLogData] = useState<Partial<StudyLog>>({
-    date: new Date().toISOString().split('T')[0],
+    date: getOperationalISTDate(),
     subject: defaultSubject,
     topic: '',
     plannedHours: 1,
@@ -225,7 +226,7 @@ export const LearningTracks = () => {
     setShowLogModal(false);
     setEditingLogId(null);
     setLogData({
-      date: new Date().toISOString().split('T')[0],
+      date: getOperationalISTDate(),
       subject: state.learningTracks[0]?.name || 'General Prep',
       topic: '',
       plannedHours: 1,

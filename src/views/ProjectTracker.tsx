@@ -3,7 +3,7 @@ import { useStore } from '../store/StoreContext';
 import type { Project, ProjectStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { Plus, Code2, ExternalLink, Calendar, Pencil, Trash2, Link2, Search, X, ChevronDown } from 'lucide-react';
-import { formatToISTDate, formatToISTShortDate } from '../utils/dateUtils';
+import { formatToISTShortDate, getOperationalISTDate } from '../utils/dateUtils';
 
 export const getCategoryTheme = (category?: string) => {
   const cat = (category || '').toLowerCase().trim();
@@ -56,7 +56,7 @@ export const ProjectTracker = () => {
   const [selectedTech, setSelectedTech] = useState<string | null>(null);
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
 
-  const getTodayDate = () => formatToISTDate(new Date().toISOString());
+  const getTodayDate = () => getOperationalISTDate();
 
   const getStatusBadgeClass = (status: ProjectStatus) => {
     switch (status) {

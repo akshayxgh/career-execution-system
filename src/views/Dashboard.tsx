@@ -20,8 +20,13 @@ import {
   type DecisionJob,
   type AppliedJobFromDB,
 } from '../services/decisionIntelligenceService';
-import { formatToISTDate } from '../utils/dateUtils';
+import { 
+  getOperationalISTDate, 
+  getOperationalDateObject, 
+  formatToOperationalDate 
+} from '../utils/dateUtils';
 import { DailyRoutineTracker } from '../components/DailyRoutineTracker';
+import { PipelineSurveillanceWidget } from '../components/dashboard/PipelineSurveillanceWidget';
 
 export const Dashboard = () => {
   const { state } = useStore();
@@ -53,7 +58,7 @@ export const Dashboard = () => {
   // 1. Applications from Supabase DB (getAppliedJobs)
   appliedDbJobs.forEach((dbApp) => {
     appliedJobIds.add(dbApp.job_id);
-    const dateKey = formatToISTDate(dbApp.updated_at);
+    const dateKey = formatToOperationalDate(dbApp.updated_at);
     if (dateKey !== '—') {
       dailyAppliedMap[dateKey] = (dailyAppliedMap[dateKey] || 0) + 1;
     }
@@ -64,7 +69,7 @@ export const Dashboard = () => {
     if (a.appliedDate && ['Applied', 'Interviewing', 'Offer', 'Joined'].includes(a.status)) {
       if (!appliedJobIds.has(a.id)) {
         appliedJobIds.add(a.id);
-        const dateKey = formatToISTDate(a.appliedDate);
+        const dateKey = formatToOperationalDate(a.appliedDate);
         if (dateKey !== '—') {
           dailyAppliedMap[dateKey] = (dailyAppliedMap[dateKey] || 0) + 1;
         }
@@ -77,7 +82,7 @@ export const Dashboard = () => {
     if (j.my_status === 'APPLIED') {
       if (!appliedJobIds.has(j.id)) {
         appliedJobIds.add(j.id);
-        const dateKey = formatToISTDate(j.status_updated_at || j.analyzed_at);
+        const dateKey = formatToOperationalDate(j.status_updated_at || j.analyzed_at);
         if (dateKey !== '—') {
           dailyAppliedMap[dateKey] = (dailyAppliedMap[dateKey] || 0) + 1;
         }
@@ -86,7 +91,8 @@ export const Dashboard = () => {
   });
 
   const totalApplied = appliedJobIds.size;
-  const todayStr = formatToISTDate(new Date().toISOString());
+  // Day changes at 6:30 AM IST (covering 12:00 PM to 4:00 AM working shift)
+  const todayStr = getOperationalISTDate();
   const totalAppliedToday = dailyAppliedMap[todayStr] || 0;
 
   const hoursThisWeek = state.studyLogs
@@ -101,7 +107,7 @@ export const Dashboard = () => {
   const isDateToday = (dateStr?: string | null) => {
     if (!dateStr) return false;
     try {
-      return formatToISTDate(dateStr) === todayStr;
+      return formatToOperationalDate(dateStr) === todayStr;
     } catch {
       return false;
     }
@@ -120,8 +126,8 @@ export const Dashboard = () => {
   // Top 5 Jobs with MAXIMUM Score for Live Decision Feed
   const maxScoreTop5Jobs = sortedAllJobs.slice(0, 5);
 
-  // Monthly Calendar Helper Data
-  const currentDate = new Date();
+  // Monthly Calendar Helper Data (Aligned to operational day cutoff at 6:30 AM)
+  const currentDate = getOperationalDateObject();
   const currentMonthYearStr = format(currentDate, 'yyyy-MM');
   const daysInCurrentMonth = getDaysInMonth(currentDate);
   const monthStartDayOfWeek = getDay(startOfMonth(currentDate)); // 0 = Sun, 1 = Mon...
@@ -471,6 +477,9 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Automated Job Pipeline Surveillance Widget */}
+      <PipelineSurveillanceWidget />
 
       {/* Live Decision Intelligence Feed (Showing Top 5 Maximum Score Jobs) */}
       <div className="card">

@@ -6,7 +6,7 @@ import {
   Database, BarChart3, Send, MessageSquare, CheckCircle2, 
   Clock, Play, Pause, RotateCcw, Sparkles, Check
 } from 'lucide-react';
-import { formatToISTDate } from '../utils/dateUtils';
+import { getOperationalISTDate, formatToOperationalDate } from '../utils/dateUtils';
 
 interface RoutinePillar {
   id: 'sql' | 'pbi' | 'apps' | 'interview';
@@ -69,7 +69,8 @@ const PILLARS: RoutinePillar[] = [
 
 export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const { state, updateState } = useStore();
-  const todayStr = formatToISTDate(new Date().toISOString());
+  // Operational day rollover occurs at 6:30 AM IST (12 PM - 4 AM shift belongs to the same day)
+  const todayStr = getOperationalISTDate();
 
   // Focus Timer state
   const [activeTimerPillar, setActiveTimerPillar] = useState<'sql' | 'pbi' | 'apps' | 'interview' | null>(null);
@@ -103,8 +104,9 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
     };
 
     state.studyLogs.forEach(log => {
-      // Check if log is from today (support both ISO date prefix and local formatted date)
-      if (log.date === todayStr || log.date === new Date().toISOString().split('T')[0]) {
+      // Match logs belonging to today's operational day (rolls over at 6:30 AM)
+      const logOpDate = formatToOperationalDate(log.date);
+      if (logOpDate === todayStr || log.date === todayStr) {
         const minutes = Math.round((log.actualHours || 0) * 60);
         const subj = (log.subject || '').toLowerCase();
         const top = (log.topic || '').toLowerCase();
