@@ -123,9 +123,6 @@ export const Dashboard = () => {
   const topJob = sortedTodayJobs.length > 0 ? sortedTodayJobs[0] : sortedAllJobs[0] || null;
   const isTopJobFromToday = sortedTodayJobs.length > 0;
 
-  // Top 5 Jobs with MAXIMUM Score for Live Decision Feed
-  const maxScoreTop5Jobs = sortedAllJobs.slice(0, 5);
-
   // Monthly Calendar Helper Data (Aligned to operational day cutoff at 6:30 AM)
   const currentDate = getOperationalDateObject();
   const currentMonthYearStr = format(currentDate, 'yyyy-MM');
@@ -480,89 +477,6 @@ export const Dashboard = () => {
 
       {/* Automated Job Pipeline Surveillance Widget */}
       <PipelineSurveillanceWidget />
-
-      {/* Live Decision Intelligence Feed (Showing Top 5 Maximum Score Jobs) */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
-              Live Decision Intelligence Feed
-            </h3>
-            <p className="text-xs text-muted" style={{ margin: '0.2rem 0 0' }}>
-              Top 5 opportunities prioritized strictly by MAXIMUM match score
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => navigate('/decision-intelligence')}
-            style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem' }}
-          >
-            Open Decision Board
-          </button>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                <th style={{ padding: '0.6rem 0.5rem' }}>SCORE</th>
-                <th style={{ padding: '0.6rem 0.5rem' }}>JOB & COMPANY</th>
-                <th style={{ padding: '0.6rem 0.5rem' }}>LOCATION</th>
-                <th style={{ padding: '0.6rem 0.5rem' }}>SALARY</th>
-                <th style={{ padding: '0.6rem 0.5rem' }}>STATUS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {maxScoreTop5Jobs.map((job) => (
-                <tr
-                  key={job.id}
-                  style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}
-                >
-                  <td style={{ padding: '0.75rem 0.5rem' }}>
-                    <span
-                      style={{
-                        padding: '0.25rem 0.6rem',
-                        borderRadius: '20px',
-                        background: job.score >= 75 ? 'var(--accent-primary)' : 'var(--warning)',
-                        color: '#ffffff',
-                        fontWeight: 800,
-                        fontSize: '0.75rem',
-                      }}
-                    >
-                      {job.score}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{job.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{job.company_name}</div>
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem', color: 'var(--text-muted)' }}>
-                    {job.location || 'Remote'}
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: 'var(--accent-primary)' }}>
-                    {job.salary || '—'}
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem' }}>
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '4px',
-                        background: 'rgba(5, 150, 105, 0.1)',
-                        color: 'var(--accent-primary)',
-                      }}
-                    >
-                      {job.my_status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 };
