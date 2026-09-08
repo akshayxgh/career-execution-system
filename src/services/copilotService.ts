@@ -1015,6 +1015,77 @@ Return ONLY a JSON array of true duplicate clusters:
       return [];
     }
   }
+
+  /**
+   * Evaluates a candidate's spoken or typed answer to an interview question.
+   * Analyzes clarity, accuracy, structure, missing concepts, and generates an elevated senior pitch and follow-up.
+   */
+  async critiqueSpokenAnswer(input: {
+    question: string;
+    tool?: string;
+    topic?: string;
+    targetCompany?: string;
+    transcribedSpeech: string;
+  }): Promise<SpeechCritiqueResult> {
+    const prompt = `You are an elite Technical Interview Coach and Hiring Manager evaluating a candidate for a Senior Data Analyst / Power BI / SQL position.
+
+Question: "${input.question}"
+Topic / Tool: ${input.tool || "General"} - ${input.topic || "General"}
+Target Company: ${input.targetCompany || "Top Consulting / Tech Firm"}
+
+Candidate's Spoken Answer (transcribed):
+"${input.transcribedSpeech}"
+
+Audit the candidate's answer with senior technical rigor:
+1. "clarityScore": Integer 1-10 (Rate based on structure, speed, and how clearly they articulated the core concept without rambling).
+2. "verdict": 1-2 sharp sentences analyzing their communication style and technical accuracy.
+3. "missingPoints": Array of 2-3 specific technical concepts, keywords, or nuances the candidate failed to mention.
+4. "condensedPitch": The candidate's raw answer stripped of all fluff and filler words, condensed into a crisp 30-40 word punchy version.
+5. "elevatedSeniorPitch": The ultimate 3-sentence "Senior Consultant" answer:
+   - Sentence 1 (The Hook): Clear, authoritative high-level definition.
+   - Sentence 2 (The Recipe): Practical technical implementation step.
+   - Sentence 3 (The Senior Gotcha): Performance optimization, edge case, or gotcha that proves senior-level credibility.
+6. "followUpQuestion": A realistic, challenging follow-up question the interviewer would ask next based on what the candidate said.
+
+Return ONLY a valid JSON object matching this schema without markdown codeblocks or conversational text:
+{
+  "clarityScore": 7,
+  "verdict": "Clear high-level grasp, but stumbled on the technical execution steps.",
+  "missingPoints": [
+    "Did not mention context transition",
+    "Missed the impact of row context"
+  ],
+  "condensedPitch": "A crisp 30-word version of what they said...",
+  "elevatedSeniorPitch": "Sentence 1. Sentence 2. Sentence 3.",
+  "followUpQuestion": "How would your approach change if this measure were used in a matrix visual with multiple dimension hierarchies?"
+}`;
+
+    try {
+      const raw = await this.generateResponse(prompt);
+      const clean = raw.replace(/```json/gi, "").replace(/```/gi, "").trim();
+      const parsed: SpeechCritiqueResult = JSON.parse(clean);
+      return parsed;
+    } catch (err) {
+      console.error("Spoken answer critique failed:", err);
+      return {
+        clarityScore: 6,
+        verdict: "Answer captured, but automated critique encountered an issue. Review your pitch against the ideal answer below.",
+        missingPoints: ["Ensure you clearly state the executive definition first.", "Highlight a real-world optimization or gotcha."],
+        condensedPitch: input.transcribedSpeech.slice(0, 150) + "...",
+        elevatedSeniorPitch: "At a high level, articulate the primary objective. In practice, detail the step-by-step recipe. Finally, highlight a senior gotcha such as query folding or performance overhead.",
+        followUpQuestion: "Can you explain how this impacts performance when scaled to millions of rows?",
+      };
+    }
+  }
+}
+
+export interface SpeechCritiqueResult {
+  clarityScore: number;
+  verdict: string;
+  missingPoints: string[];
+  condensedPitch: string;
+  elevatedSeniorPitch: string;
+  followUpQuestion?: string;
 }
 
 export interface SemanticDuplicateResult {
