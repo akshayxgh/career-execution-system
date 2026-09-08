@@ -16,7 +16,6 @@ import { ConceptLibrary } from './views/ConceptLibrary';
 import { ProjectTracker } from './views/ProjectTracker';
 import { ResumeTracker } from './views/ResumeTracker';
 import { Documents } from './views/Documents';
-import { Analytics } from './views/Analytics';
 import { Login } from './views/Login';
 import DecisionIntelligence from './views/DecisionIntelligence';
 
@@ -46,7 +45,6 @@ function App() {
             <Route path="projects" element={<ProjectTracker />} />
             <Route path="resumes" element={<ResumeTracker />} />
             <Route path="documents" element={<Documents />} />
-            <Route path="analytics" element={<Analytics />} />
 
             {/* New Module */}
             <Route

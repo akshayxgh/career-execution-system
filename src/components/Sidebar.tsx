@@ -11,7 +11,6 @@ import {
   FolderGit2,
   FileText,
   Files,
-  BarChart2,
   Brain,
   FileQuestion,
   LogOut,
@@ -88,7 +87,6 @@ export const Sidebar = () => {
     { to: '/projects', label: 'Projects', icon: <FolderGit2 size={20} /> },
     { to: '/resumes', label: 'Resumes', icon: <FileText size={20} /> },
     { to: '/documents', label: 'Documents', icon: <Files size={20} /> },
-    { to: '/analytics', label: 'Analytics', icon: <BarChart2 size={20} /> },
     { to: '/decision-intelligence', label: 'Decision Intelligence', icon: <Brain size={20} /> },
   ];
 
