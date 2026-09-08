@@ -312,6 +312,9 @@ export const InterviewArena: React.FC = () => {
         transcribedSpeech: transcribedSpeech.trim(),
       });
       setCritiqueResult(result);
+      if (result.suggestedConfidence) {
+        handleConfidenceUpdate(result.suggestedConfidence);
+      }
     } catch (err) {
       console.error('Failed to critique answer:', err);
     } finally {
@@ -998,6 +1001,27 @@ export const InterviewArena: React.FC = () => {
                 <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>How did that answer feel?</span>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Updates Question Bank</span>
               </div>
+
+              {critiqueResult?.suggestedConfidence && (
+                <div
+                  style={{
+                    padding: '0.4rem 0.65rem',
+                    borderRadius: '8px',
+                    background: 'rgba(99, 102, 241, 0.12)',
+                    color: '#818cf8',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>
+                    AI Auto-Rated: <strong style={{ textTransform: 'capitalize', color: 'var(--text-main)' }}>{critiqueResult.suggestedConfidence}</strong> (Saved)
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
                 <button

@@ -1,5 +1,5 @@
 import { COPILOT_CONFIG } from "../config/copilotConfig";
-import type { HumanAnswer, QuestionDifficulty, QuestionBankItem } from "../types";
+import type { HumanAnswer, QuestionDifficulty, QuestionBankItem, QuestionConfidence } from "../types";
 
 export interface ParsedExtractedQuestion {
   title?: string;
@@ -1040,17 +1040,19 @@ Audit the candidate's answer with senior technical rigor:
 1. "clarityScore": Integer 1-10 (Rate based on structure, speed, and how clearly they articulated the core concept without rambling).
 2. "verdict": 1-2 sharp sentences analyzing their communication style and technical accuracy.
 3. "missingPoints": Array of 2-3 specific technical concepts, keywords, or nuances the candidate failed to mention.
-4. "condensedPitch": The candidate's raw answer stripped of all fluff and filler words, condensed into a crisp 30-40 word punchy version.
-5. "elevatedSeniorPitch": The ultimate 3-sentence "Senior Consultant" answer:
+4. "suggestedConfidence": One of "struggled", "hesitant", or "mastered". (Assign "struggled" if clarityScore <= 4 or major concepts missed; "hesitant" if clarityScore 5-7; "mastered" if clarityScore >= 8 with crisp, confident senior delivery).
+5. "condensedPitch": The candidate's raw answer stripped of all fluff and filler words, condensed into a crisp 30-40 word punchy version.
+6. "elevatedSeniorPitch": The ultimate 3-sentence "Senior Consultant" answer:
    - Sentence 1 (The Hook): Clear, authoritative high-level definition.
    - Sentence 2 (The Recipe): Practical technical implementation step.
    - Sentence 3 (The Senior Gotcha): Performance optimization, edge case, or gotcha that proves senior-level credibility.
-6. "followUpQuestion": A realistic, challenging follow-up question the interviewer would ask next based on what the candidate said.
+7. "followUpQuestion": A realistic, challenging follow-up question the interviewer would ask next based on what the candidate said.
 
 Return ONLY a valid JSON object matching this schema without markdown codeblocks or conversational text:
 {
   "clarityScore": 7,
   "verdict": "Clear high-level grasp, but stumbled on the technical execution steps.",
+  "suggestedConfidence": "hesitant",
   "missingPoints": [
     "Did not mention context transition",
     "Missed the impact of row context"
@@ -1064,12 +1066,16 @@ Return ONLY a valid JSON object matching this schema without markdown codeblocks
       const raw = await this.generateResponse(prompt);
       const clean = raw.replace(/```json/gi, "").replace(/```/gi, "").trim();
       const parsed: SpeechCritiqueResult = JSON.parse(clean);
+      if (!parsed.suggestedConfidence) {
+        parsed.suggestedConfidence = parsed.clarityScore >= 8 ? 'mastered' : parsed.clarityScore >= 5 ? 'hesitant' : 'struggled';
+      }
       return parsed;
     } catch (err) {
       console.error("Spoken answer critique failed:", err);
       return {
         clarityScore: 6,
         verdict: "Answer captured, but automated critique encountered an issue. Review your pitch against the ideal answer below.",
+        suggestedConfidence: "hesitant",
         missingPoints: ["Ensure you clearly state the executive definition first.", "Highlight a real-world optimization or gotcha."],
         condensedPitch: input.transcribedSpeech.slice(0, 150) + "...",
         elevatedSeniorPitch: "At a high level, articulate the primary objective. In practice, detail the step-by-step recipe. Finally, highlight a senior gotcha such as query folding or performance overhead.",
@@ -1082,6 +1088,7 @@ Return ONLY a valid JSON object matching this schema without markdown codeblocks
 export interface SpeechCritiqueResult {
   clarityScore: number;
   verdict: string;
+  suggestedConfidence: QuestionConfidence;
   missingPoints: string[];
   condensedPitch: string;
   elevatedSeniorPitch: string;
