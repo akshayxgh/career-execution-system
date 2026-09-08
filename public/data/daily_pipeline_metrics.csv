@@ -1,4 +1,31 @@
 ﻿Date,Category,Source,Scraped,Deduplicated,Filtered,AI_Analyzed,Apply_Matches,Maybe_Review,Skipped,High_Value_60plus,Avg_Score,Conversion_Pct
+2026-09-09,career,Ey,160,0,25,135,20,46,94,71,46.7,12.5
+2026-09-09,career,PricewaterhouseCoopers Services LLP,3,0,0,3,0,0,3,0,42.0,0.0
+2026-09-09,career,Tata Consultancy Services,33,0,14,19,0,0,33,0,13.0,0.0
+2026-09-09,naukri_recommended,Naukri,104,0,5,99,31,19,54,50,57.1,29.8
+2026-09-08,career,Accenture,8,0,0,8,0,0,8,0,23.2,0.0
+2026-09-08,career,Birlasoft,2,0,1,1,0,0,2,0,12.5,0.0
+2026-09-08,career,Capgemini,2,0,0,2,1,0,1,1,43.5,50.0
+2026-09-08,career,Deloitte,2,0,0,2,1,0,1,1,61.0,50.0
+2026-09-08,career,Deloitte USI,1,0,0,1,0,0,1,0,5.0,0.0
+2026-09-08,career,EY,7,0,0,7,0,0,7,0,24.7,0.0
+2026-09-08,career,Ey,160,0,25,135,20,46,94,71,46.7,12.5
+2026-09-08,career,Genpact,10,0,0,10,1,0,9,1,27.8,10.0
+2026-09-08,career,IBM,73,0,0,73,27,1,45,28,49.2,37.0
+2026-09-08,career,Infosys,6,0,0,6,0,0,6,0,33.7,0.0
+2026-09-08,career,KPMG,46,0,1,45,4,0,42,4,25.0,8.7
+2026-09-08,career,LTIMindtree,1,0,0,1,0,0,1,0,57.0,0.0
+2026-09-08,career,PricewaterhouseCoopers Services LLP,5,0,0,5,0,0,5,0,22.4,0.0
+2026-09-08,career,Tata Consultancy Services,388,0,33,355,2,2,384,4,16.7,0.5
+2026-09-08,career,Wipro,5,0,0,5,0,0,5,0,21.0,0.0
+2026-09-08,links,Indeed,23,0,0,23,11,0,12,11,42.5,47.8
+2026-09-08,links,LinkedIn,17,0,0,17,0,0,17,0,20.2,0.0
+2026-09-08,links,Naukri,60,0,2,58,1,2,57,3,17.9,1.7
+2026-09-08,naukri_recommended,Naukri,138,0,3,135,23,22,93,45,52.8,16.7
+2026-09-08,portals,Foundit,5,0,1,4,0,0,5,0,24.0,0.0
+2026-09-08,portals,Indeed,1,1,0,1,1,0,0,1,72.0,100.0
+2026-09-08,portals,Naukri,10,0,0,10,1,0,9,1,28.0,10.0
+2026-09-08,portals,Shine,24,0,0,24,2,0,22,2,30.4,8.3
 2026-09-07,career,Birlasoft,1,0,0,1,0,0,1,0,35.0,0.0
 2026-09-07,career,Deloitte,1,0,0,1,0,0,1,0,55.0,0.0
 2026-09-07,career,Deloitte USI,1,0,0,1,0,0,1,0,36.0,0.0

@@ -4,9 +4,10 @@ import { Navigate, useLocation } from 'react-router-dom';
 
 type AuthState = 'checking' | 'authenticated' | 'anonymous';
 
-// Development-only bypass.
-// Set to false before merging this branch if you want to test real authentication.
-const DEV_AUTH_BYPASS = true;
+// Automatically bypass authentication in local development mode.
+// In production builds (e.g. Vercel deployment), authentication is strictly enforced.
+// To test login locally, set VITE_DEV_AUTH_BYPASS=false in .env.local.
+const DEV_AUTH_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_BYPASS !== 'false';
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const [authState, setAuthState] = useState<AuthState>(

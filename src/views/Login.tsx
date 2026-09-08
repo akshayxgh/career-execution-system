@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { BookOpen, LockKeyhole } from 'lucide-react';
+import { BookOpen, LockKeyhole, Eye, EyeOff } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './Login.css';
 
@@ -12,6 +12,7 @@ type LocationState = {
 
 export const Login = () => {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -66,16 +67,26 @@ export const Login = () => {
             Password
           </label>
           <div className="auth-input-wrap">
-            <LockKeyhole size={18} />
+            <LockKeyhole size={18} className="auth-icon-left" />
             <input
               id="password"
               className="input auth-input"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
               autoComplete="current-password"
               autoFocus
             />
+            <button
+              type="button"
+              className="auth-toggle-visibility"
+              onClick={() => setShowPassword((prev) => !prev)}
+              title={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
           {error && <p className="auth-error">{error}</p>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={isSubmitting}>
