@@ -1,5 +1,5 @@
 /* ==============================================================================
-   LOGIN VIEW - THEMED (DAY: CRIMSON RED / NIGHT: CYBER EMERALD)
+   LOGIN VIEW - THEMED (DAY: MAGIC UI MONOCHROME / NIGHT: CYBER EMERALD)
    ============================================================================== */
 
 /* Base container */
@@ -114,46 +114,42 @@
 }
 
 /* ------------------------------------------------------------------------------
-   DAY MODE (Solar Crimson / Ruby Rose)
+   DAY MODE (Magic UI Clean White & Black Particles)
    ------------------------------------------------------------------------------ */
 .auth-shell.day-theme {
-  background-color: #fdf2f4;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(225, 29, 72, 0.16) 0%, transparent 45%),
-    radial-gradient(circle at 85% 85%, rgba(249, 115, 22, 0.14) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(244, 63, 94, 0.08) 0%, transparent 60%);
+  background-color: #ffffff;
   color: #0f172a;
 }
 
 .auth-shell.day-theme .auth-theme-toggle {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(225, 29, 72, 0.2);
-  color: #334155;
-  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .auth-shell.day-theme .auth-theme-toggle:hover {
-  background: #ffffff;
-  color: #e11d48;
-  border-color: rgba(225, 29, 72, 0.5);
+  background: #f8fafc;
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.3);
 }
 
 .auth-shell.day-theme .auth-panel {
-  border: 1px solid rgba(225, 29, 72, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 
-    0 25px 50px -12px rgba(100, 116, 139, 0.18),
-    0 0 35px -5px rgba(225, 29, 72, 0.16),
+    0 25px 50px -12px rgba(0, 0, 0, 0.1),
+    0 4px 20px rgba(0, 0, 0, 0.04),
     inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .auth-shell.day-theme .auth-input-wrap:focus-within .auth-icon-left {
-  color: #e11d48;
+  color: #0f172a;
 }
 
 .auth-shell.day-theme .auth-input {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
   color: #0f172a !important;
 }
 
@@ -162,8 +158,8 @@
 }
 
 .auth-shell.day-theme .auth-input:focus {
-  border-color: #e11d48 !important;
-  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.2), 0 0 20px rgba(225, 29, 72, 0.15) !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1) !important;
 }
 
 .auth-shell.day-theme .auth-icon-left,
@@ -172,16 +168,20 @@
 }
 
 .auth-shell.day-theme .auth-toggle-visibility:hover {
-  color: #e11d48;
+  color: #0f172a;
 }
 
 .auth-shell.day-theme .auth-submit {
-  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
-  box-shadow: 0 4px 18px rgba(225, 29, 72, 0.4);
+  background: #0f172a !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.25);
 }
 
 .auth-shell.day-theme .auth-submit:hover:not(:disabled) {
-  box-shadow: 0 6px 24px rgba(225, 29, 72, 0.55);
+  background: #000000 !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
 }
 
 /* ------------------------------------------------------------------------------
@@ -274,13 +274,11 @@
   cursor: pointer;
   border-radius: 0.75rem;
   border: none !important;
-  color: #ffffff !important;
   transition: all 0.2s ease;
 }
 
 .auth-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: brightness(1.08);
 }
 
 .auth-submit:active:not(:disabled) {
