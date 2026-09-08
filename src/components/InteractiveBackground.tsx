@@ -19,10 +19,10 @@ const NIGHT_COLORS = [
 ];
 
 const DAY_COLORS = [
-  'rgba(13, 148, 136, ',  // Teal
-  'rgba(37, 99, 235, ',   // Blue
-  'rgba(5, 150, 105, ',   // Dark Emerald
-  'rgba(100, 116, 139, ', // Slate
+  'rgba(225, 29, 72, ',   // Crimson Ruby
+  'rgba(244, 63, 94, ',   // Rose Coral
+  'rgba(239, 68, 68, ',   // Vivid Red
+  'rgba(249, 115, 22, ',  // Sunset Amber
 ];
 
 export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'night' }) => {
@@ -124,8 +124,8 @@ export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'ni
           mouse.radius * 1.5
         );
         if (isDay) {
-          glow.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
-          glow.addColorStop(0.4, 'rgba(37, 99, 235, 0.05)');
+          glow.addColorStop(0, 'rgba(225, 29, 72, 0.15)');
+          glow.addColorStop(0.4, 'rgba(249, 115, 22, 0.07)');
           glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
         } else {
           glow.addColorStop(0, 'rgba(16, 185, 129, 0.18)');
@@ -166,8 +166,8 @@ export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'ni
         // Draw particle dot with soft glow
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `${colors[p.colorIndex]}${p.alpha * (isDay ? 0.8 : 1)})`;
-        ctx.shadowBlur = isDay ? 4 : 8;
+        ctx.fillStyle = `${colors[p.colorIndex]}${p.alpha * (isDay ? 0.85 : 1)})`;
+        ctx.shadowBlur = isDay ? 6 : 8;
         ctx.shadowColor = `${colors[p.colorIndex]}0.7)`;
         ctx.fill();
         ctx.shadowBlur = 0;
@@ -179,7 +179,7 @@ export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'ni
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(mouse.x, mouse.y);
           ctx.strokeStyle = isDay
-            ? `rgba(13, 148, 136, ${connectionAlpha * 0.75})`
+            ? `rgba(225, 29, 72, ${connectionAlpha * 0.85})`
             : `rgba(52, 211, 153, ${connectionAlpha})`;
           ctx.lineWidth = 1.2;
           ctx.stroke();
@@ -193,12 +193,12 @@ export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'ni
           const pjDist = Math.sqrt(pjDistX * pjDistX + pjDistY * pjDistY);
 
           if (pjDist < 125) {
-            const meshAlpha = (1 - pjDist / 125) * (isDay ? 0.28 : 0.22);
+            const meshAlpha = (1 - pjDist / 125) * (isDay ? 0.26 : 0.22);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.strokeStyle = isDay
-              ? `rgba(100, 116, 139, ${meshAlpha})`
+              ? `rgba(244, 63, 94, ${meshAlpha * 0.45})`
               : `rgba(148, 163, 184, ${meshAlpha})`;
             ctx.lineWidth = 0.65;
             ctx.stroke();
