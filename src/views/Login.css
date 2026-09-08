@@ -1,19 +1,156 @@
+/* ==============================================================================
+   LOGIN VIEW - THEMED (DAY / NIGHT) & GLASSMORPHIC MINIMAL CARD
+   ============================================================================== */
+
+/* Base container */
 .auth-shell {
   min-height: 100vh;
   position: relative;
   display: grid;
   place-items: center;
   padding: 1.5rem;
+  overflow: hidden;
+  font-family: var(--font-family);
+  transition: background-color 0.3s ease;
+}
+
+/* Floating Day / Night Mode Selection Toggle */
+.auth-theme-toggle {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.auth-theme-toggle:hover {
+  transform: translateY(-1px) scale(1.03);
+}
+
+.auth-theme-toggle:active {
+  transform: translateY(0);
+}
+
+/* ------------------------------------------------------------------------------
+   NIGHT MODE (Default Cyber-Obsidian)
+   ------------------------------------------------------------------------------ */
+.auth-shell.night-theme {
   background-color: #060a12;
   background-image: 
     radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.10) 0%, transparent 45%),
     radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
-  overflow: hidden;
-  font-family: var(--font-family);
   color: #f8fafc;
 }
 
+.auth-shell.night-theme .auth-theme-toggle {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.auth-shell.night-theme .auth-theme-toggle:hover {
+  background: rgba(30, 41, 59, 0.9);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.auth-shell.night-theme .auth-panel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.75),
+    0 0 35px -5px rgba(16, 185, 129, 0.16),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.auth-shell.night-theme .auth-input {
+  background-color: rgba(2, 6, 23, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.auth-shell.night-theme .auth-input::placeholder {
+  color: #64748b;
+}
+
+.auth-shell.night-theme .auth-icon-left,
+.auth-shell.night-theme .auth-toggle-visibility {
+  color: #64748b;
+}
+
+.auth-shell.night-theme .auth-toggle-visibility:hover {
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------------------------------
+   DAY MODE (Clean Crisp Soft-Pearl)
+   ------------------------------------------------------------------------------ */
+.auth-shell.day-theme {
+  background-color: #f1f5f9;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(148, 163, 184, 0.08) 0%, transparent 60%);
+  color: #0f172a;
+}
+
+.auth-shell.day-theme .auth-theme-toggle {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  color: #334155;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.auth-shell.day-theme .auth-theme-toggle:hover {
+  background: #ffffff;
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.auth-shell.day-theme .auth-panel {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 25px 50px -12px rgba(100, 116, 139, 0.22),
+    0 0 30px -5px rgba(16, 185, 129, 0.12),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.auth-shell.day-theme .auth-input {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
+  color: #0f172a !important;
+}
+
+.auth-shell.day-theme .auth-input::placeholder {
+  color: #94a3b8;
+}
+
+.auth-shell.day-theme .auth-icon-left,
+.auth-shell.day-theme .auth-toggle-visibility {
+  color: #64748b;
+}
+
+.auth-shell.day-theme .auth-toggle-visibility:hover {
+  color: #0f172a;
+}
+
+/* ------------------------------------------------------------------------------
+   Floating 3D Card
+   ------------------------------------------------------------------------------ */
 .auth-panel {
   position: relative;
   z-index: 10;
@@ -21,18 +158,12 @@
   display: flex;
   flex-direction: column;
   padding: 1.6rem 1.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1.25rem;
-  background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.75),
-    0 0 35px -5px rgba(16, 185, 129, 0.16),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
   transform-style: preserve-3d;
   will-change: transform;
-  transition: transform 0.12s ease-out;
+  transition: transform 0.12s ease-out, background 0.3s ease, border-color 0.3s ease;
 }
 
 .auth-form {
@@ -52,7 +183,6 @@
 .auth-icon-left {
   position: absolute;
   left: 0.9rem;
-  color: #64748b;
   pointer-events: none;
   z-index: 2;
   transition: color 0.2s ease;
@@ -67,17 +197,10 @@
   height: 2.85rem;
   padding-left: 2.65rem !important;
   padding-right: 2.85rem !important;
-  background-color: rgba(2, 6, 23, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
   border-radius: 0.75rem;
-  color: #ffffff !important;
   font-size: 0.95rem;
   box-sizing: border-box;
   transition: all 0.2s ease;
-}
-
-.auth-input-wrap .auth-input::placeholder {
-  color: #64748b;
 }
 
 .auth-input-wrap .auth-input:focus {
@@ -95,7 +218,6 @@
   padding: 0.35rem;
   background: transparent;
   border: none;
-  color: #64748b;
   cursor: pointer;
   border-radius: 0.4rem;
   z-index: 2;
@@ -103,12 +225,11 @@
 }
 
 .auth-toggle-visibility:hover {
-  color: #ffffff;
   transform: scale(1.08);
 }
 
 .auth-error {
-  color: #f87171;
+  color: #ef4444;
   font-size: 0.825rem;
   padding: 0.5rem 0.75rem;
   background: rgba(239, 68, 68, 0.12);

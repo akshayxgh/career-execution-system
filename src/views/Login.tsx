@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { LockKeyhole, Eye, EyeOff } from 'lucide-react';
+import { LockKeyhole, Eye, EyeOff, Sun, Moon } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { InteractiveBackground } from '../components/InteractiveBackground';
 import './Login.css';
@@ -18,6 +18,24 @@ export const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
+
+  // Theme state synced with localStorage and HTML attribute
+  const [theme, setTheme] = useState<'day' | 'night'>(() => {
+    const saved = localStorage.getItem('ces_theme') as 'day' | 'night' | null;
+    if (saved) return saved;
+    const hour = new Date().getHours();
+    return hour >= 6 && hour < 18 ? 'day' : 'night';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ces_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'day' ? 'night' : 'day'));
+  };
+
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
@@ -72,9 +90,21 @@ export const Login = () => {
   }
 
   return (
-    <main className="auth-shell">
+    <main className={`auth-shell ${theme === 'day' ? 'day-theme' : 'night-theme'}`}>
+      {/* Floating Day/Night Mode Selection Toggle */}
+      <button
+        type="button"
+        className="auth-theme-toggle"
+        onClick={toggleTheme}
+        title={theme === 'day' ? 'Switch to Night Mode' : 'Switch to Day Mode'}
+        aria-label="Toggle Day/Night Mode"
+      >
+        {theme === 'day' ? <Moon size={16} /> : <Sun size={16} />}
+        <span>{theme === 'day' ? 'Night' : 'Day'}</span>
+      </button>
+
       {/* Interactive mouse-tracking constellation background */}
-      <InteractiveBackground />
+      <InteractiveBackground theme={theme} />
 
       <section
         className="auth-panel"

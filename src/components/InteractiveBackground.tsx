@@ -7,19 +7,31 @@ interface Particle {
   vy: number;
   radius: number;
   baseRadius: number;
-  color: string;
+  colorIndex: number;
   alpha: number;
 }
 
-const COLORS = [
+const NIGHT_COLORS = [
   'rgba(16, 185, 129, ',  // Emerald
-  'rgba(56, 189, 248, ',  // Electric Sky Blue
+  'rgba(56, 189, 248, ',  // Sky Blue
   'rgba(99, 102, 241, ',  // Indigo
   'rgba(52, 211, 153, ',  // Mint
 ];
 
-export const InteractiveBackground = () => {
+const DAY_COLORS = [
+  'rgba(13, 148, 136, ',  // Teal
+  'rgba(37, 99, 235, ',   // Blue
+  'rgba(5, 150, 105, ',   // Dark Emerald
+  'rgba(100, 116, 139, ', // Slate
+];
+
+export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'night' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const themeRef = useRef(theme);
+
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -55,8 +67,8 @@ export const InteractiveBackground = () => {
         vy: (Math.random() - 0.5) * 0.7,
         radius,
         baseRadius: radius,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        alpha: Math.random() * 0.5 + 0.3,
+        colorIndex: Math.floor(Math.random() * NIGHT_COLORS.length),
+        alpha: Math.random() * 0.5 + 0.35,
       });
     }
 
@@ -91,11 +103,9 @@ export const InteractiveBackground = () => {
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     document.addEventListener('mouseleave', handleMouseLeave);
 
-    // Pulse time variable
-    let time = 0;
-
     const render = () => {
-      time += 0.015;
+      const isDay = themeRef.current === 'day';
+      const colors = isDay ? DAY_COLORS : NIGHT_COLORS;
 
       // Smooth mouse easing
       mouse.x += (mouse.targetX - mouse.x) * 0.12;
@@ -113,9 +123,15 @@ export const InteractiveBackground = () => {
           mouse.y,
           mouse.radius * 1.5
         );
-        glow.addColorStop(0, 'rgba(16, 185, 129, 0.18)');
-        glow.addColorStop(0.4, 'rgba(56, 189, 248, 0.08)');
-        glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        if (isDay) {
+          glow.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
+          glow.addColorStop(0.4, 'rgba(37, 99, 235, 0.05)');
+          glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else {
+          glow.addColorStop(0, 'rgba(16, 185, 129, 0.18)');
+          glow.addColorStop(0.4, 'rgba(56, 189, 248, 0.08)');
+          glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        }
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, width, height);
       }
@@ -139,7 +155,6 @@ export const InteractiveBackground = () => {
 
         if (dist < mouse.radius && mouse.active) {
           const force = (mouse.radius - dist) / mouse.radius;
-          // Gentle magnetic pull with elastic response
           const angle = Math.atan2(dy, dx);
           p.x += Math.cos(angle) * force * 1.8;
           p.y += Math.sin(angle) * force * 1.8;
@@ -151,11 +166,11 @@ export const InteractiveBackground = () => {
         // Draw particle dot with soft glow
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `${p.color}${p.alpha})`;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = `${p.color}0.8)`;
+        ctx.fillStyle = `${colors[p.colorIndex]}${p.alpha * (isDay ? 0.8 : 1)})`;
+        ctx.shadowBlur = isDay ? 4 : 8;
+        ctx.shadowColor = `${colors[p.colorIndex]}0.7)`;
         ctx.fill();
-        ctx.shadowBlur = 0; // reset
+        ctx.shadowBlur = 0;
 
         // Connect particle to mouse with glowing energetic laser line
         if (dist < mouse.radius && mouse.active) {
@@ -163,7 +178,9 @@ export const InteractiveBackground = () => {
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(mouse.x, mouse.y);
-          ctx.strokeStyle = `rgba(52, 211, 153, ${connectionAlpha})`;
+          ctx.strokeStyle = isDay
+            ? `rgba(13, 148, 136, ${connectionAlpha * 0.75})`
+            : `rgba(52, 211, 153, ${connectionAlpha})`;
           ctx.lineWidth = 1.2;
           ctx.stroke();
         }
@@ -176,11 +193,13 @@ export const InteractiveBackground = () => {
           const pjDist = Math.sqrt(pjDistX * pjDistX + pjDistY * pjDistY);
 
           if (pjDist < 125) {
-            const meshAlpha = (1 - pjDist / 125) * 0.22;
+            const meshAlpha = (1 - pjDist / 125) * (isDay ? 0.28 : 0.22);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(148, 163, 184, ${meshAlpha})`;
+            ctx.strokeStyle = isDay
+              ? `rgba(100, 116, 139, ${meshAlpha})`
+              : `rgba(148, 163, 184, ${meshAlpha})`;
             ctx.lineWidth = 0.65;
             ctx.stroke();
           }
