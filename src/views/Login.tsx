@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { BookOpen, LockKeyhole, Eye, EyeOff } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { InteractiveBackground } from '../components/InteractiveBackground';
 import './Login.css';
 
 type LocationState = {
@@ -16,10 +17,28 @@ export const Login = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
   const destination = state?.from?.pathname || '/';
+
+  // Interactive 3D Card Tilt responding to mouse tracking
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const { innerWidth, innerHeight } = window;
+      const xOffset = (e.clientX - innerWidth / 2) / (innerWidth / 2);
+      const yOffset = (e.clientY - innerHeight / 2) / (innerHeight / 2);
+
+      setTilt({
+        rotateX: -yOffset * 7,
+        rotateY: xOffset * 7,
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -54,17 +73,34 @@ export const Login = () => {
 
   return (
     <main className="auth-shell">
-      <section className="auth-panel" aria-label="Login">
-        <div className="auth-mark">
-          <BookOpen size={28} />
+      {/* Interactive mouse-tracking constellation background */}
+      <InteractiveBackground />
+
+      <section
+        className="auth-panel"
+        aria-label="Login"
+        style={{
+          transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+        }}
+      >
+        <div className="auth-header">
+          <div className="auth-mark">
+            <BookOpen size={26} />
+          </div>
+          <div className="auth-badge">
+            <span className="auth-badge-dot"></span>
+            <span>SECURE ACCESS</span>
+          </div>
         </div>
+
         <div>
-          <h1>MyCES</h1>
-          <p className="text-muted">Private access for Akshay</p>
+          <h1 className="auth-title">MyCES</h1>
+          <p className="auth-subtitle">AI Career Execution System &bull; Akshay</p>
         </div>
+
         <form className="auth-form" onSubmit={handleSubmit}>
           <label className="auth-label" htmlFor="password">
-            Password
+            Master Password
           </label>
           <div className="auth-input-wrap">
             <LockKeyhole size={18} className="auth-icon-left" />
@@ -74,7 +110,7 @@ export const Login = () => {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter your password"
+              placeholder="Enter access password"
               autoComplete="current-password"
               autoFocus
             />
@@ -90,7 +126,7 @@ export const Login = () => {
           </div>
           {error && <p className="auth-error">{error}</p>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Unlocking...' : 'Unlock'}
+            {isSubmitting ? 'Authenticating...' : 'Unlock System'}
           </button>
         </form>
       </section>
