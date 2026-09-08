@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { BookOpen, LockKeyhole, Eye, EyeOff } from 'lucide-react';
+import { LockKeyhole, Eye, EyeOff } from 'lucide-react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { InteractiveBackground } from '../components/InteractiveBackground';
 import './Login.css';
@@ -31,8 +31,8 @@ export const Login = () => {
       const yOffset = (e.clientY - innerHeight / 2) / (innerHeight / 2);
 
       setTilt({
-        rotateX: -yOffset * 7,
-        rotateY: xOffset * 7,
+        rotateX: -yOffset * 6,
+        rotateY: xOffset * 6,
       });
     };
 
@@ -54,7 +54,7 @@ export const Login = () => {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        setError(data?.message || 'Login failed.');
+        setError(data?.message || 'Invalid password.');
         return;
       }
 
@@ -83,25 +83,7 @@ export const Login = () => {
           transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
         }}
       >
-        <div className="auth-header">
-          <div className="auth-mark">
-            <BookOpen size={26} />
-          </div>
-          <div className="auth-badge">
-            <span className="auth-badge-dot"></span>
-            <span>SECURE ACCESS</span>
-          </div>
-        </div>
-
-        <div>
-          <h1 className="auth-title">MyCES</h1>
-          <p className="auth-subtitle">AI Career Execution System &bull; Akshay</p>
-        </div>
-
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="auth-label" htmlFor="password">
-            Master Password
-          </label>
           <div className="auth-input-wrap">
             <LockKeyhole size={18} className="auth-icon-left" />
             <input
@@ -110,7 +92,7 @@ export const Login = () => {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter access password"
+              placeholder="Enter password"
               autoComplete="current-password"
               autoFocus
             />
@@ -126,7 +108,7 @@ export const Login = () => {
           </div>
           {error && <p className="auth-error">{error}</p>}
           <button className="btn btn-primary auth-submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Authenticating...' : 'Unlock System'}
+            {isSubmitting ? 'Unlocking...' : 'Unlock'}
           </button>
         </form>
       </section>
