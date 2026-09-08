@@ -7,7 +7,6 @@ import {
   Briefcase,
   MessageSquare,
   AlertTriangle,
-  Target,
   FolderGit2,
   FileText,
   Files,
@@ -78,7 +77,6 @@ export const Sidebar = () => {
   const mainLinks = [
     { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { to: '/tracks', label: 'Learning Tracks', icon: <BookOpen size={20} /> },
-    { to: '/pl300', label: 'PL-300', icon: <Target size={20} /> },
     { to: '/concept-library', label: 'Concept Library', icon: <Library size={20} /> },
     { to: '/applications', label: 'Applications', icon: <Briefcase size={20} /> },
     { to: '/interviews', label: 'Interviews', icon: <MessageSquare size={20} /> },
