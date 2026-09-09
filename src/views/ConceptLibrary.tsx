@@ -129,13 +129,17 @@ export const ConceptLibrary = () => {
       setShowBulkImport(false);
       return;
     }
-    const blocks = bulkImportText.split(/(?:^|\n)(?:Q\d+[\.\:]|Question\s*\d+[\.\:])\s*/i);
+    // Handle markdown headers and bold text like "### Q1." or "**Q1.**"
+    const blocks = bulkImportText.split(/(?:^|\n)[#\s]*\**(?:Q\d+[\.\:]|Question\s*\d+[\.\:])\**\s*/i);
     const newQs: {question: string, answer: string}[] = [];
     blocks.forEach(block => {
-      if (!block.trim() || block.trim().toLowerCase() === 'interview prep') return;
-      const lines = block.trim().split('\n');
-      const question = lines[0].trim();
-      const answer = lines.slice(1).join('\n').replace(/^Answer:\s*/i, '').trim();
+      const cleanBlock = block.trim();
+      if (!cleanBlock || cleanBlock.toLowerCase().replace(/^[#\s\*]+/, '').startsWith('interview prep')) return;
+      
+      const lines = cleanBlock.split('\n');
+      const question = lines[0].replace(/\**$/, '').trim(); // Remove trailing bold stars if any
+      const answer = lines.slice(1).join('\n').replace(/^[#\s]*\**Answer:?\**\s*/i, '').trim();
+      
       if (question) newQs.push({ question, answer });
     });
     if (newQs.length > 0) {
