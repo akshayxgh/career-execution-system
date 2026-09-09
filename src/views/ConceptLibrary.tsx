@@ -398,12 +398,12 @@ This note will be saved in my MyCES Concept Library as my permanent quick-refere
                     </button>
                     <div style={{ marginBottom: '1rem', paddingRight: '2rem' }}>
                       <label className="text-xs text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Question</label>
-                      <input 
-                        className="input" 
+                      <textarea 
+                        className="textarea" 
                         placeholder="e.g. What is the main bottleneck of HTAP architectures?" 
                         value={q.question} 
                         onChange={e => updateQuestion(idx, 'question', e.target.value)} 
-                        style={{ width: '100%' }}
+                        style={{ width: '100%', minHeight: '60px', resize: 'vertical' }}
                       />
                     </div>
                     <div>

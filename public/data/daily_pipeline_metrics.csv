@@ -1,25 +1,26 @@
 ﻿Date,Category,Source,Scraped,Deduplicated,Filtered,AI_Analyzed,Apply_Matches,Maybe_Review,Skipped,High_Value_60plus,Avg_Score,Conversion_Pct
-2026-09-09,career,Accenture,5,0,0,5,0,0,5,0,17.0,0.0
+2026-09-09,career,Accenture,9,0,0,9,0,0,9,0,13.9,0.0
 2026-09-09,career,Birlasoft,1,0,0,1,0,0,1,0,58.0,0.0
 2026-09-09,career,Capgemini,1,0,0,1,0,0,1,0,15.0,0.0
+2026-09-09,career,Deloitte,1,0,0,1,0,0,1,0,25.0,0.0
 2026-09-09,career,EY,26,0,0,26,0,0,26,0,26.4,0.0
 2026-09-09,career,Ey,160,0,25,135,20,46,94,71,46.7,12.5
-2026-09-09,career,Genpact,7,0,0,7,1,0,6,1,27.9,14.3
-2026-09-09,career,IBM,12,0,0,12,1,0,11,1,43.1,8.3
-2026-09-09,career,Infosys,1,0,0,1,0,0,1,0,30.0,0.0
-2026-09-09,career,KPMG,16,0,0,16,0,1,15,1,25.4,0.0
-2026-09-09,career,LTIMindtree,2,0,0,2,0,0,2,0,29.5,0.0
-2026-09-09,career,PricewaterhouseCoopers Services LLP,10,0,0,10,0,0,10,0,30.7,0.0
-2026-09-09,career,Tata Consultancy Services,125,0,15,110,1,0,124,1,13.3,0.8
-2026-09-09,career,Wipro,1,0,1,0,0,0,1,0,0.0,0.0
-2026-09-09,links,Indeed,3,0,0,3,0,0,3,0,25.0,0.0
-2026-09-09,links,LinkedIn,9,0,0,9,1,0,8,1,21.9,11.1
-2026-09-09,links,Naukri,10,0,0,10,0,0,10,0,24.0,0.0
-2026-09-09,naukri_recommended,Naukri,143,0,5,138,20,29,94,49,53.4,14.0
-2026-09-09,portals,Foundit,4,0,0,4,1,1,2,2,49.2,25.0
-2026-09-09,portals,LinkedIn,2,0,0,2,0,0,2,0,40.0,0.0
-2026-09-09,portals,Naukri,8,1,0,8,0,0,8,0,13.8,0.0
-2026-09-09,portals,Shine,8,0,1,7,0,0,8,0,18.8,0.0
+2026-09-09,career,Genpact,8,0,0,8,1,0,7,1,29.4,12.5
+2026-09-09,career,IBM,21,0,0,21,1,0,20,1,34.4,4.8
+2026-09-09,career,Infosys,8,0,0,8,0,0,8,0,33.0,0.0
+2026-09-09,career,KPMG,29,0,0,29,0,1,28,1,21.6,0.0
+2026-09-09,career,LTIMindtree,8,0,0,8,0,0,8,0,19.9,0.0
+2026-09-09,career,PricewaterhouseCoopers Services LLP,13,0,0,13,0,0,13,0,26.9,0.0
+2026-09-09,career,Tata Consultancy Services,159,0,20,139,2,0,157,2,13.5,1.3
+2026-09-09,career,Wipro,2,0,1,1,0,0,2,0,7.5,0.0
+2026-09-09,links,Indeed,9,0,0,9,0,0,9,0,21.7,0.0
+2026-09-09,links,LinkedIn,23,0,0,23,1,0,22,1,23.5,4.3
+2026-09-09,links,Naukri,38,0,0,38,1,1,36,2,24.0,2.6
+2026-09-09,naukri_recommended,Naukri,174,0,6,168,26,32,116,58,54.1,14.9
+2026-09-09,portals,Foundit,1,0,0,1,0,0,1,0,10.0,0.0
+2026-09-09,portals,Indeed,5,0,0,5,3,0,2,3,60.4,60.0
+2026-09-09,portals,Naukri,18,2,0,18,5,1,12,6,33.2,27.8
+2026-09-09,portals,Shine,6,0,0,6,0,0,6,0,8.3,0.0
 2026-09-08,career,Accenture,8,0,0,8,0,0,8,0,23.2,0.0
 2026-09-08,career,Birlasoft,2,0,1,1,0,0,2,0,12.5,0.0
 2026-09-08,career,Capgemini,2,0,0,2,1,0,1,1,43.5,50.0
