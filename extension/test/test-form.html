@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Job Autofill Pro - Test Suite</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 850px;
+      margin: 30px auto;
+      padding: 20px;
+      color: #1e293b;
+      background: #f8fafc;
+    }
+    h1 { font-size: 24px; color: #0f172a; margin-bottom: 8px; }
+    p.sub { color: #64748b; margin-top: 0; margin-bottom: 24px; font-size: 14px; }
+    
+    .nav-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+    }
+    .tab-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #1d4ed8;
+    }
+    .tab-content {
+      display: none;
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: #334155; }
+    input[type="text"], input[type="email"], input[type="tel"], select, textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+      outline: none;
+    }
+    .radio-group { display: flex; gap: 15px; margin-top: 6px; }
+    .radio-group label { display: flex; align-items: center; gap: 6px; font-weight: normal; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .badge.pwc { background: #ffedd5; color: #c2410c; }
+    .badge.workday { background: #e0f2fe; color: #0284c7; }
+    .badge.greenhouse { background: #ecfdf5; color: #059669; }
+    .badge.lever { background: #fef3c7; color: #d97706; }
+    .badge.generic { background: #f1f5f9; color: #475569; }
+    
+    button.submit-btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      background-color: #059669;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Job Autofill Pro - Simulator</h1>
+  <p class="sub">Switch between mock portals to test both dedicated adapters and the generic fallback engine.</p>
+
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('pwc')">PwC (Workday Multi-Step)</button>
+    <button class="tab-btn" onclick="switchTab('workday')">Workday Standard</button>
+    <button class="tab-btn" onclick="switchTab('greenhouse')">Greenhouse</button>
+    <button class="tab-btn" onclick="switchTab('lever')">Lever</button>
+    <button class="tab-btn" onclick="switchTab('generic')">Generic (10% Unknown Site)</button>
+  </div>
+
+  <!-- PWC WORKDAY MOCK -->
+  <div id="tab-pwc" class="tab-content active" data-automation-id="workdayApplication">
+    <span class="badge pwc">Target: PwC Workday Dedicated Adapter</span>
+    <form onsubmit="event.preventDefault(); alert('PwC Application submitted');">
+      
+      <h3>Step 1: Source & History</h3>
+      <div class="form-group" data-automation-id="formField">
+        <label>How Did You Hear About Us?*</label>
+        <input type="text" placeholder="e.g. LinkedIn">
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Have you ever worked for PwC, one of our current brands, or any of our predecessor firms?*</label>
+        <div class="radio-group">
+          <label><input type="radio" name="pwc_prior" value="Yes"> Yes</label>
+          <label><input type="radio" name="pwc_prior" value="No"> No</label>
+        </div>
+      </div>
+
+      <h3>Step 3: Application Questions</h3>
+      <div class="form-group" data-automation-id="formField">
+        <label>Are you legally authorised to work in the country / territory in which this position is located?*</label>
+        <select>
+          <option value="">Select...</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Do you now, or will you in the future, need PwC to sponsor your visa or work authorisation to be eligible to work in the country / territory in which this position is located?*</label>
+        <select>
+          <option value="">Select...</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Do you hold the professional certifications and/or clearance as outlined in the job description?*</label>
+        <select>
+          <option value="">Select...</option>
+          <option value="Not Applicable">Not Applicable</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>How much notice must you provide your current employer before leaving?*</label>
+        <input type="text">
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Are you subject to a non-competition or other agreement, or aware of other circumstances, that would preclude or restrict your employment with PwC?*</label>
+        <textarea rows="2"></textarea>
+      </div>
+
+      <h3>Step 4: Voluntary Disclosures</h3>
+      <div class="form-group" data-automation-id="formField">
+        <label>Gender*</label>
+        <select>
+          <option value="">Select...</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Decline">Decline</option>
+        </select>
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Date of Birth*</label>
+        <input type="text" placeholder="DD/MM/YYYY">
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Marital Status*</label>
+        <select>
+          <option value="">Select...</option>
+          <option value="Single (India)">Single (India)</option>
+          <option value="Married (India)">Married (India)</option>
+        </select>
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>Primary Nationality*</label>
+        <select>
+          <option value="">Select...</option>
+          <option value="India">India</option>
+          <option value="United States">United States</option>
+        </select>
+      </div>
+
+      <div class="form-group" data-automation-id="formField">
+        <label>
+          <input type="checkbox"> Yes, I have read and consent to the terms and conditions*
+        </label>
+      </div>
+
+      <button type="submit" class="submit-btn">Simulate Submit</button>
+    </form>
+  </div>
+
+  <!-- WORKDAY STANDARD MOCK -->
+  <div id="tab-workday" class="tab-content" data-automation-id="workdayApplication">
+    <span class="badge workday">Target: Workday Dedicated Adapter</span>
+    <form onsubmit="event.preventDefault(); alert('Workday submitted');">
+      <div class="form-group">
+        <label>First Name (Workday Legal Name)</label>
+        <input type="text" data-automation-id="legalNameSection_firstName">
+      </div>
+      <div class="form-group">
+        <label>Middle Name</label>
+        <input type="text" data-automation-id="legalNameSection_middleName">
+      </div>
+      <div class="form-group">
+        <label>Last Name</label>
+        <input type="text" data-automation-id="legalNameSection_lastName">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" data-automation-id="contactInfoEmail">
+      </div>
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input type="tel" data-automation-id="phone-number">
+      </div>
+      <div class="form-group">
+        <label>Street Address Line 1</label>
+        <input type="text" data-automation-id="addressSection_addressLine1">
+      </div>
+      <div class="form-group">
+        <label>City</label>
+        <input type="text" data-automation-id="addressSection_city">
+      </div>
+      <div class="form-group">
+        <label>Postal Code</label>
+        <input type="text" data-automation-id="addressSection_postalCode">
+      </div>
+      <button type="submit" class="submit-btn">Simulate Submit</button>
+    </form>
+  </div>
+
+  <!-- GREENHOUSE MOCK -->
+  <div id="tab-greenhouse" class="tab-content">
+    <span class="badge greenhouse">Target: Greenhouse Dedicated Adapter</span>
+    <form id="application_form" onsubmit="event.preventDefault(); alert('Greenhouse submitted');">
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input type="text" id="first_name" name="first_name">
+      </div>
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input type="text" id="last_name" name="last_name">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email">
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone">
+      </div>
+      <button type="submit" class="submit-btn">Simulate Submit</button>
+    </form>
+  </div>
+
+  <!-- LEVER MOCK -->
+  <div id="tab-lever" class="tab-content">
+    <span class="badge lever">Target: Lever Dedicated Adapter</span>
+    <form class="lever-form" onsubmit="event.preventDefault(); alert('Lever submitted');">
+      <div class="form-group">
+        <label>Full name</label>
+        <input type="text" name="name">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email">
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" name="phone">
+      </div>
+      <button type="submit" class="submit-btn">Simulate Submit</button>
+    </form>
+  </div>
+
+  <!-- GENERIC MOCK -->
+  <div id="tab-generic" class="tab-content">
+    <span class="badge generic">Target: Generic Form Adapter (Fallback)</span>
+    <form onsubmit="event.preventDefault(); alert('Generic submitted');">
+      <div class="form-group">
+        <label for="gen_fname">Given Name</label>
+        <input type="text" id="gen_fname" placeholder="Enter first name">
+      </div>
+      <div class="form-group">
+        <label for="gen_lname">Surname</label>
+        <input type="text" id="gen_lname" placeholder="Enter last name">
+      </div>
+      <div class="form-group">
+        <label for="gen_email">E-mail Address</label>
+        <input type="email" id="gen_email">
+      </div>
+      <div class="form-group">
+        <label for="gen_phone">Contact Number</label>
+        <input type="tel" id="gen_phone">
+      </div>
+      <button type="submit" class="submit-btn">Simulate Submit</button>
+    </form>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const btn = event.target;
+      const content = document.getElementById('tab-' + tabId);
+      if (btn) btn.classList.add('active');
+      if (content) content.classList.add('active');
+    }
+  </script>
+</body>
+</html>

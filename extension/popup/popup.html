@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Job Autofill Pro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <h2>Job Autofill Pro</h2>
+    <span class="version-tag">v1.1</span>
+  </div>
+
+  <!-- Detected Portal Badge -->
+  <div class="site-badge-container">
+    <div class="badge-label">Active Site Engine:</div>
+    <div id="site-badge" class="site-badge detecting">Detecting...</div>
+  </div>
+
+  <div class="section">
+    <h3>Candidate Profile</h3>
+    <div id="profile-status">
+      Profile: <span id="status-text" class="status-indicator">Checking...</span>
+    </div>
+    
+    <input type="file" id="import-file" accept=".json" style="display: none;">
+    <button id="btn-import" class="btn">Import resume_zero.json</button>
+  </div>
+
+  <div class="section">
+    <h3>Questionnaire Memory</h3>
+    <div id="questionnaire-status">
+      Questionnaire: <span id="q-status-text" class="status-indicator">Checking...</span>
+    </div>
+    
+    <input type="file" id="import-questionnaire" accept=".json" style="display: none;">
+    <button id="btn-import-q" class="btn">Update Questionnaire</button>
+  </div>
+
+  <div class="section">
+    <button id="btn-fill" class="btn primary" disabled>⚡ Autofill This Form</button>
+  </div>
+  
+  <div id="fill-summary" class="summary hidden">
+    <h4>Fill Summary</h4>
+    <div id="summary-engine" class="summary-engine"></div>
+    <div id="summary-text"></div>
+  </div>
+
+  <script src="../core/profile-mapper.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

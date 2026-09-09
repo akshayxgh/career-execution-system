@@ -13,6 +13,7 @@ import {
 } from "../services/decisionIntelligenceService";
 import JobCopilotWidget from "../components/copilot/JobCopilotWidget";
 import HideReasonModal from "../components/decision/HideReasonModal";
+import NaukriCheckModal from "../components/decision/NaukriCheckModal";
 import {
   type ColumnFiltersState,
   type FilterColumnKey,
@@ -135,6 +136,41 @@ export default function DecisionIntelligence() {
   const [hidingJob, setHidingJob] = useState<DecisionJob | null>(null);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [isBulkHiding, setIsBulkHiding] = useState(false);
+  const [isNaukriModalOpen, setIsNaukriModalOpen] = useState(false);
+
+  const naukriJobsCount = useMemo(() => {
+    return jobs.filter((j) => (j.url || "").toLowerCase().includes("naukri.com")).length;
+  }, [jobs]);
+
+  const handleNaukriJobApplied = async (jobId: string) => {
+    await updateDecisionJobStatus(jobId, "APPLIED");
+    setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+    setTimeout(() => {
+      setJobs((current) => current.filter((j) => j.id !== jobId));
+      setRemovingJobIds((prev) => {
+        const next = { ...prev };
+        delete next[jobId];
+        return next;
+      });
+    }, 300);
+  };
+
+  const handleNaukriJobExpired = async (jobId: string) => {
+    await updateDecisionJobStatus(jobId, "HIDDEN", "Expired");
+    setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+    setTimeout(() => {
+      setJobs((current) => current.filter((j) => j.id !== jobId));
+      setRemovingJobIds((prev) => {
+        const next = { ...prev };
+        delete next[jobId];
+        return next;
+      });
+    }, 300);
+  };
+
+  const handleNaukriAllCompleted = () => {
+    loadJobs(false);
+  };
 
   const loadJobs = async (showLoadingState = true) => {
     try {
@@ -682,6 +718,8 @@ export default function DecisionIntelligence() {
           <DecisionHeader
             totalCount={jobs.length}
             filteredCount={sortedJobs.length}
+            naukriCount={naukriJobsCount}
+            onOpenNaukriCheck={() => setIsNaukriModalOpen(true)}
           />
           <DecisionToolbar
             search={search}
@@ -749,6 +787,15 @@ export default function DecisionIntelligence() {
             setIsBulkHiding(false);
           }}
           loading={savingStatus}
+        />
+
+        <NaukriCheckModal
+          isOpen={isNaukriModalOpen}
+          onClose={() => setIsNaukriModalOpen(false)}
+          jobs={jobs}
+          onJobApplied={handleNaukriJobApplied}
+          onJobExpired={handleNaukriJobExpired}
+          onAllCompleted={handleNaukriAllCompleted}
         />
       </div>
     </div>

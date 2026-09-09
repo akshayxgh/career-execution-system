@@ -1,0 +1,604 @@
+[
+  {
+    "question": "How many years of experience do you have in ETL/ELT?",
+    "answer": "5+"
+  },
+  {
+    "question": "How many years of experience do you have in EDA?",
+    "answer": "5+"
+  },
+  {
+    "question": "Please select the city you are currently residing or willing to relocate to",
+    "answer": "Skip this question"
+  },
+  {
+    "question": "Are you currently residing in Hyderabad or willing to relocate to Hyderabad?",
+    "answer": "No"
+  },
+  {
+    "question": "How many years of experience do you have in Azure?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in DAX?",
+    "answer": "5+"
+  },
+  {
+    "question": "If you are serving notice then what will be the last working day?",
+    "answer": "Immediate Joiner"
+  },
+  {
+    "question": "What is your notice period? & What is your LWD?",
+    "answer": "Immediate Joiner"
+  },
+  {
+    "question": "How many years of experience do you have in Time Management Skills?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Cross Functional Coordination?",
+    "answer": "5+ years"
+  },
+  {
+    "question": "How many years of experience do you have in Hris Systems?",
+    "answer": "0"
+  },
+  {
+    "question": "What is your official notice period? If Serving, Please mention the Last Working Day.",
+    "answer": "Immediate Joiner"
+  },
+  {
+    "question": "How many years of experience do you have in Looker?",
+    "answer": "6 Months+"
+  },
+  {
+    "question": "What is your current CTC in Lacs per annum?",
+    "answer": "5LPA"
+  },
+  {
+    "question": "How many years of experience do you have in Health Insurance?",
+    "answer": "YES, Worked with UHG"
+  },
+  {
+    "question": "How many vendors or contracts have you managed?",
+    "answer": "1 Client, 6 teams"
+  },
+  {
+    "question": "What is your current CTC in Lacs per annum?(Please do not mention 0)",
+    "answer": "5"
+  },
+  {
+    "question": "How many years of experience do you have in Power Bi service?",
+    "answer": "3+"
+  },
+  {
+    "question": "How many years of experience do you have in Machine Learning?",
+    "answer": "0"
+  },
+  {
+    "question": "Have you worked with cloud data warehouses such as BigQuery, Snowflake, or Redshift?",
+    "answer": "No"
+  },
+  {
+    "question": "How many years of experience do you have in SQL Server?",
+    "answer": "No, but worked in SQL"
+  },
+  {
+    "question": "Marital Status",
+    "aliases": [
+      "Marital Status (India)",
+      "Marital Status*"
+    ],
+    "answer": "Single (India)"
+  },
+  {
+    "question": "How many years of experience do you have in MSBI?",
+    "answer": "5+"
+  },
+  {
+    "question": "Are you ok with CIELHR Payroll(Offrole)?",
+    "answer": "Yes"
+  },
+  {
+    "question": "How many years of experience do you have in Advance Sql?",
+    "answer": "3+"
+  },
+  {
+    "question": "Where are you currently residing in Bengaluru ?",
+    "answer": "None"
+  },
+  {
+    "question": "How many years of experience do you have in Tableau + Data bases- SQL/MYSQL?",
+    "answer": "Not in Tableau, but worked in SQL"
+  },
+  {
+    "question": "How many years of experience do you have in Data Modelling tools like ERwin?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Regular Expressions?",
+    "answer": "3+"
+  },
+  {
+    "question": "How many years of experience do you have in D365?",
+    "answer": "No"
+  },
+  {
+    "question": "How many years of experience do you have in Data Bricks?",
+    "answer": "No"
+  },
+  {
+    "question": "How many years of experience do you have in FPNA?",
+    "answer": "Na"
+  },
+  {
+    "question": "How many years of experience do you have in Finance Automation?",
+    "answer": "None directly, but created impact by creating interactive dashboard."
+  },
+  {
+    "question": "How many years of experience do you have in Supply Chain?",
+    "answer": "None but I am a very fast learner"
+  },
+  {
+    "question": "How many years of experience do you have in Commission Management?",
+    "answer": "0"
+  },
+  {
+    "question": "Employee Code in case they have worked in the past",
+    "answer": "null"
+  },
+  {
+    "question": "How many years of experience do you have in Power Apps?",
+    "answer": "3+ in Power Automate"
+  },
+  {
+    "question": "How many years of experience do you have in Power Platform?",
+    "answer": "5+ in Power Bi, 3+ in Power Automate"
+  },
+  {
+    "question": "How many years of experience do you have in Data Lake?",
+    "answer": 0
+  },
+  {
+    "question": "What is your expected CTC in Lacs per annum?",
+    "answer": "7+"
+  },
+  {
+    "question": "How many years of experience do you have in Knime?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Receivable?",
+    "answer": "0"
+  },
+  {
+    "question": "Please complete the screening questions here: https://myglit.com/lateral/cref/eba232059b",
+    "answer": "OK"
+  },
+  {
+    "question": "How many years of experience do you have in Deneb Visuals?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Product Analysis?",
+    "answer": "5+"
+  },
+  {
+    "question": "What logistics KPIs have you built executive dashboards for (e.g., OTIF, freight cost, carrier performance, warehouse productivity)?",
+    "answer": "Can't remember"
+  },
+  {
+    "question": "How many years of experience do you have in LookerML?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Data Warehousing?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Scrapy?",
+    "answer": 0
+  },
+  {
+    "question": "How many years of experience do you have in Azure Data Factory?",
+    "answer": 0
+  },
+  {
+    "question": "How many years of experience do you have in Artificial Intelligence?",
+    "answer": "Worked with Gemini, CLaude but dont know to build it"
+  },
+  {
+    "question": "How many years of experience do you have in Model Driven Apps?",
+    "answer": "5+ experience in Power BI Data Model"
+  },
+  {
+    "question": "How many years of experience do you have in Retrieval Augmented Generation?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Canvas?",
+    "answer": 0
+  },
+  {
+    "question": "How many years of experience do you have in US Accounting?",
+    "answer": 0
+  },
+  {
+    "question": "How many years of experience do you have in EA?",
+    "answer": 0
+  },
+  {
+    "question": "How Many Years of Experience do you have work as Executive Assistant",
+    "answer": 0
+  },
+  {
+    "question": "How many years of experience do you have in SSRS?",
+    "answer": 0
+  },
+  {
+    "question": "How many years of experience do you have in Financial Analysis?",
+    "answer": 0
+  },
+  {
+    "question": "DOB ?",
+    "answer": "9th May, 1997"
+  },
+  {
+    "question": "If Yes, Employee ID",
+    "answer": "No"
+  },
+  {
+    "question": "How many years of experience do you have in SAP Analytics Cloud (SAC)?",
+    "answer": "0"
+  },
+  {
+    "question": "Do you have any experience in Banking Domain ? If Yes Elaborate number of experience and in which bank?",
+    "answer": "No"
+  },
+  {
+    "question": "Please share Pan card Number , we have to upload profile on portal.",
+    "answer": "okay"
+  },
+  {
+    "question": "8th Aug, Face to Face Interview , Are you Available ?",
+    "answer": "No"
+  },
+  {
+    "question": "How many years of experience do you have in ERP?",
+    "answer": "0"
+  },
+  {
+    "question": "",
+    "answer": ""
+  },
+  {
+    "question": "How many years of experience do you have in Crm Tool?",
+    "answer": "0"
+  },
+  {
+    "question": "Are you open to working 6 days a week",
+    "answer": "Yes"
+  },
+  {
+    "question": "Something went wrong. Please Try again later",
+    "answer": "OK"
+  },
+  {
+    "question": "How many years of experience do you have in Sales analyst?",
+    "answer": "Never worked on Sales analysis in real life, did projects though"
+  },
+  {
+    "question": "What is your current location?",
+    "answer": "Kolkata"
+  },
+  {
+    "question": "How many years of experience do you have in RAID?",
+    "answer": "NO"
+  },
+  {
+    "question": "How many years of experience do you have in Sales Support?",
+    "answer": "0"
+  },
+  {
+    "question": "How many years of experience do you have in Sales Mis?",
+    "answer": "Never worked on Sales analysis in real life, did projects though"
+  },
+  {
+    "question": "How many years of experience do you have in Consolidation?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Azure DevOps, Jira tools?",
+    "answer": null
+  },
+  {
+    "question": "Postal Code",
+    "answer": null
+  },
+  {
+    "question": "Seeking candidates with 4-6 yr of relevant exp with Life insurance (India / US) - Whats' your overall and relevant exp",
+    "answer": null
+  },
+  {
+    "question": "What type of logistics operations have you handled?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Agile Methodology?",
+    "answer": null
+  },
+  {
+    "question": "Do you have PF for all of your employments?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in team management?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Meeting Management?",
+    "answer": null
+  },
+  {
+    "question": "How many years of relevant experience do you hold in Agentic AI Testing?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Risk Analytics & Reporting?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Project Coordination?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Technical Business Analysis?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in BPO Project Management?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in semantic modeling?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Collections?",
+    "answer": null
+  },
+  {
+    "question": "How many years of experience do you have in Rest Api Integration?",
+    "answer": null
+  },
+  {
+    "question": "How Did You Hear About Us?",
+    "aliases": [
+      "Source",
+      "How did you hear about this opportunity?"
+    ],
+    "answer": "LinkedIn"
+  },
+  {
+    "question": "Have you ever worked for PwC, one of our current brands, or any of our predecessor firms?",
+    "aliases": [
+      "Prior PwC Employment",
+      "PwC Alumni"
+    ],
+    "answer": "No"
+  },
+  {
+    "question": "Are you legally authorised to work in the country / territory in which this position is located?",
+    "aliases": [
+      "Authorized to work in India",
+      "Legal authorization",
+      "Authorized to work"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "question": "Do you now, or will you in the future, need PwC to sponsor your visa or work authorisation to be eligible to work in the country / territory in which this position is located?",
+    "aliases": [
+      "Visa sponsorship required",
+      "Sponsorship"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "question": "Do you hold the professional certifications and/or clearance as outlined in the job description?",
+    "aliases": [
+      "Professional certifications",
+      "Clearance"
+    ],
+    "answer": "Not Applicable"
+  },
+  {
+    "question": "Are you willing and able to travel per the job description requirements?",
+    "aliases": [
+      "Willing to travel",
+      "Travel requirements"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "question": "How much notice must you provide your current employer before leaving?",
+    "aliases": [
+      "Notice period",
+      "Notice duration in days"
+    ],
+    "answer": "0"
+  },
+  {
+    "question": "Are you subject to a non-competition or other agreement, or aware of other circumstances, that would preclude or restrict your employment with PwC?",
+    "aliases": [
+      "Non-competition agreement",
+      "Non-compete"
+    ],
+    "answer": "none"
+  },
+  {
+    "question": "Have you ever applied, interviewed, received an offer, or been employed with PwC or its predecessor firms? If yes, please provide firm name, estimated date, location, position, and name at time of application.",
+    "aliases": [
+      "Previously applied to PwC"
+    ],
+    "answer": "applied"
+  },
+  {
+    "question": "Are you currently working, or have you worked, as third party labor or an independent contractor to PwC?",
+    "aliases": [
+      "Third party labor contractor PwC"
+    ],
+    "answer": "No"
+  },
+  {
+    "question": "Within the last 24 months, have you worked with a PwC engagement team as a client? If yes, please identify the client and your role in relation to the engagement.",
+    "aliases": [
+      "Worked with PwC engagement team as client"
+    ],
+    "answer": "no"
+  },
+  {
+    "question": "Have you recently taken a break from your career for personal or professional reasons?",
+    "aliases": [
+      "Career break"
+    ],
+    "answer": "No"
+  },
+  {
+    "question": "Are you related to a PwC partner, principal, or employee? If yes, please provide his/her name and your relationship to the individual.",
+    "aliases": [
+      "Related to PwC employee",
+      "Relative at PwC"
+    ],
+    "answer": "none"
+  },
+  {
+    "question": "I agree to have my personal data processed by PwC for the purpose of recruitment for other positions than the one I have initially applied for.",
+    "aliases": [
+      "Consent for future positions",
+      "Data processing consent"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "question": "I consent to receive communication, including electronic communication, from entities within the PwC network about job related events organized by or in participation of PwC, which are beyond the scope of this job application.",
+    "aliases": [
+      "Electronic communication consent",
+      "Marketing consent"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "question": "I am aware that I am expected to work in India, even if I am deployed on a project which has flexibility to work from home",
+    "aliases": [
+      "Work in India awareness",
+      "Expected to work in India"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "question": "Gender",
+    "aliases": [
+      "Sex",
+      "Gender*"
+    ],
+    "answer": "Male"
+  },
+  {
+    "question": "Date of Birth",
+    "aliases": [
+      "DOB",
+      "Birth Date",
+      "Date of Birth*"
+    ],
+    "answer": "05/09/1997"
+  },
+  {
+    "question": "Country / Territory of Birth",
+    "aliases": [
+      "Country of Birth",
+      "Country / Territory of Birth*"
+    ],
+    "answer": "India"
+  },
+  {
+    "question": "Region of Birth",
+    "aliases": [
+      "State of Birth",
+      "Region of Birth*"
+    ],
+    "answer": "West Bengal"
+  },
+  {
+    "question": "City of Birth",
+    "aliases": [
+      "Place of Birth",
+      "City of Birth*"
+    ],
+    "answer": "Kolkata"
+  },
+  {
+    "question": "Marital Status",
+    "aliases": [
+      "Marital Status (India)"
+    ],
+    "answer": "Single (India)"
+  },
+  {
+    "question": "Citizenship Status",
+    "aliases": [
+      "Citizenship",
+      "Citizenship Status*"
+    ],
+    "answer": "Citizen (India)"
+  },
+  {
+    "question": "Primary Nationality",
+    "aliases": [
+      "Nationality",
+      "Primary Nationality*"
+    ],
+    "answer": "India"
+  },
+  {
+    "question": "Yes, I have read and consent to the terms and conditions",
+    "aliases": [
+      "Terms and Conditions",
+      "consent to the terms and conditions"
+    ],
+    "answer": "true"
+  },
+  {
+    "question": "What is your earliest available start date?",
+    "aliases": [
+      "earliest available start date",
+      "start date",
+      "available start date"
+    ],
+    "answer": "01/09/2026"
+  },
+  {
+    "question": "By checking this box, I confirm that I have read and understand IBM Talent Acquisition Privacy Notice.",
+    "aliases": [
+      "IBM Talent Acquisition Privacy Notice",
+      "I agree IBM Privacy Notice"
+    ],
+    "answer": "true"
+  },
+  {
+    "question": "Are you a resident of China or South Korea?",
+    "aliases": [
+      "resident of China or South Korea",
+      "China or South Korea resident"
+    ],
+    "answer": "No"
+  },
+  {
+    "question": "Is current position?",
+    "aliases": [
+      "Is current position? *",
+      "current position"
+    ],
+    "answer": "No"
+  }
+]
