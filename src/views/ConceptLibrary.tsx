@@ -40,6 +40,8 @@ export const ConceptLibrary = () => {
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'status-asc' | 'status-desc'>('date-desc');
   const [promptCopied, setPromptCopied] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState('');
 
   const initialFormState: Partial<Concept> = {
     name: '',
@@ -120,6 +122,30 @@ export const ConceptLibrary = () => {
     const newQs = [...(formData.interviewQuestions || [])];
     newQs.splice(index, 1);
     setFormData({ ...formData, interviewQuestions: newQs });
+  };
+
+  const handleBulkImport = () => {
+    if (!bulkImportText.trim()) {
+      setShowBulkImport(false);
+      return;
+    }
+    const blocks = bulkImportText.split(/(?:^|\n)(?:Q\d+[\.\:]|Question\s*\d+[\.\:])\s*/i);
+    const newQs: {question: string, answer: string}[] = [];
+    blocks.forEach(block => {
+      if (!block.trim() || block.trim().toLowerCase() === 'interview prep') return;
+      const lines = block.trim().split('\n');
+      const question = lines[0].trim();
+      const answer = lines.slice(1).join('\n').replace(/^Answer:\s*/i, '').trim();
+      if (question) newQs.push({ question, answer });
+    });
+    if (newQs.length > 0) {
+      setFormData({
+        ...formData,
+        interviewQuestions: [...(formData.interviewQuestions || []), ...newQs]
+      });
+    }
+    setBulkImportText('');
+    setShowBulkImport(false);
   };
 
   const concepts = state.concepts || [];
@@ -333,10 +359,32 @@ This note will be saved in my MyCES Concept Library as my permanent quick-refere
             <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <label className="text-sm text-muted">Interview Questions (Optional)</label>
-                <button type="button" onClick={addQuestion} className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
-                  + Add Question
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" onClick={() => setShowBulkImport(!showBulkImport)} className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
+                    ⚡ Bulk Import
+                  </button>
+                  <button type="button" onClick={addQuestion} className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
+                    + Add Question
+                  </button>
+                </div>
               </div>
+
+              {showBulkImport && (
+                <div style={{ padding: '1rem', backgroundColor: 'var(--bg-dark)', borderRadius: '6px', border: '1px solid var(--accent-primary)', marginBottom: '1rem' }}>
+                  <label className="text-xs text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Paste your Interview Prep Markdown here</label>
+                  <textarea 
+                    className="textarea" 
+                    style={{ width: '100%', minHeight: '120px', marginBottom: '0.5rem' }}
+                    placeholder="Q1. What is a data warehouse?&#10;Answer: A data warehouse is...&#10;&#10;Key Point: ..."
+                    value={bulkImportText}
+                    onChange={e => setBulkImportText(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setShowBulkImport(false)} className="btn btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>Cancel</button>
+                    <button type="button" onClick={handleBulkImport} className="btn btn-primary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>Import Questions</button>
+                  </div>
+                </div>
+              )}
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {formData.interviewQuestions && formData.interviewQuestions.map((q, idx) => (
