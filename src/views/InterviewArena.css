@@ -1,0 +1,858 @@
+/* Interview Arena Mobile-First Responsive Styles */
+
+.arena-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header Banner */
+.arena-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.arena-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.arena-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.arena-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.arena-tag-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.arena-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+}
+
+.arena-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.arena-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.arena-clock-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  min-height: 40px;
+}
+
+.arena-clock-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.arena-clock-value {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.arena-log-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+/* Mode & Filter Toolbar */
+.arena-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 14px;
+}
+
+.arena-modes-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.arena-modes-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.arena-modes-list {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.arena-mode-btn {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: var(--bg-dark);
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.arena-mode-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+}
+
+.arena-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.arena-filter-select {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-height: 34px;
+}
+
+/* Empty State & Completed Trophy Card */
+.arena-empty-card {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  border-radius: 16px;
+}
+
+.arena-trophy-card {
+  padding: 3rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 16px;
+  border: 2px solid var(--accent-primary);
+}
+
+.arena-trophy-card h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.arena-trophy-card p {
+  max-width: 500px;
+  font-size: 0.95rem;
+}
+
+.arena-trophy-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 360px;
+  margin-top: 0.5rem;
+}
+
+.arena-trophy-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Dual Workspace Grid */
+.arena-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.arena-left-col,
+.arena-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Question Prompt Card */
+.arena-card {
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  padding: 1.25rem;
+}
+
+.arena-q-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.arena-q-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.arena-tag {
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.arena-tag-num {
+  background: var(--bg-dark);
+  color: var(--text-main);
+}
+
+.arena-tag-tool {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.arena-tag-company {
+  background: rgba(5, 150, 105, 0.15);
+  color: var(--accent-primary);
+}
+
+.arena-tag-diff {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.arena-tag-diff.hard {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+.arena-tag-diff.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+
+.arena-q-prompt {
+  margin: 0.75rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Blueprint Card */
+.arena-blueprint-card {
+  border-radius: 16px;
+  border-left: 4px solid var(--accent-primary);
+  background-color: rgba(5, 150, 105, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.arena-blueprint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.arena-blueprint-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.arena-blueprint-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.arena-blueprint-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.arena-blueprint-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.arena-blueprint-col {
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+}
+
+.arena-blueprint-step-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.arena-blueprint-step-desc {
+  font-size: 0.75rem;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+/* Speech Recorder & Timer Box */
+.arena-recorder-card {
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.arena-recorder-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.arena-mic-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.arena-mic-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--accent-primary);
+  color: #ffffff;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.arena-mic-btn.listening {
+  background-color: var(--danger);
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.35);
+  animation: arena-pulse 1.8s infinite;
+}
+
+@keyframes arena-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.arena-mic-labels {
+  min-width: 0;
+}
+
+.arena-mic-state {
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arena-mic-stats {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.arena-timer-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  font-weight: 900;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.arena-progress-track {
+  width: 100%;
+  height: 6px;
+  background-color: var(--bg-dark);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.arena-progress-bar {
+  height: 100%;
+  transition: width 1s linear;
+}
+
+.arena-speech-textarea {
+  width: 100%;
+  padding: 0.85rem;
+  font-size: 1rem; /* 16px minimum to avoid mobile iOS Safari auto-zoom */
+  line-height: 1.5;
+  border-radius: 10px;
+  resize: vertical;
+  min-height: 100px;
+  box-sizing: border-box;
+}
+
+.arena-recorder-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.arena-recorder-actions-primary {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.arena-ai-critique-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: none;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.arena-ai-critique-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.arena-next-btn {
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+}
+
+/* AI Critique Result Card */
+.arena-critique-card {
+  border-radius: 16px;
+  border: 1px solid #6366f1;
+  background: rgba(99, 102, 241, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem;
+}
+
+.arena-critique-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.arena-critique-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.arena-critique-title h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #6366f1;
+}
+
+.arena-clarity-score {
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  font-weight: 900;
+  font-size: 0.82rem;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.arena-critique-verdict {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.arena-critique-section {
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.arena-critique-section-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.02em;
+}
+
+.arena-critique-section-body {
+  font-size: 0.8rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+/* Confidence Rating Card */
+.arena-confidence-card {
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.25rem;
+}
+
+.arena-confidence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.arena-confidence-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.arena-confidence-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.arena-auto-rated-badge {
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.arena-confidence-btn-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.arena-confidence-btn {
+  padding: 0.6rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+/* Ideal Answer Solution Card */
+.arena-solution-card {
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.arena-solution-accordion-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--text-main);
+  font-weight: 800;
+  font-size: 0.9rem;
+  width: 100%;
+  text-align: left;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints: Tablets & Mobile (< 1024px, < 768px, < 480px)
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .arena-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .arena-container {
+    gap: 1rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .arena-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .arena-title {
+    font-size: 1.4rem;
+  }
+
+  .arena-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .arena-header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .arena-clock-box {
+    justify-content: center;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .arena-log-btn {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  /* Mode & Filter Toolbar on Mobile */
+  .arena-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .arena-modes-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .arena-modes-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .arena-modes-list::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .arena-mode-btn {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.7rem;
+    flex-shrink: 0;
+  }
+
+  .arena-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .arena-filter-select {
+    width: 100%;
+  }
+
+  /* Blueprint on mobile */
+  .arena-blueprint-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  /* Cards on mobile */
+  .arena-card,
+  .arena-critique-card,
+  .arena-confidence-card,
+  .arena-solution-card {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .arena-q-prompt {
+    font-size: 1.1rem;
+  }
+
+  /* Speech Recorder Controls on Mobile */
+  .arena-recorder-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .arena-recorder-actions > button.btn-secondary {
+    width: 100%;
+    justify-content: center;
+    padding: 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .arena-recorder-actions-primary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .arena-ai-critique-btn,
+  .arena-next-btn {
+    width: 100%;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .arena-title {
+    font-size: 1.25rem;
+  }
+
+  .arena-tag-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .arena-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .arena-header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .arena-recorder-top {
+    gap: 0.5rem;
+  }
+
+  .arena-mic-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .arena-timer-pill {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.9rem;
+  }
+
+  .arena-confidence-btn {
+    font-size: 0.72rem;
+    padding: 0.5rem 0.25rem;
+  }
+
+  .arena-recorder-actions-primary {
+    grid-template-columns: 1fr;
+  }
+}

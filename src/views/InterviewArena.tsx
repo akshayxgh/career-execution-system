@@ -23,6 +23,7 @@ import {
   getQuestionCompanies,
 } from '../services/copilotService';
 import { formatToISTDate } from '../utils/dateUtils';
+import './InterviewArena.css';
 
 // Web Speech API interface declarations for TypeScript
 interface SpeechRecognitionEvent extends Event {
@@ -54,6 +55,7 @@ export const InterviewArena: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [sessionQuestions, setSessionQuestions] = useState<QuestionBankItem[]>([]);
   const [showIdealAnswer, setShowIdealAnswer] = useState<boolean>(false);
+  const [showBlueprint, setShowBlueprint] = useState<boolean>(true);
 
   // Timer States
   const [questionTimerSeconds, setQuestionTimerSeconds] = useState<number>(60);
@@ -363,64 +365,30 @@ export const InterviewArena: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="arena-container">
       {/* Header Banner */}
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          paddingBottom: '1rem',
-          borderBottom: '1px solid var(--border-color)',
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.2rem 0.6rem',
-                borderRadius: '20px',
-                background: 'rgba(239, 68, 68, 0.12)',
-                color: 'var(--danger)',
-                fontSize: '0.75rem',
-                fontWeight: 800,
-              }}
-            >
+      <header className="arena-header">
+        <div className="arena-header-left">
+          <div className="arena-badge-group">
+            <span className="arena-tag-badge">
               <Mic size={13} />
               VERBAL PITCH & SPEECH SIMULATOR
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              • 45-Min Daily Speaking Workout
-            </span>
+            <span className="arena-tag-sub">• 45-Min Daily Speaking Workout</span>
           </div>
-          <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800 }}>Interview Arena</h1>
-          <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>
+          <h1 className="arena-title">Interview Arena</h1>
+          <p className="arena-subtitle">
             Master clear, structured articulation under pressure using the Senior Consultant 3-Part Formula
           </p>
         </div>
 
         {/* Total Session Clock & Daily Routine Sync */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 0.85rem',
-              borderRadius: '10px',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-            }}
-          >
+        <div className="arena-header-actions">
+          <div className="arena-clock-box">
             <Clock size={16} color="var(--accent-primary)" />
             <div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>SESSION CLOCK</div>
-              <div style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1 }}>
+              <div className="arena-clock-label">SESSION CLOCK</div>
+              <div className="arena-clock-value">
                 {formatTime(totalSessionSeconds)}
               </div>
             </div>
@@ -428,17 +396,9 @@ export const InterviewArena: React.FC = () => {
 
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary arena-log-btn"
             onClick={logSessionToDailyRoutine}
             disabled={loggedStudyHours}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-            }}
           >
             <Save size={16} />
             <span>{loggedStudyHours ? 'Logged to Routine ✓' : 'Log 45m Session'}</span>
@@ -447,55 +407,36 @@ export const InterviewArena: React.FC = () => {
       </header>
 
       {/* Mode & Category Bar */}
-      <div
-        className="card"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          padding: '0.85rem 1.25rem',
-        }}
-      >
+      <div className="card arena-toolbar">
         {/* Modes */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Workout Mode:</span>
-          {[
-            { id: '45m_workout', label: '🔥 45-Min Full Session' },
-            { id: '15m_sprint', label: '⚡ 15-Min Rapid Sprint' },
-            { id: 'company_drill', label: '🏢 Target Company Drill' },
-            { id: 'freeform', label: '🎯 Free Practice' },
-          ].map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setWorkoutMode(m.id as WorkoutMode)}
-              style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: '20px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                border: 'none',
-                cursor: 'pointer',
-                background: workoutMode === m.id ? 'var(--accent-primary)' : 'var(--bg-dark)',
-                color: workoutMode === m.id ? '#ffffff' : 'var(--text-muted)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
+        <div className="arena-modes-wrapper">
+          <span className="arena-modes-label">Workout Mode:</span>
+          <div className="arena-modes-list">
+            {[
+              { id: '45m_workout', label: '🔥 45-Min Full Session' },
+              { id: '15m_sprint', label: '⚡ 15-Min Rapid Sprint' },
+              { id: 'company_drill', label: '🏢 Target Company Drill' },
+              { id: 'freeform', label: '🎯 Free Practice' },
+            ].map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`arena-mode-btn ${workoutMode === m.id ? 'active' : ''}`}
+                onClick={() => setWorkoutMode(m.id as WorkoutMode)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Filter Dropdowns */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="arena-filters">
           {/* Tool filter */}
           <select
-            className="input"
+            className="input arena-filter-select"
             value={selectedTool}
             onChange={(e) => setSelectedTool(e.target.value)}
-            style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, width: 'auto' }}
           >
             <option value="ALL">All Tools (Power BI / SQL)</option>
             {availableTools.map((t) => (
@@ -508,10 +449,9 @@ export const InterviewArena: React.FC = () => {
           {/* Company filter */}
           {workoutMode === 'company_drill' && (
             <select
-              className="input"
+              className="input arena-filter-select"
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, width: 'auto' }}
             >
               <option value="ALL">Select Company</option>
               {availableCompanies.map((c) => (
@@ -525,7 +465,7 @@ export const InterviewArena: React.FC = () => {
       </div>
 
       {sessionQuestions.length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
+        <div className="card arena-empty-card">
           <HelpCircle size={36} color="var(--text-muted)" style={{ margin: '0 auto 0.75rem' }} />
           <h3>No Questions Found for this Selection</h3>
           <p className="text-muted" style={{ fontSize: '0.875rem' }}>
@@ -534,574 +474,150 @@ export const InterviewArena: React.FC = () => {
         </div>
       ) : sessionCompleted ? (
         /* Session Completed Trophy Card */
-        <div
-          className="card"
-          style={{
-            padding: '3rem 2rem',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '1rem',
-            borderRadius: '16px',
-            border: '2px solid var(--accent-primary)',
-          }}
-        >
+        <div className="card arena-trophy-card">
           <Award size={64} color="var(--accent-primary)" />
-          <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Workout Completed! 🎉</h2>
-          <p className="text-muted" style={{ maxWidth: '500px', fontSize: '0.95rem' }}>
+          <h2>Workout Completed! 🎉</h2>
+          <p className="text-muted">
             Outstanding effort. You just practiced {sessionQuestions.length} real verbal interview pitches out loud.
           </p>
 
-          {!loggedStudyHours && (
+          <div className="arena-trophy-actions">
+            {!loggedStudyHours && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={logSessionToDailyRoutine}
+              >
+                <Save size={18} />
+                <span>Log 45 Minutes to Daily Routine Tracker</span>
+              </button>
+            )}
+
             <button
               type="button"
-              className="btn btn-primary"
-              onClick={logSessionToDailyRoutine}
-              style={{ padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: 800 }}
+              className="btn btn-secondary"
+              onClick={() => buildSessionQueue(workoutMode, selectedCompany, selectedTool)}
             >
-              <Save size={18} />
-              Log 45 Minutes to Daily Routine Tracker
+              Start Another Workout Round
             </button>
-          )}
-
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => buildSessionQueue(workoutMode, selectedCompany, selectedTool)}
-            style={{ marginTop: '0.5rem' }}
-          >
-            Start Another Workout Round
-          </button>
+          </div>
         </div>
       ) : (
         /* Main Dual Workspace */
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)', gap: '1.5rem' }}>
+        <div className="arena-grid">
           {/* LEFT COLUMN: Active Question, 3-Part Speech Blueprint, and Live Mic */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="arena-left-col">
             {/* Question Card */}
-            <div
-              className="card"
-              style={{
-                borderRadius: '16px',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-              }}
-            >
+            <div className="card arena-card">
               {/* Question Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span
-                    style={{
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '8px',
-                      background: 'var(--bg-dark)',
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                    }}
-                  >
+              <div className="arena-q-header">
+                <div className="arena-q-tags">
+                  <span className="arena-tag arena-tag-num">
                     QUESTION {currentIndex + 1} OF {sessionQuestions.length}
                   </span>
                   {currentQuestion?.tool && (
-                    <span
-                      style={{
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '8px',
-                        background: 'rgba(99, 102, 241, 0.15)',
-                        color: '#818cf8',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                      }}
-                    >
+                    <span className="arena-tag arena-tag-tool">
                       {currentQuestion.tool}
                     </span>
                   )}
                   {currentQuestion?.company && (
-                    <span
-                      style={{
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '8px',
-                        background: 'rgba(5, 150, 105, 0.15)',
-                        color: 'var(--accent-primary)',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                      }}
-                    >
+                    <span className="arena-tag arena-tag-company">
                       {currentQuestion.company}
                     </span>
                   )}
                 </div>
 
                 <span
-                  style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: '8px',
-                    background:
-                      currentQuestion?.difficulty === 'Hard'
-                        ? 'rgba(239, 68, 68, 0.15)'
-                        : 'rgba(245, 158, 11, 0.15)',
-                    color: currentQuestion?.difficulty === 'Hard' ? 'var(--danger)' : 'var(--warning)',
-                  }}
+                  className={`arena-tag-diff ${
+                    currentQuestion?.difficulty === 'Hard' ? 'hard' : 'medium'
+                  }`}
                 >
                   {currentQuestion?.difficulty || 'Medium'} ({initialTimerSeconds}s)
                 </span>
               </div>
 
               {/* Question Prompt */}
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.4 }}>
+              <h2 className="arena-q-prompt">
                 {currentQuestion?.question}
               </h2>
             </div>
 
             {/* The Senior Consultant 3-Part Answer Blueprint */}
-            <div
-              className="card"
-              style={{
-                borderRadius: '16px',
-                borderLeft: '4px solid var(--accent-primary)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem',
-                backgroundColor: 'rgba(5, 150, 105, 0.03)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Lightbulb size={18} color="var(--accent-primary)" />
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>
-                  The Senior Consultant 3-Part Answer Blueprint
-                </h3>
-              </div>
-              <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem' }}>
-                Follow this structure out loud to give a razor-sharp, confident answer:
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginTop: '0.25rem' }}>
-                <div style={{ padding: '0.75rem', borderRadius: '10px', background: 'var(--bg-dark)' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent-primary)', marginBottom: '0.25rem' }}>
-                    1. THE HOOK (First 10s)
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-main)', lineHeight: 1.35 }}>
-                    State the high-level executive definition directly. Avoid filler words.
-                  </div>
-                </div>
-
-                <div style={{ padding: '0.75rem', borderRadius: '10px', background: 'var(--bg-dark)' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#6366f1', marginBottom: '0.25rem' }}>
-                    2. THE RECIPE (Next 30s)
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-main)', lineHeight: 1.35 }}>
-                    Walk through the practical, step-by-step implementation or DAX/SQL recipe.
-                  </div>
-                </div>
-
-                <div style={{ padding: '0.75rem', borderRadius: '10px', background: 'var(--bg-dark)' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--warning)', marginBottom: '0.25rem' }}>
-                    3. THE GOTCHA (Last 15s)
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-main)', lineHeight: 1.35 }}>
-                    Highlight an edge case, gotcha, or performance optimization (e.g. query folding).
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Live Speech Recorder & Timer Box */}
-            <div
-              className="card"
-              style={{
-                borderRadius: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {/* Big Microphone Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={toggleListening}
-                    style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '50%',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isListening ? 'var(--danger)' : 'var(--accent-primary)',
-                      color: '#ffffff',
-                      boxShadow: isListening ? '0 0 0 4px rgba(239, 68, 68, 0.3)' : 'none',
-                      transition: 'all 0.2s ease',
-                    }}
-                    title={isListening ? 'Stop Speaking' : 'Click to Speak'}
-                  >
-                    {isListening ? <MicOff size={22} /> : <Mic size={22} />}
-                  </button>
-
-                  <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>
-                      {isListening ? (
-                        <span style={{ color: 'var(--danger)' }}>🔴 Listening & Transcribing...</span>
-                      ) : (
-                        <span>Click mic to start speaking</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {wordCount} words spoken • {wordsPerMinute} WPM cadence
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stopwatch Ring Pill */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.4rem 0.85rem',
-                    borderRadius: '20px',
-                    background:
-                      questionTimerSeconds <= 10
-                        ? 'rgba(239, 68, 68, 0.15)'
-                        : questionTimerSeconds <= 25
-                        ? 'rgba(245, 158, 11, 0.15)'
-                        : 'rgba(5, 150, 105, 0.15)',
-                    color:
-                      questionTimerSeconds <= 10
-                        ? 'var(--danger)'
-                        : questionTimerSeconds <= 25
-                        ? 'var(--warning)'
-                        : 'var(--accent-primary)',
-                    fontWeight: 900,
-                    fontSize: '1rem',
-                  }}
-                >
-                  <Clock size={16} />
-                  <span>{formatTime(questionTimerSeconds)}</span>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
+            <div className="card arena-blueprint-card arena-card">
               <div
-                style={{
-                  width: '100%',
-                  height: '6px',
-                  backgroundColor: 'var(--bg-dark)',
-                  borderRadius: '3px',
-                  overflow: 'hidden',
-                }}
+                className="arena-blueprint-header"
+                onClick={() => setShowBlueprint(!showBlueprint)}
+                role="button"
+                tabIndex={0}
               >
-                <div
-                  style={{
-                    width: `${(questionTimerSeconds / initialTimerSeconds) * 100}%`,
-                    height: '100%',
-                    backgroundColor:
-                      questionTimerSeconds <= 10
-                        ? 'var(--danger)'
-                        : questionTimerSeconds <= 25
-                        ? 'var(--warning)'
-                        : 'var(--accent-primary)',
-                    transition: 'width 1s linear',
-                  }}
-                />
-              </div>
-
-              {/* Live Transcribed Speech Textarea */}
-              <textarea
-                className="input"
-                rows={4}
-                value={transcribedSpeech}
-                onChange={(e) => setTranscribedSpeech(e.target.value)}
-                placeholder="Speak out loud into your microphone (or type here). Your verbal explanation will transcribe live in real time..."
-                style={{
-                  width: '100%',
-                  padding: '0.85rem',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.5,
-                  borderRadius: '10px',
-                  resize: 'vertical',
-                }}
-              />
-
-              {/* Action Buttons under Speech Box */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div className="arena-blueprint-title-wrap">
+                  <Lightbulb size={18} color="var(--accent-primary)" />
+                  <h3 className="arena-blueprint-title">
+                    The Senior Consultant 3-Part Answer Blueprint
+                  </h3>
+                </div>
                 <button
                   type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setTranscribedSpeech('');
-                    setCritiqueResult(null);
-                    setQuestionTimerSeconds(initialTimerSeconds);
-                    setIsTimerRunning(false);
-                  }}
-                  style={{ fontSize: '0.75rem' }}
+                  className="arena-blueprint-toggle-btn"
+                  aria-label={showBlueprint ? 'Collapse Blueprint' : 'Expand Blueprint'}
                 >
-                  <RotateCcw size={14} />
-                  <span>Reset Question</span>
+                  {showBlueprint ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={runAiCritique}
-                    disabled={isEvaluating || !transcribedSpeech.trim()}
-                    style={{
-                      background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                      color: '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '0.85rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      border: 'none',
-                    }}
-                  >
-                    <Sparkles size={16} />
-                    <span>{isEvaluating ? 'Critiquing...' : 'AI Speech Critique'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleNextQuestion}
-                    style={{
-                      fontWeight: 800,
-                      fontSize: '0.85rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                    }}
-                  >
-                    <span>Next Question</span>
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: AI Critique Scorecard & Question Bank Solution */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* AI Critique Scorecard Card */}
-            {critiqueResult && (
-              <div
-                className="card"
-                style={{
-                  borderRadius: '16px',
-                  border: '1px solid #6366f1',
-                  background: 'rgba(99, 102, 241, 0.04)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.85rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Sparkles size={18} color="#6366f1" />
-                    <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#6366f1' }}>
-                      AI Speech Critique
-                    </h3>
-                  </div>
-
-                  {/* Clarity Score Pill */}
-                  <span
-                    style={{
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: '20px',
-                      fontWeight: 900,
-                      fontSize: '0.85rem',
-                      background:
-                        critiqueResult.clarityScore >= 8
-                          ? 'var(--accent-primary)'
-                          : critiqueResult.clarityScore >= 5
-                          ? 'var(--warning)'
-                          : 'var(--danger)',
-                      color: '#ffffff',
-                    }}
-                  >
-                    Clarity: {critiqueResult.clarityScore}/10
-                  </span>
-                </div>
-
-                {/* Verdict */}
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.4 }}>
-                  {critiqueResult.verdict}
-                </div>
-
-                {/* Missing Points */}
-                {critiqueResult.missingPoints && critiqueResult.missingPoints.length > 0 && (
-                  <div style={{ padding: '0.65rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--danger)', marginBottom: '0.25rem' }}>
-                      KEY CONCEPTS YOU MISSED:
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.75rem', color: 'var(--text-main)' }}>
-                      {critiqueResult.missingPoints.map((pt, i) => (
-                        <li key={i}>{pt}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Rambling Remover: Condensed Pitch */}
-                {critiqueResult.condensedPitch && (
-                  <div style={{ padding: '0.65rem', borderRadius: '8px', background: 'var(--bg-dark)' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                      RAMBLING REMOVER (YOUR CORE PUNCHLINE):
-                    </div>
-                    <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-main)' }}>
-                      "{critiqueResult.condensedPitch}"
-                    </div>
-                  </div>
-                )}
-
-                {/* The Elevated Senior Pitch */}
-                {critiqueResult.elevatedSeniorPitch && (
-                  <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(5, 150, 105, 0.08)', borderLeft: '3px solid var(--accent-primary)' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent-primary)', marginBottom: '0.25rem' }}>
-                      THE ELEVATED SENIOR PITCH (HOW TO SAY IT):
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
-                      {critiqueResult.elevatedSeniorPitch}
-                    </div>
-                  </div>
-                )}
-
-                {/* Realistic Follow-up Question */}
-                {critiqueResult.followUpQuestion && (
-                  <div style={{ padding: '0.65rem', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#6366f1', marginBottom: '0.2rem' }}>
-                      ⚡ INTERVIEWER PROBE / FOLLOW-UP:
-                    </div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                      "{critiqueResult.followUpQuestion}"
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Confidence & Question Bank Sync Card */}
-            <div
-              className="card"
-              style={{
-                borderRadius: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.85rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>How did that answer feel?</span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Updates Question Bank</span>
               </div>
 
-              {critiqueResult?.suggestedConfidence && (
-                <div
-                  style={{
-                    padding: '0.4rem 0.65rem',
-                    borderRadius: '8px',
-                    background: 'rgba(99, 102, 241, 0.12)',
-                    color: '#818cf8',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                  }}
-                >
-                  <Sparkles size={14} />
-                  <span>
-                    AI Auto-Rated: <strong style={{ textTransform: 'capitalize', color: 'var(--text-main)' }}>{critiqueResult.suggestedConfidence}</strong> (Saved)
-                  </span>
-                </div>
+              {showBlueprint && (
+                <>
+                  <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem' }}>
+                    Follow this structure out loud to give a razor-sharp, confident answer:
+                  </p>
+
+                  <div className="arena-blueprint-grid">
+                    <div className="arena-blueprint-col">
+                      <div
+                        className="arena-blueprint-step-tag"
+                        style={{ color: 'var(--accent-primary)' }}
+                      >
+                        1. THE HOOK (First 10s)
+                      </div>
+                      <div className="arena-blueprint-step-desc">
+                        State the high-level executive definition directly. Avoid filler words.
+                      </div>
+                    </div>
+
+                    <div className="arena-blueprint-col">
+                      <div
+                        className="arena-blueprint-step-tag"
+                        style={{ color: '#6366f1' }}
+                      >
+                        2. THE RECIPE (Next 30s)
+                      </div>
+                      <div className="arena-blueprint-step-desc">
+                        Walk through the practical, step-by-step implementation or DAX/SQL recipe.
+                      </div>
+                    </div>
+
+                    <div className="arena-blueprint-col">
+                      <div
+                        className="arena-blueprint-step-tag"
+                        style={{ color: 'var(--warning)' }}
+                      >
+                        3. THE GOTCHA (Last 15s)
+                      </div>
+                      <div className="arena-blueprint-step-desc">
+                        Highlight an edge case, gotcha, or performance optimization (e.g. query folding).
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => handleConfidenceUpdate('struggled')}
-                  style={{
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    border: currentQuestion?.confidence === 'struggled' ? '2px solid var(--danger)' : '1px solid var(--border-color)',
-                    background: currentQuestion?.confidence === 'struggled' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-dark)',
-                    color: 'var(--danger)',
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Struggled
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleConfidenceUpdate('hesitant')}
-                  style={{
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    border: currentQuestion?.confidence === 'hesitant' ? '2px solid var(--warning)' : '1px solid var(--border-color)',
-                    background: currentQuestion?.confidence === 'hesitant' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-dark)',
-                    color: 'var(--warning)',
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Hesitant
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleConfidenceUpdate('mastered')}
-                  style={{
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    border: currentQuestion?.confidence === 'mastered' ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                    background: currentQuestion?.confidence === 'mastered' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-dark)',
-                    color: 'var(--accent-primary)',
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Mastered
-                </button>
-              </div>
             </div>
 
-            {/* Reveal Question Bank Ideal Answer */}
-            <div
-              className="card"
-              style={{
-                borderRadius: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem',
-              }}
-            >
+            {/* Reveal Question Bank Ideal Answer (Reference Pitch) */}
+            <div className="card arena-solution-card">
               <button
                 type="button"
+                className="arena-solution-accordion-btn"
                 onClick={() => setShowIdealAnswer(!showIdealAnswer)}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 0,
-                  color: 'var(--text-main)',
-                  fontWeight: 800,
-                  fontSize: '0.9rem',
-                }}
               >
                 <span>Question Bank Reference Pitch</span>
                 {showIdealAnswer ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -1136,6 +652,264 @@ export const InterviewArena: React.FC = () => {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Live Speech Recorder & Timer Box */}
+            <div className="card arena-recorder-card arena-card">
+              <div className="arena-recorder-top">
+                <div className="arena-mic-status-wrap">
+                  {/* Big Microphone Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={`arena-mic-btn ${isListening ? 'listening' : ''}`}
+                    title={isListening ? 'Stop Speaking' : 'Click to Speak'}
+                  >
+                    {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+                  </button>
+
+                  <div className="arena-mic-labels">
+                    <div className="arena-mic-state">
+                      {isListening ? (
+                        <span style={{ color: 'var(--danger)' }}>🔴 Listening & Transcribing...</span>
+                      ) : (
+                        <span>Click mic to start speaking</span>
+                      )}
+                    </div>
+                    <div className="arena-mic-stats">
+                      {wordCount} words spoken • {wordsPerMinute} WPM cadence
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stopwatch Ring Pill */}
+                <div
+                  className="arena-timer-pill"
+                  style={{
+                    background:
+                      questionTimerSeconds <= 10
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : questionTimerSeconds <= 25
+                        ? 'rgba(245, 158, 11, 0.15)'
+                        : 'rgba(5, 150, 105, 0.15)',
+                    color:
+                      questionTimerSeconds <= 10
+                        ? 'var(--danger)'
+                        : questionTimerSeconds <= 25
+                        ? 'var(--warning)'
+                        : 'var(--accent-primary)',
+                  }}
+                >
+                  <Clock size={16} />
+                  <span>{formatTime(questionTimerSeconds)}</span>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="arena-progress-track">
+                <div
+                  className="arena-progress-bar"
+                  style={{
+                    width: `${(questionTimerSeconds / initialTimerSeconds) * 100}%`,
+                    backgroundColor:
+                      questionTimerSeconds <= 10
+                        ? 'var(--danger)'
+                        : questionTimerSeconds <= 25
+                        ? 'var(--warning)'
+                        : 'var(--accent-primary)',
+                  }}
+                />
+              </div>
+
+              {/* Live Transcribed Speech Textarea */}
+              <textarea
+                className="input arena-speech-textarea"
+                rows={4}
+                value={transcribedSpeech}
+                onChange={(e) => setTranscribedSpeech(e.target.value)}
+                placeholder="Speak out loud into your microphone (or type here). Your verbal explanation will transcribe live in real time..."
+              />
+
+              {/* Action Buttons under Speech Box */}
+              <div className="arena-recorder-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setTranscribedSpeech('');
+                    setCritiqueResult(null);
+                    setQuestionTimerSeconds(initialTimerSeconds);
+                    setIsTimerRunning(false);
+                  }}
+                >
+                  <RotateCcw size={14} />
+                  <span>Reset Question</span>
+                </button>
+
+                <div className="arena-recorder-actions-primary">
+                  <button
+                    type="button"
+                    className="arena-ai-critique-btn"
+                    onClick={runAiCritique}
+                    disabled={isEvaluating || !transcribedSpeech.trim()}
+                  >
+                    <Sparkles size={16} />
+                    <span>{isEvaluating ? 'Critiquing...' : 'AI Speech Critique'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary arena-next-btn"
+                    onClick={handleNextQuestion}
+                  >
+                    <span>Next Question</span>
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: AI Critique Scorecard & Question Bank Solution */}
+          <div className="arena-right-col">
+            {/* AI Critique Scorecard Card */}
+            {critiqueResult && (
+              <div className="card arena-critique-card">
+                <div className="arena-critique-header">
+                  <div className="arena-critique-title">
+                    <Sparkles size={18} color="#6366f1" />
+                    <h3>AI Speech Critique</h3>
+                  </div>
+
+                  {/* Clarity Score Pill */}
+                  <span
+                    className="arena-clarity-score"
+                    style={{
+                      background:
+                        critiqueResult.clarityScore >= 8
+                          ? 'var(--accent-primary)'
+                          : critiqueResult.clarityScore >= 5
+                          ? 'var(--warning)'
+                          : 'var(--danger)',
+                    }}
+                  >
+                    Clarity: {critiqueResult.clarityScore}/10
+                  </span>
+                </div>
+
+                {/* Verdict */}
+                <div className="arena-critique-verdict">
+                  {critiqueResult.verdict}
+                </div>
+
+                {/* Missing Points */}
+                {critiqueResult.missingPoints && critiqueResult.missingPoints.length > 0 && (
+                  <div className="arena-critique-section" style={{ background: 'rgba(239, 68, 68, 0.08)' }}>
+                    <div className="arena-critique-section-title" style={{ color: 'var(--danger)' }}>
+                      KEY CONCEPTS YOU MISSED:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.75rem', color: 'var(--text-main)' }}>
+                      {critiqueResult.missingPoints.map((pt, i) => (
+                        <li key={i}>{pt}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Rambling Remover: Condensed Pitch */}
+                {critiqueResult.condensedPitch && (
+                  <div className="arena-critique-section" style={{ background: 'var(--bg-dark)' }}>
+                    <div className="arena-critique-section-title" style={{ color: 'var(--text-muted)' }}>
+                      RAMBLING REMOVER (YOUR CORE PUNCHLINE):
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-main)' }}>
+                      "{critiqueResult.condensedPitch}"
+                    </div>
+                  </div>
+                )}
+
+                {/* The Elevated Senior Pitch */}
+                {critiqueResult.elevatedSeniorPitch && (
+                  <div className="arena-critique-section" style={{ background: 'rgba(5, 150, 105, 0.08)', borderLeft: '3px solid var(--accent-primary)' }}>
+                    <div className="arena-critique-section-title" style={{ color: 'var(--accent-primary)' }}>
+                      THE ELEVATED SENIOR PITCH (HOW TO SAY IT):
+                    </div>
+                    <div className="arena-critique-section-body">
+                      {critiqueResult.elevatedSeniorPitch}
+                    </div>
+                  </div>
+                )}
+
+                {/* Realistic Follow-up Question */}
+                {critiqueResult.followUpQuestion && (
+                  <div className="arena-critique-section" style={{ background: 'rgba(99, 102, 241, 0.1)' }}>
+                    <div className="arena-critique-section-title" style={{ color: '#6366f1' }}>
+                      ⚡ INTERVIEWER PROBE / FOLLOW-UP:
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      "{critiqueResult.followUpQuestion}"
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Confidence & Question Bank Sync Card */}
+            <div className="card arena-confidence-card">
+              <div className="arena-confidence-header">
+                <span className="arena-confidence-title">How did that answer feel?</span>
+                <span className="arena-confidence-sub">Updates Question Bank</span>
+              </div>
+
+              {critiqueResult?.suggestedConfidence && (
+                <div className="arena-auto-rated-badge">
+                  <Sparkles size={14} />
+                  <span>
+                    AI Auto-Rated: <strong style={{ textTransform: 'capitalize', color: 'var(--text-main)' }}>{critiqueResult.suggestedConfidence}</strong> (Saved)
+                  </span>
+                </div>
+              )}
+
+              <div className="arena-confidence-btn-group">
+                <button
+                  type="button"
+                  onClick={() => handleConfidenceUpdate('struggled')}
+                  className="arena-confidence-btn"
+                  style={{
+                    border: currentQuestion?.confidence === 'struggled' ? '2px solid var(--danger)' : '1px solid var(--border-color)',
+                    background: currentQuestion?.confidence === 'struggled' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-dark)',
+                    color: 'var(--danger)',
+                  }}
+                >
+                  Struggled
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleConfidenceUpdate('hesitant')}
+                  className="arena-confidence-btn"
+                  style={{
+                    border: currentQuestion?.confidence === 'hesitant' ? '2px solid var(--warning)' : '1px solid var(--border-color)',
+                    background: currentQuestion?.confidence === 'hesitant' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-dark)',
+                    color: 'var(--warning)',
+                  }}
+                >
+                  Hesitant
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleConfidenceUpdate('mastered')}
+                  className="arena-confidence-btn"
+                  style={{
+                    border: currentQuestion?.confidence === 'mastered' ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                    background: currentQuestion?.confidence === 'mastered' ? 'rgba(5, 150, 105, 0.15)' : 'var(--bg-dark)',
+                    color: 'var(--accent-primary)',
+                  }}
+                >
+                  Mastered
+                </button>
+              </div>
             </div>
           </div>
         </div>
