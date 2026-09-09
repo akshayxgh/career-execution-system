@@ -140,7 +140,7 @@ export const ConceptLibrary = () => {
       
       const lines = cleanBlock.split('\n');
       const question = lines[0].replace(/\**$/, '').trim(); // Remove trailing bold stars if any
-      const answer = lines.slice(1).join('\n').replace(/^[#\s]*\**Answer:?\**\s*/i, '').trim();
+      const answer = lines.slice(1).join('\n').replace(/^[#\s]*\**Answer:?\**\s*/i, '').replace(/\n+\s*[-_*]{3,}\s*$/, '').trim();
       
       if (question) newQs.push({ question, answer });
     });
