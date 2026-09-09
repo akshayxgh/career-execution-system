@@ -7,8 +7,22 @@
   flex-shrink: 0;
   height: 100vh;
   color: var(--text-main);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease, border-color 0.25s ease;
   overflow-x: hidden;
+}
+
+[data-theme="night"] .sidebar {
+  background: rgba(15, 23, 42, 0.82);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="day"] .sidebar {
+  background: rgba(255, 255, 255, 0.88);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.03);
 }
 
 /* Collapsed Mode (Icon Only) */

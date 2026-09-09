@@ -1,11 +1,11 @@
 :root {
-  /* Day Theme (Quixotic Soft Emerald & Muted Off-White) */
-  --bg-dark: #f4f6f9;      /* Soft warm off-white, non-glare for eyes */
-  --bg-card: #ffffff;      /* Card background */
-  --bg-hover: #eef2f6;     /* Subtle hover */
+  /* Day Theme (Magic UI Monochrome Clean) */
+  --bg-dark: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-hover: rgba(241, 245, 249, 0.85);
   
-  --text-main: #1e293b;    /* Slate 800 crisp dark text */
-  --text-muted: #64748b;   /* Slate 500 cool gray */
+  --text-main: #0f172a;
+  --text-muted: #64748b;
   
   --accent-primary: #059669; /* Emerald Green accent */
   --accent-hover: #047857;   /* Deep Emerald hover */
@@ -15,7 +15,7 @@
   --danger: #ef4444;       /* Red 500 */
   --info: #0ea5e9;         /* Sky 500 */
   
-  --border-color: #e2e8f0; /* Light Slate 200 border */
+  --border-color: rgba(0, 0, 0, 0.08); /* Light border */
   
   /* Typography */
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -31,44 +31,50 @@
 }
 
 [data-theme="night"] {
-  --bg-dark: #0b1120;      /* Soft deep slate */
-  --bg-card: #111827;      /* Dark slate cards */
-  --bg-hover: #1e293b;     /* Slate hover */
+  /* Cyber-Obsidian & Matrix Emerald Theme (Matches Login View) */
+  --bg-dark: #060a12;
+  --bg-card: rgba(15, 23, 42, 0.72);
+  --bg-hover: rgba(30, 41, 59, 0.8);
   
-  --text-main: #ffffff;    /* Pure crisp white text */
-  --text-muted: #94a3b8;   /* Muted text */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
   
   --accent-primary: #10b981; /* Emerald Green accent */
   --accent-hover: #059669;
   
-  --border-color: #1e293b;
+  --border-color: rgba(255, 255, 255, 0.12);
 }
 
-/* Night Mode Overrides for Screenshot 1 Exact Styling */
+/* Night Mode Overrides for Frosted Glass Surfaces */
 [data-theme="night"] .decision-table-frame {
-  background: #111827;
-  border-color: #1e293b;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 35px -5px rgba(16, 185, 129, 0.08);
 }
 
 [data-theme="night"] .decision-table-header,
 [data-theme="night"] .decision-pagination {
-  background: #0b1120;
+  background: rgba(6, 10, 18, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 [data-theme="night"] .decision-search input {
-  background: #111827;
-  border-color: #334155;
+  background: rgba(2, 6, 23, 0.65);
+  border-color: rgba(255, 255, 255, 0.14);
   color: #ffffff;
 }
 
 [data-theme="night"] .decision-row {
-  background: #111827;
-  border-color: #1e293b;
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
 [data-theme="night"] .decision-row-apply {
-  background: rgb(6 78 59 / 0.3) !important;
+  background: rgb(6 78 59 / 0.35) !important;
   border: 1px solid rgb(6 95 70 / 0.5) !important;
 }
 
@@ -82,7 +88,7 @@
 }
 
 [data-theme="night"] .decision-row-maybe {
-  background: rgb(120 53 15 / 0.3) !important;
+  background: rgb(120 53 15 / 0.35) !important;
   border: 1px solid rgb(146 64 14 / 0.5) !important;
 }
 
@@ -96,8 +102,8 @@
 }
 
 [data-theme="night"] .decision-status-select {
-  background-color: #0b1120 !important;
-  border-color: #334155 !important;
+  background-color: rgba(6, 10, 18, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
   color: #ffffff !important;
 }
 
@@ -114,6 +120,30 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Background Gradients Matching Login View */
+[data-theme="night"],
+[data-theme="night"] body,
+[data-theme="night"] .app-container {
+  background-color: #060a12;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
+  background-attachment: fixed;
+  background-size: cover;
+  color: #f8fafc;
+}
+
+[data-theme="day"],
+[data-theme="day"] body,
+[data-theme="day"] .app-container {
+  background-color: #ffffff;
+  background-image: none;
+  color: #0f172a;
 }
 
 a {
@@ -132,7 +162,7 @@ a:hover {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-dark);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--bg-hover);
@@ -147,6 +177,8 @@ a:hover {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+  background: transparent;
 }
 
 .sidebar {
@@ -155,13 +187,19 @@ a:hover {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  position: relative;
+  z-index: 10;
 }
 
 .main-content {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  background-color: var(--bg-dark);
+  background-color: transparent !important;
+  position: relative;
+  z-index: 1;
 }
 
 /* Typography Utilities */
@@ -179,14 +217,30 @@ h3 { font-size: 1.25rem; }
 .text-sm { font-size: 0.875rem; }
 .text-xs { font-size: 0.75rem; }
 
-/* Components */
+/* Components - Frosted Glass Card Design */
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
+}
+
+[data-theme="night"] .card {
+  box-shadow: 
+    0 16px 36px -10px rgba(0, 0, 0, 0.5),
+    0 0 25px -5px rgba(16, 185, 129, 0.08),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="day"] .card {
+  box-shadow: 
+    0 16px 36px -10px rgba(0, 0, 0, 0.05),
+    0 2px 8px rgba(0, 0, 0, 0.02),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .card:hover {
@@ -287,7 +341,7 @@ h3 { font-size: 1.25rem; }
 /* Decision Intelligence */
 .decision-page {
   min-height: 100%;
-  background: var(--bg-dark);
+  background: transparent !important;
   color: var(--text-main);
 }
 

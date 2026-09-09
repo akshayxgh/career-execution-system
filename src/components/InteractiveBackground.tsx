@@ -42,13 +42,42 @@ const DAY_PALETTE = [
   '148, 163, 184', // Slate 400
 ];
 
-export const InteractiveBackground = ({ theme = 'night' }: { theme?: 'day' | 'night' }) => {
+export const InteractiveBackground = ({ theme: propTheme }: { theme?: 'day' | 'night' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const themeRef = useRef(theme);
+
+  const getEffectiveTheme = (): 'day' | 'night' => {
+    if (propTheme) return propTheme;
+    const docTheme = document.documentElement.getAttribute('data-theme') as 'day' | 'night' | null;
+    if (docTheme === 'day' || docTheme === 'night') return docTheme;
+    const saved = localStorage.getItem('ces_theme') as 'day' | 'night' | null;
+    if (saved) return saved;
+    const hour = new Date().getHours();
+    return hour >= 6 && hour < 18 ? 'day' : 'night';
+  };
+
+  const themeRef = useRef<'day' | 'night'>(getEffectiveTheme());
 
   useEffect(() => {
-    themeRef.current = theme;
-  }, [theme]);
+    if (propTheme) {
+      themeRef.current = propTheme;
+    }
+  }, [propTheme]);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const current = document.documentElement.getAttribute('data-theme') as 'day' | 'night' | null;
+      if (current === 'day' || current === 'night') {
+        themeRef.current = current;
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;

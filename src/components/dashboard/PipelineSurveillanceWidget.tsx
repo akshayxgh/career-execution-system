@@ -58,6 +58,31 @@ export const PipelineSurveillanceWidget: React.FC = () => {
     loadData();
   }, []);
 
+  const [theme, setTheme] = useState<'day' | 'night'>(() => {
+    const docTheme = typeof document !== 'undefined' ? (document.documentElement.getAttribute('data-theme') as 'day' | 'night' | null) : null;
+    if (docTheme === 'day' || docTheme === 'night') return docTheme;
+    const saved = typeof localStorage !== 'undefined' ? (localStorage.getItem('ces_theme') as 'day' | 'night' | null) : null;
+    if (saved) return saved;
+    const hour = new Date().getHours();
+    return hour >= 6 && hour < 18 ? 'day' : 'night';
+  });
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const current = document.documentElement.getAttribute('data-theme') as 'day' | 'night' | null;
+      if (current === 'day' || current === 'night') {
+        setTheme(current);
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const [yieldMode, setYieldMode] = useState<'datewise' | 'alltime'>('datewise');
 
   const activeDay = useMemo(() => {
@@ -542,7 +567,13 @@ export const PipelineSurveillanceWidget: React.FC = () => {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '0.75rem', paddingTop: '6px' }} />
-                <Bar dataKey="Total Scraped" fill="rgba(255, 255, 255, 0.2)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="Total Scraped"
+                  fill={theme === 'day' ? '#cbd5e1' : 'rgba(255, 255, 255, 0.22)'}
+                  stroke={theme === 'day' ? '#94a3b8' : 'rgba(255, 255, 255, 0.3)'}
+                  strokeWidth={1}
+                  radius={[4, 4, 0, 0]}
+                />
                 <Bar dataKey="High Matches (60+)" fill="#0284c7" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Apply Matches" fill="var(--accent-primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
