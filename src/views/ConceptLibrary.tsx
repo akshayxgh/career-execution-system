@@ -40,7 +40,7 @@ export const ConceptLibrary = () => {
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'status-asc' | 'status-desc'>('date-desc');
   const [promptCopied, setPromptCopied] = useState(false);
-  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(true);
   const [bulkImportText, setBulkImportText] = useState('');
 
   const initialFormState: Partial<Concept> = {
@@ -81,6 +81,8 @@ export const ConceptLibrary = () => {
     setFormData(concept);
     setEditingId(concept.id);
     setShowForm(true);
+    setShowBulkImport(true);
+    setBulkImportText('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -196,7 +198,15 @@ export const ConceptLibrary = () => {
           </h1>
           <p className="text-muted">Store and track concepts from the Data Industry Roadmap.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => showForm ? handleCancel() : setShowForm(true)}>
+        <button className="btn btn-primary" onClick={() => {
+          if (showForm) {
+            handleCancel();
+          } else {
+            setShowForm(true);
+            setShowBulkImport(true);
+            setBulkImportText('');
+          }
+        }}>
           <Plus size={18} /> {showForm ? 'Cancel' : 'Add Concept'}
         </button>
       </header>
