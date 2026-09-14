@@ -181,7 +181,7 @@ export const UniversalFormatter = () => {
 
   // Execute formatting
   const handleFormat = useCallback(
-    (codeToFormat?: string, langOverride?: FormatterLanguage, shouldCopy?: boolean) => {
+    (codeToFormat?: string, langOverride?: FormatterLanguage, shouldCopy = false) => {
       const code = codeToFormat !== undefined ? codeToFormat : inputCode;
       const lang = langOverride !== undefined ? langOverride : selectedLanguage;
 
@@ -193,30 +193,29 @@ export const UniversalFormatter = () => {
       });
       setResult(res);
 
-      const doCopy = shouldCopy !== undefined ? shouldCopy : autoCopy;
-      if (doCopy && res.formatted && res.formatted.trim()) {
+      if (shouldCopy && autoCopy && res.formatted && res.formatted.trim()) {
         copyToClipboard(res.formatted);
       }
     },
     [inputCode, selectedLanguage, indentSize, uppercaseKeywords, fixTypos, autoCopy, copyToClipboard]
   );
 
-  // Live formatting debounce
+  // Live formatting debounce (only previews format visually, NEVER overwrites clipboard on live typing)
   useEffect(() => {
     if (!liveFormat) return;
     const timer = setTimeout(() => {
-      handleFormat(undefined, undefined, autoCopy);
+      handleFormat(undefined, undefined, false);
     }, 250);
     return () => clearTimeout(timer);
-  }, [inputCode, selectedLanguage, indentSize, uppercaseKeywords, fixTypos, liveFormat, autoCopy, handleFormat]);
+  }, [inputCode, selectedLanguage, indentSize, uppercaseKeywords, fixTypos, liveFormat, handleFormat]);
 
   // Global shortcuts & Ctrl+A containment
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Enter to format
+      // Ctrl+Enter to format AND copy to clipboard
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        handleFormat();
+        handleFormat(undefined, undefined, true);
         return;
       }
 
