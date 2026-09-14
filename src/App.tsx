@@ -18,6 +18,7 @@ import { ResumeTracker } from './views/ResumeTracker';
 import { Documents } from './views/Documents';
 import { Login } from './views/Login';
 import DecisionIntelligence from './views/DecisionIntelligence';
+import { UniversalFormatter } from './views/UniversalFormatter';
 
 function App() {
   return (
@@ -45,6 +46,9 @@ function App() {
             <Route path="projects" element={<ProjectTracker />} />
             <Route path="resumes" element={<ResumeTracker />} />
             <Route path="documents" element={<Documents />} />
+
+            {/* Universal Data Formatter */}
+            <Route path="formatter" element={<UniversalFormatter />} />
 
             {/* New Module */}
             <Route
