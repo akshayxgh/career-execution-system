@@ -34,14 +34,40 @@ const EXCEL_FUNCTIONS = new Set([
 export interface ExcelFormatOptions {
   indentSize?: number; // default 4
   uppercaseFunctions?: boolean; // default true
+  fixTypos?: boolean; // default true
   spaceAroundOperators?: boolean; // default true
 }
+
+const EXCEL_TYPOS: Record<string, string> = {
+  vookup: 'VLOOKUP',
+  vlookp: 'VLOOKUP',
+  vloopup: 'VLOOKUP',
+  xookup: 'XLOOKUP',
+  xlookp: 'XLOOKUP',
+  indxe: 'INDEX',
+  indx: 'INDEX',
+  mtch: 'MATCH',
+  matc: 'MATCH',
+  sumif: 'SUMIFS',
+  sumisf: 'SUMIFS',
+  iff: 'IF',
+  ifff: 'IF',
+  iferoor: 'IFERROR',
+  iferr: 'IFERROR',
+  averge: 'AVERAGE',
+  avrg: 'AVERAGE',
+  countf: 'COUNTIFS',
+  conct: 'CONCATENATE',
+  textjoinn: 'TEXTJOIN',
+  filtre: 'FILTER',
+};
 
 export function formatExcelFormula(input: string, options: ExcelFormatOptions = {}): string {
   if (!input || !input.trim()) return '';
 
   const indentSize = options.indentSize ?? 4;
   const uppercaseFunctions = options.uppercaseFunctions ?? true;
+  const fixTypos = options.fixTypos ?? true;
   const spaceOperators = options.spaceAroundOperators ?? true;
   const indentStr = ' '.repeat(indentSize);
 
@@ -215,13 +241,15 @@ export function formatExcelFormula(input: string, options: ExcelFormatOptions = 
 
     if (t.type === 'identifier') {
       let val = t.value;
+      const lower = val.toLowerCase();
+      if (fixTypos && EXCEL_TYPOS[lower]) {
+        val = EXCEL_TYPOS[lower];
+      }
       const upper = val.toUpperCase();
 
       // If followed by '(' -> Function call
       if (next && next.type === 'paren_open') {
-        if (uppercaseFunctions && EXCEL_FUNCTIONS.has(upper)) {
-          val = upper;
-        } else if (uppercaseFunctions) {
+        if (uppercaseFunctions && (EXCEL_FUNCTIONS.has(upper) || /^[A-Z0-9_.]+$/.test(upper))) {
           val = upper;
         }
         append(val);

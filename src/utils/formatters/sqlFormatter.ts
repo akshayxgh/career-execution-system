@@ -6,20 +6,50 @@ import { format as sqlFormat, type SqlLanguage } from 'sql-formatter';
 export interface SqlFormatOptions {
   indentSize?: number; // default 4
   uppercaseKeywords?: boolean; // default true
+  fixTypos?: boolean; // default true
   dialect?: SqlLanguage; // default 'mysql'
 }
+
+const SQL_TYPOS: [RegExp, string][] = [
+  [/\b(selec|slect|selct|sleect)\b/gi, 'SELECT'],
+  [/\bform\b(?=\s+[a-zA-Z0-9_`"\[])/gi, 'FROM'],
+  [/\b(wher|whre|wheree)\b/gi, 'WHERE'],
+  [/\b(grop\s+by|groupby)\b/gi, 'GROUP BY'],
+  [/\b(oder\s+by|order\s+byy|orderby)\b/gi, 'ORDER BY'],
+  [/\b(distict|distinc|distint)\b/gi, 'DISTINCT'],
+  [/\brigth\s+join\b/gi, 'RIGHT JOIN'],
+  [/\b(lefft|letf)\s+join\b/gi, 'LEFT JOIN'],
+  [/\biner\s+join\b/gi, 'INNER JOIN'],
+  [/\b(colaesce|coalece)\b/gi, 'COALESCE'],
+  [/\b(havng|havign)\b/gi, 'HAVING'],
+  [/\b(unon|uniom)\b/gi, 'UNION'],
+  [/\b(inser\s+into|insertinto)\b/gi, 'INSERT INTO'],
+  [/\b(udpate|updat)\b/gi, 'UPDATE'],
+  [/\b(delte|delet)\b/gi, 'DELETE'],
+  [/\b(partion\s+by|partition\s+byy)\b/gi, 'PARTITION BY'],
+  [/\bdenserank\b/gi, 'DENSE_RANK'],
+  [/\brownumber\b/gi, 'ROW_NUMBER'],
+];
 
 export function formatSql(input: string, options: SqlFormatOptions = {}): string {
   if (!input || !input.trim()) return '';
 
   const tabWidth = options.indentSize ?? 4;
   const uppercase = options.uppercaseKeywords ?? true;
+  const fixTypos = options.fixTypos ?? true;
   const dialect = options.dialect ?? 'mysql';
+
+  let raw = input;
+  if (fixTypos) {
+    for (const [regex, replacement] of SQL_TYPOS) {
+      raw = raw.replace(regex, replacement);
+    }
+  }
 
   // 1. Initial AST format using sql-formatter
   let formatted = '';
   try {
-    formatted = sqlFormat(input, {
+    formatted = sqlFormat(raw, {
       language: dialect,
       tabWidth,
       keywordCase: uppercase ? 'upper' : 'preserve',
@@ -30,7 +60,7 @@ export function formatSql(input: string, options: SqlFormatOptions = {}): string
     });
   } catch {
     // Fallback to generic sql dialect if custom syntax errors occur
-    formatted = sqlFormat(input, {
+    formatted = sqlFormat(raw, {
       language: 'sql',
       tabWidth,
       keywordCase: uppercase ? 'upper' : 'preserve',

@@ -34,14 +34,26 @@ const TYPO_MAP: Record<string, string> = {
   'greate': 'Greater',
   'greator': 'Greater',
   'total': 'Total',
+  'totle': 'Total',
   'sum': 'Sum',
   'calc': 'Calc',
   'calclate': 'CALCULATE',
   'claculate': 'CALCULATE',
+  'calulate': 'CALCULATE',
   'filtre': 'FILTER',
+  'filterr': 'FILTER',
   'realted': 'RELATED',
+  'relatd': 'RELATED',
   'devide': 'DIVIDE',
+  'divid': 'DIVIDE',
   'retun': 'RETURN',
+  'reutrn': 'RETURN',
+  'allexceptt': 'ALLEXCEPT',
+  'allselectedd': 'ALLSELECTED',
+  'countrow': 'COUNTROWS',
+  'distinctcountt': 'DISTINCTCOUNT',
+  'switchh': 'SWITCH',
+  'datesytdd': 'DATESYTD',
 };
 
 export function formatDax(input: string, options: DaxFormatOptions = {}): string {
@@ -281,6 +293,10 @@ export function formatDax(input: string, options: DaxFormatOptions = {}): string
 
     if (t.type === 'identifier') {
       let val = t.value;
+      const lower = val.toLowerCase();
+      if (fixTypos && TYPO_MAP[lower]) {
+        val = TYPO_MAP[lower];
+      }
       const upper = val.toUpperCase();
       if (uppercaseKeywords && DAX_KEYWORDS.has(upper)) {
         val = upper;

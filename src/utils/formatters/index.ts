@@ -174,6 +174,7 @@ export function formatUniversal(
       const excelOpts: ExcelFormatOptions = {
         indentSize,
         uppercaseFunctions: uppercaseKeywords,
+        fixTypos,
         spaceAroundOperators: true,
       };
       formatted = formatExcelFormula(input, excelOpts);
@@ -187,6 +188,7 @@ export function formatUniversal(
       const sqlOpts: SqlFormatOptions = {
         indentSize,
         uppercaseKeywords,
+        fixTypos,
       };
       formatted = formatSql(input, sqlOpts);
       break;
