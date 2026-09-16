@@ -2820,5 +2820,90 @@
         "conversion_pct": 13.2
       }
     }
+  },
+  "2026-09-17": {
+    "date": "2026-09-17",
+    "total_scraped": 212,
+    "total_deduplicated": 0,
+    "total_filtered": 25,
+    "total_analyzed": 187,
+    "total_apply": 27,
+    "total_maybe": 47,
+    "total_skip": 138,
+    "total_high_matches": 82,
+    "sources": {
+      "career:Ey": {
+        "scraped": 160,
+        "deduplicated": 0,
+        "filtered": 25,
+        "analyzed": 135,
+        "apply": 17,
+        "maybe": 46,
+        "skip": 97,
+        "high_matches": 71,
+        "avg_score": 46.7,
+        "conversion_pct": 10.6
+      },
+      "portals:Foundit": {
+        "scraped": 14,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 14,
+        "apply": 1,
+        "maybe": 0,
+        "skip": 13,
+        "high_matches": 1,
+        "avg_score": 30.5,
+        "conversion_pct": 7.1
+      },
+      "portals:Indeed": {
+        "scraped": 2,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 2,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 2,
+        "high_matches": 0,
+        "avg_score": 40.0,
+        "conversion_pct": 0.0
+      },
+      "portals:LinkedIn": {
+        "scraped": 1,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 1,
+        "apply": 1,
+        "maybe": 0,
+        "skip": 0,
+        "high_matches": 1,
+        "avg_score": 82.0,
+        "conversion_pct": 100.0
+      },
+      "portals:Naukri": {
+        "scraped": 30,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 30,
+        "apply": 8,
+        "maybe": 1,
+        "skip": 21,
+        "high_matches": 9,
+        "avg_score": 39.2,
+        "conversion_pct": 26.7
+      },
+      "portals:Shine": {
+        "scraped": 5,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 5,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 5,
+        "high_matches": 0,
+        "avg_score": 14.0,
+        "conversion_pct": 0.0
+      }
+    }
   }
 }

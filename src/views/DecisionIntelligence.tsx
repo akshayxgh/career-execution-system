@@ -14,6 +14,7 @@ import {
 import JobCopilotWidget from "../components/copilot/JobCopilotWidget";
 import HideReasonModal from "../components/decision/HideReasonModal";
 import NaukriCheckModal from "../components/decision/NaukriCheckModal";
+import ShineApplyModal from "../components/decision/ShineApplyModal";
 import {
   type ColumnFiltersState,
   type FilterColumnKey,
@@ -137,12 +138,34 @@ export default function DecisionIntelligence() {
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [isBulkHiding, setIsBulkHiding] = useState(false);
   const [isNaukriModalOpen, setIsNaukriModalOpen] = useState(false);
+  const [isShineModalOpen, setIsShineModalOpen] = useState(false);
 
   const naukriJobsCount = useMemo(() => {
     return jobs.filter((j) => (j.url || "").toLowerCase().includes("naukri.com")).length;
   }, [jobs]);
 
+  const shineJobsCount = useMemo(() => {
+    return jobs.filter((j) => {
+      const u = (j.url || "").toLowerCase();
+      const s = (j.source || "").toLowerCase();
+      return u.includes("shine.com") || s.includes("shine");
+    }).length;
+  }, [jobs]);
+
   const handleNaukriJobApplied = async (jobId: string) => {
+    await updateDecisionJobStatus(jobId, "APPLIED");
+    setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
+    setTimeout(() => {
+      setJobs((current) => current.filter((j) => j.id !== jobId));
+      setRemovingJobIds((prev) => {
+        const next = { ...prev };
+        delete next[jobId];
+        return next;
+      });
+    }, 300);
+  };
+
+  const handleShineJobApplied = async (jobId: string) => {
     await updateDecisionJobStatus(jobId, "APPLIED");
     setRemovingJobIds((prev) => ({ ...prev, [jobId]: true }));
     setTimeout(() => {
@@ -719,7 +742,9 @@ export default function DecisionIntelligence() {
             totalCount={jobs.length}
             filteredCount={sortedJobs.length}
             naukriCount={naukriJobsCount}
+            shineCount={shineJobsCount}
             onOpenNaukriCheck={() => setIsNaukriModalOpen(true)}
+            onOpenShineApply={() => setIsShineModalOpen(true)}
           />
           <DecisionToolbar
             search={search}
@@ -796,6 +821,14 @@ export default function DecisionIntelligence() {
           onJobApplied={handleNaukriJobApplied}
           onJobExpired={handleNaukriJobExpired}
           onAllCompleted={handleNaukriAllCompleted}
+        />
+
+        <ShineApplyModal
+          isOpen={isShineModalOpen}
+          onClose={() => setIsShineModalOpen(false)}
+          jobs={sortedJobs}
+          onJobApplied={handleShineJobApplied}
+          onAllCompleted={() => loadJobs(false)}
         />
       </div>
     </div>
