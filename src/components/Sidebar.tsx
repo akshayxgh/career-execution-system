@@ -20,6 +20,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Code2,
+  Calculator,
 } from 'lucide-react';
 import { AISettingsModal } from './AISettingsModal';
 import './Sidebar.css';
@@ -80,6 +81,7 @@ export const Sidebar = () => {
     { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { to: '/tracks', label: 'Learning Tracks', icon: <BookOpen size={20} /> },
     { to: '/concept-library', label: 'Concept Library', icon: <Library size={20} /> },
+    { to: '/dax-mastery', label: 'DEXer', icon: <Calculator size={20} /> },
     { to: '/applications', label: 'Applications', icon: <Briefcase size={20} /> },
     { to: '/interviews', label: 'Interviews', icon: <MessageSquare size={20} /> },
     { to: '/interview-arena', label: 'Interview Arena', icon: <Mic size={20} /> },

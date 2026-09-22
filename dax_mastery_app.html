@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyCES — DAX & Power BI Interactive Mastery Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(150, 150, 150, 0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(150, 150, 150, 0.5); }
+    .badge-star { color: #f59e0b; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased p-4 md:p-8">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <div class="bg-slate-800/80 backdrop-blur border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/30">MyCES Execution System</span>
+          <span class="text-xs text-slate-400">Power BI 2024–2026 Standards</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-bold mt-1 text-white tracking-tight">DAX & Power BI Mastery Tracker</h1>
+        <p class="text-sm text-slate-400 mt-0.5">Click any status badge to cycle: <span class="text-emerald-400">🟢 Done</span> → <span class="text-amber-400">🟡 Learning</span> → <span class="text-slate-400">⚪ Planned</span>. Progress auto-saves.</p>
+      </div>
+
+      <!-- Stats Summary -->
+      <div class="flex items-center gap-4 w-full md:w-auto">
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3 px-5 text-center min-w-[120px]">
+          <div class="text-2xl font-black text-emerald-400" id="statCompleted">44</div>
+          <div class="text-xs text-slate-400 font-medium">Completed</div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3 px-5 text-center min-w-[120px]">
+          <div class="text-2xl font-black text-amber-400" id="statLearning">2</div>
+          <div class="text-xs text-slate-400 font-medium">In Progress</div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3 px-5 text-center min-w-[120px]">
+          <div class="text-2xl font-black text-cyan-400" id="statPercent">41%</div>
+          <div class="text-xs text-slate-400 font-medium">Mastery</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 shadow">
+      <div class="flex justify-between text-xs text-slate-400 mb-2 font-medium">
+        <span>Curriculum Completion</span>
+        <span id="progressBarLabel">44 of 108 Functions Mastered</span>
+      </div>
+      <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden flex border border-slate-800">
+        <div id="barCompleted" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 40.7%"></div>
+        <div id="barLearning" class="h-full bg-amber-400 transition-all duration-300" style="width: 1.9%"></div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-700 gap-2">
+      <button onclick="switchTab('catalog')" id="tabBtnCatalog" class="px-5 py-2.5 font-semibold text-sm border-b-2 border-amber-500 text-amber-400 transition">Function Catalog (108)</button>
+      <button onclick="switchTab('recipes')" id="tabBtnRecipes" class="px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">DAX Recipes & Templates</button>
+      <button onclick="switchTab('pbi')" id="tabBtnPbi" class="px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">Power BI Technical Skills</button>
+    </div>
+
+    <!-- TAB 1: FUNCTION CATALOG -->
+    <div id="tabCatalog" class="space-y-4">
+      
+      <!-- Filter Bar -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow">
+        <div class="flex-1 min-w-[240px]">
+          <div class="relative">
+            <input type="text" id="searchInput" placeholder="Search functions (e.g., CALCULATE, YTD, OFFSET, ranking)..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+              oninput="renderTable()">
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <select id="categoryFilter" onchange="renderTable()" class="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500">
+            <option value="ALL">All Categories</option>
+            <option value="Scalar / Math">Scalar / Math</option>
+            <option value="Filter Context">Filter Context & Modifiers</option>
+            <option value="Context Inspection">Context Inspection</option>
+            <option value="Iterators">Iterators</option>
+            <option value="Table Shaping">Table Shaping & Virtual Tables</option>
+            <option value="Date & Time">Date & Time Intelligence</option>
+            <option value="Window Functions">Window & Visual Calculations</option>
+            <option value="Parent-Child">Parent-Child Hierarchies</option>
+            <option value="Calculation Groups">Calculation Groups</option>
+            <option value="Security / Metadata">Dynamic Security & Metadata</option>
+          </select>
+
+          <select id="priorityFilter" onchange="renderTable()" class="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500">
+            <option value="ALL">All Priorities</option>
+            <option value="⭐⭐⭐">⭐⭐⭐ Essential</option>
+            <option value="⭐⭐">⭐⭐ Important</option>
+            <option value="⭐">⭐ Useful</option>
+            <option value="🔵">🔵 Advanced</option>
+          </select>
+
+          <select id="statusFilter" onchange="renderTable()" class="bg-slate-900 border border-slate-700 text-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500">
+            <option value="ALL">All Statuses</option>
+            <option value="DONE">🟢 Completed Only</option>
+            <option value="LEARNING">🟡 In Progress Only</option>
+            <option value="PLANNED">⚪ Planned Only</option>
+          </select>
+
+          <button onclick="resetFilters()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition">Reset</button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="bg-slate-800/90 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-950/60 text-xs uppercase font-semibold text-slate-400 border-b border-slate-700">
+              <tr>
+                <th class="p-3.5 pl-5 w-14">#</th>
+                <th class="p-3.5 w-32">Status</th>
+                <th class="p-3.5 w-44">Function</th>
+                <th class="p-3.5 w-40">Category</th>
+                <th class="p-3.5 w-24 text-center">Priority</th>
+                <th class="p-3.5 min-w-[280px]">Syntax & Parameters</th>
+                <th class="p-3.5 min-w-[300px]">Purpose & Best Practice</th>
+              </tr>
+            </thead>
+            <tbody id="functionTableBody" class="divide-y divide-slate-700/60 text-slate-200">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: DAX RECIPES -->
+    <div id="tabRecipes" class="space-y-4 hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-cyan-500/20 text-cyan-400 rounded">Time Intelligence</span>
+              <h3 class="font-bold text-base text-white mt-1">Robust Prior Year & YoY Growth %</h3>
+            </div>
+            <button onclick="copyCode('recipe1')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">Copy</button>
+          </div>
+          <pre id="recipe1" class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800">
+Total Sales = SUM(FactSales[SalesAmount])
+
+Sales PY = 
+CALCULATE(
+    [Total Sales],
+    SAMEPERIODLASTYEAR(DimDate[Date])
+)
+
+YoY Sales Growth % = 
+DIVIDE(
+    [Total Sales] - [Sales PY],
+    [Sales PY]
+)</pre>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded">Modern Window</span>
+              <h3 class="font-bold text-base text-white mt-1">Month-over-Month with OFFSET (2024)</h3>
+            </div>
+            <button onclick="copyCode('recipe2')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">Copy</button>
+          </div>
+          <pre id="recipe2" class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800">
+Sales Prior Month (Offset) = 
+CALCULATE(
+    [Total Sales],
+    OFFSET(
+        -1,
+        ALLSELECTED(DimDate[YearMonth], DimDate[MonthNumber]),
+        ORDERBY(DimDate[MonthNumber], ASC)
+    )
+)</pre>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">Filter Context</span>
+              <h3 class="font-bold text-base text-white mt-1">Safe % of Visual Total (ALLSELECTED)</h3>
+            </div>
+            <button onclick="copyCode('recipe3')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">Copy</button>
+          </div>
+          <pre id="recipe3" class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800">
+Sales % of Selected Total = 
+VAR CurrentSales = [Total Sales]
+VAR TotalSelectedSales = 
+    CALCULATE(
+        [Total Sales],
+        ALLSELECTED(DimProduct)
+    )
+RETURN
+    DIVIDE(CurrentSales, TotalSelectedSales)</pre>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs font-semibold px-2 py-0.5 bg-rose-500/20 text-rose-400 rounded">Security & Governance</span>
+              <h3 class="font-bold text-base text-white mt-1">Dynamic RLS Email Filtering</h3>
+            </div>
+            <button onclick="copyCode('recipe4')" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">Copy</button>
+          </div>
+          <pre id="recipe4" class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800">
+-- In Manage Roles on DimSecurity or UserMapping table:
+[UserEmail] = USERPRINCIPALNAME()</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 3: POWER BI TECHNICAL SKILLS -->
+    <div id="tabPbi" class="space-y-4 hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h3 class="font-bold text-amber-400 text-sm mb-3 flex items-center gap-2">
+            <span>📐</span> Data Modeling
+          </h3>
+          <ul class="space-y-1.5 text-xs text-slate-300">
+            <li>🟢 Star Schema Design</li>
+            <li>🟢 Fact vs Dimension Grain</li>
+            <li>🟢 Active vs Inactive Relationships</li>
+            <li>⚪ Role-playing Dimensions</li>
+            <li>⚪ Calculation Groups (Tabular Editor)</li>
+            <li>⚪ Composite Models & Storage Modes</li>
+            <li>⚪ Incremental Refresh</li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h3 class="font-bold text-cyan-400 text-sm mb-3 flex items-center gap-2">
+            <span>⚡</span> Power Query & M
+          </h3>
+          <ul class="space-y-1.5 text-xs text-slate-300">
+            <li>🟢 Merges & Appends</li>
+            <li>🟢 Conditional / Custom Columns</li>
+            <li>🟡 M Code Fundamentals</li>
+            <li>⚪ Query Folding Optimization</li>
+            <li>⚪ Dynamic Parameters & Dataflows</li>
+            <li>⚪ Staging (Bronze/Silver/Gold)</li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h3 class="font-bold text-emerald-400 text-sm mb-3 flex items-center gap-2">
+            <span>🏎️</span> Engine Optimization
+          </h3>
+          <ul class="space-y-1.5 text-xs text-slate-300">
+            <li>⚪ VertiPaq Storage Architecture</li>
+            <li>⚪ Cardinality Reduction</li>
+            <li>⚪ Performance Analyzer profiling</li>
+            <li>⚪ DAX Studio (SE vs FE Server Timings)</li>
+            <li>⚪ Best Practice Analyzer (BPA)</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const MASTER_DATA = [
+      { id: 1, name: "SUM", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "SUM(<column>)", param: "Numeric column", desc: "Adds numeric column values.", trap: "Cannot iterate row expressions; use SUMX." },
+      { id: 2, name: "COUNT", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "COUNT(<column>)", param: "Column", desc: "Counts non-blank numbers/dates/strings.", trap: "Counts values only; use COUNTROWS for total rows." },
+      { id: 3, name: "COUNTROWS", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "COUNTROWS([<table>])", param: "Table expression", desc: "Counts total rows in table or context.", trap: "High-performance; prefer over COUNT(col)." },
+      { id: 4, name: "DISTINCTCOUNT", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "DISTINCTCOUNT(<column>)", param: "Column", desc: "Counts distinct values including blank if present.", trap: "Expensive on high cardinality; consider DISTINCTCOUNTNOBLANK." },
+      { id: 5, name: "DIVIDE", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "DIVIDE(<num>, <denom>[, <alt>])", param: "Scalar expressions", desc: "Safe division returning alternate/BLANK on /0.", trap: "Always use instead of '/' operator." },
+      { id: 6, name: "IF", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "IF(<test>, <true>[, <false>])", param: "Boolean test", desc: "Conditional branching.", trap: "Nested IFs harm readability; prefer SWITCH(TRUE())." },
+      { id: 7, name: "SWITCH", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "SWITCH(<expr>, <val>, <res>...)", param: "Expression + match pairs", desc: "Matches single expression against values.", trap: "Only handles equality comparisons." },
+      { id: 8, name: "SWITCH(TRUE())", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "SWITCH(TRUE(), <cond>, <res>...)", param: "Boolean expressions", desc: "Evaluates multi-condition logic top-down.", trap: "Order matters; first TRUE condition wins." },
+      { id: 9, name: "COALESCE", category: "Scalar / Math", priority: "⭐⭐", status: "DONE", syntax: "COALESCE(<expr1>, <expr2>...)", param: "List of expressions", desc: "Returns first non-BLANK value.", trap: "Ensure data types are compatible." },
+      { id: 10, name: "ISBLANK", category: "Scalar / Math", priority: "⭐⭐", status: "PLANNED", syntax: "ISBLANK(<val>)", param: "Scalar value", desc: "Checks explicitly for BLANK in DAX.", trap: "val = 0 evaluates to TRUE for BLANK; use ISBLANK." },
+
+      { id: 11, name: "CALCULATE", category: "Filter Context", priority: "⭐⭐⭐", status: "DONE", syntax: "CALCULATE(<expr>[, <filter>...])", param: "Scalar expr + filters", desc: "Alters filter context and triggers context transition.", trap: "Costly if called repeatedly in unconstrained iterators." },
+      { id: 12, name: "CALCULATETABLE", category: "Filter Context", priority: "⭐⭐⭐", status: "PLANNED", syntax: "CALCULATETABLE(<table>[, <filter>...])", param: "Table expr + filters", desc: "Evaluates table in modified filter context.", trap: "Returns table, not scalar." },
+      { id: 13, name: "FILTER", category: "Filter Context", priority: "⭐⭐⭐", status: "DONE", syntax: "FILTER(<table>, <cond>)", param: "Table + boolean test", desc: "Iterates table rows keeping TRUE matches.", trap: "Never filter large fact tables; filter narrow dimensions." },
+      { id: 14, name: "ALL", category: "Filter Context", priority: "⭐⭐⭐", status: "DONE", syntax: "ALL([<table> | <col>...])", param: "Table or column list", desc: "Removes filters; returns distinct population.", trap: "As modifier it clears filters; as table it returns rows." },
+      { id: 15, name: "REMOVEFILTERS", category: "Filter Context", priority: "⭐⭐⭐", status: "DONE", syntax: "REMOVEFILTERS([<table> | <col>...])", param: "Table or columns", desc: "Explicit filter removal modifier inside CALCULATE.", trap: "Cannot be used as standalone table return." },
+      { id: 16, name: "ALLSELECTED", category: "Filter Context", priority: "⭐⭐⭐", status: "PLANNED", syntax: "ALLSELECTED([<table> | <col>...])", param: "Table or columns", desc: "Keeps visual/slicer filters, clears inner visual axes.", trap: "Generates subtle bugs when nested with context transition." },
+      { id: 17, name: "ALLEXCEPT", category: "Filter Context", priority: "⭐⭐", status: "DONE", syntax: "ALLEXCEPT(<table>, <col>...)", param: "Table + kept columns", desc: "Clears filters on table except specified columns.", trap: "Sensitive to newly added columns in dimension tables." },
+      { id: 18, name: "KEEPFILTERS", category: "Filter Context", priority: "⭐⭐⭐", status: "DONE", syntax: "KEEPFILTERS(<expr>)", param: "Filter expression", desc: "Forces filter intersection instead of override.", trap: "Use to respect existing slicer filters." },
+      { id: 19, name: "USERELATIONSHIP", category: "Filter Context", priority: "⭐⭐⭐", status: "PLANNED", syntax: "USERELATIONSHIP(<col1>, <col2>)", param: "Two related columns", desc: "Activates inactive relationship in CALCULATE.", trap: "Relationship must physically exist in data model." },
+      { id: 20, name: "CROSSFILTER", category: "Filter Context", priority: "⭐⭐", status: "PLANNED", syntax: "CROSSFILTER(<col1>, <col2>, <dir>)", param: "Columns + NONE/ONE/BOTH", desc: "Modifies cross-filtering direction dynamically.", trap: "Avoid permanent bi-directional joins in model; use this." },
+      { id: 21, name: "TREATAS", category: "Filter Context", priority: "⭐⭐⭐", status: "PLANNED", syntax: "TREATAS(<table_expr>, <col>...)", param: "Virtual table + columns", desc: "Applies virtual lineage/relationship.", trap: "Far faster than INTERSECT or CONTAINS for disconnected slicers." },
+      { id: 22, name: "RELATED", category: "Filter Context", priority: "⭐⭐⭐", status: "PLANNED", syntax: "RELATED(<column>)", param: "Column on 1-side", desc: "Gets related value via active relationship.", trap: "Requires active many-to-one relationship." },
+      { id: 23, name: "RELATEDTABLE", category: "Filter Context", priority: "⭐⭐", status: "PLANNED", syntax: "RELATEDTABLE(<table>)", param: "Table on many-side", desc: "Returns related rows in row context.", trap: "Combine with COUNTROWS or iterators." },
+      { id: 24, name: "LOOKUPVALUE", category: "Filter Context", priority: "⭐⭐", status: "PLANNED", syntax: "LOOKUPVALUE(<res>, <search>, <val>...)", param: "Columns + search pairs", desc: "Fetches value without physical relationship.", trap: "Slower than RELATED; throws error if multiple matches found." },
+
+      { id: 25, name: "SELECTEDVALUE", category: "Context Inspection", priority: "⭐⭐⭐", status: "DONE", syntax: "SELECTEDVALUE(<col>[, <alt>])", param: "Column + optional default", desc: "Returns single selected value in context.", trap: "Returns alternate if 0 or multiple values selected." },
+      { id: 26, name: "HASONEVALUE", category: "Context Inspection", priority: "⭐⭐", status: "DONE", syntax: "HASONEVALUE(<col>)", param: "Column", desc: "TRUE if exactly 1 value exists in context.", trap: "Returns FALSE on subtotals and grand totals." },
+      { id: 27, name: "ISINSCOPE", category: "Context Inspection", priority: "⭐⭐⭐", status: "DONE", syntax: "ISINSCOPE(<col>)", param: "Column", desc: "Tests active level in visual matrix hierarchy.", trap: "The gold standard for Matrix subtotal ratios." },
+      { id: 28, name: "ISCROSSFILTERED", category: "Context Inspection", priority: "⭐⭐", status: "LEARNING", syntax: "ISCROSSFILTERED(<colOrTable>)", param: "Column or table", desc: "Detects direct or propagated filters.", trap: "Triggers TRUE even if filter comes from unrelated dimension." },
+      { id: 29, name: "ISFILTERED", category: "Context Inspection", priority: "⭐⭐", status: "PLANNED", syntax: "ISFILTERED(<colOrTable>)", param: "Column or table", desc: "Detects direct filters only on target.", trap: "Ignores cross-filtered conditions." },
+
+      { id: 30, name: "SUMX", category: "Iterators", priority: "⭐⭐⭐", status: "DONE", syntax: "SUMX(<table>, <expr>)", param: "Table + row expr", desc: "Iterates rows, evaluates expr, and sums.", trap: "Wrap measures inside to trigger context transition." },
+      { id: 31, name: "AVERAGEX", category: "Iterators", priority: "⭐⭐", status: "DONE", syntax: "AVERAGEX(<table>, <expr>)", param: "Table + row expr", desc: "Iterates and computes average of row results.", trap: "Only averages non-blank rows." },
+      { id: 32, name: "MINX", category: "Iterators", priority: "⭐⭐", status: "DONE", syntax: "MINX(<table>, <expr>)", param: "Table + row expr", desc: "Finds minimum evaluated row value.", trap: "High cost if iterated over unconstrained fact table." },
+      { id: 33, name: "MAXX", category: "Iterators", priority: "⭐⭐", status: "DONE", syntax: "MAXX(<table>, <expr>)", param: "Table + row expr", desc: "Finds maximum evaluated row value.", trap: "Filter input table before iterating." },
+      { id: 34, name: "RANKX", category: "Iterators", priority: "⭐⭐⭐", status: "DONE", syntax: "RANKX(<table>, <expr>...)", param: "Table + sort expr", desc: "Dynamic rank calculation.", trap: "Prone to context bugs; always wrap measure as [Measure]." },
+      { id: 35, name: "TOPN", category: "Iterators", priority: "⭐⭐⭐", status: "DONE", syntax: "TOPN(<n>, <table>, <orderExpr>)", param: "Integer N + table", desc: "Returns top N records.", trap: "Returns a table, not a scalar value." },
+      { id: 36, name: "CONCATENATEX", category: "Iterators", priority: "⭐⭐⭐", status: "PLANNED", syntax: "CONCATENATEX(<table>, <expr>[, <sep>])", param: "Table + string expr", desc: "Joins row values into formatted string.", trap: "Cap row count to prevent UI lag on huge tables." },
+
+      { id: 40, name: "VALUES", category: "Table Shaping", priority: "⭐⭐⭐", status: "DONE", syntax: "VALUES(<colOrTable>)", param: "Column or table", desc: "Distinct values in context, keeps blank row.", trap: "Blank row appears if referential integrity is violated." },
+      { id: 41, name: "DISTINCT", category: "Table Shaping", priority: "⭐⭐", status: "DONE", syntax: "DISTINCT(<colOrTable>)", param: "Column or table", desc: "Distinct values, excludes relation blank row.", trap: "Use VALUES for slicers; DISTINCT for strict sets." },
+      { id: 42, name: "ADDCOLUMNS", category: "Table Shaping", priority: "⭐⭐⭐", status: "DONE", syntax: "ADDCOLUMNS(<table>, <name>, <expr>)", param: "Table + col name + expr", desc: "Adds virtual columns to table.", trap: "Runs in row context; measures trigger context transition." },
+      { id: 43, name: "SELECTCOLUMNS", category: "Table Shaping", priority: "⭐⭐⭐", status: "DONE", syntax: "SELECTCOLUMNS(<table>, <name>, <expr>)", param: "Table + projections", desc: "Shapes table, drops unmentioned columns.", trap: "Does not preserve original unselected columns." },
+      { id: 44, name: "SUMMARIZE", category: "Table Shaping", priority: "⭐⭐⭐", status: "PLANNED", syntax: "SUMMARIZE(<table>, <groupByCol>...)", param: "Table + grouping cols", desc: "Groups table by unique column sets.", trap: "Do NOT compute aggregations here; use ADDCOLUMNS(SUMMARIZE())." },
+      { id: 45, name: "SUMMARIZECOLUMNS", category: "Table Shaping", priority: "⭐⭐⭐", status: "PLANNED", syntax: "SUMMARIZECOLUMNS(<groups>...)", param: "Grouping + filter tables", desc: "Best-in-class grouped aggregation engine.", trap: "Cannot be called within existing context transition." },
+      { id: 46, name: "GENERATE", category: "Table Shaping", priority: "⭐⭐", status: "DONE", syntax: "GENERATE(<table1>, <table2>)", param: "2 tables", desc: "Cross apply: evaluates table2 per row of table1.", trap: "Drops table1 rows where table2 evaluates empty." },
+
+      { id: 55, name: "CALENDAR", category: "Date & Time", priority: "⭐⭐⭐", status: "DONE", syntax: "CALENDAR(<start>, <end>)", param: "2 dates", desc: "Generates contiguous date table.", trap: "Must mark as official Date Table in Power BI." },
+      { id: 56, name: "CALENDARAUTO", category: "Date & Time", priority: "⭐⭐⭐", status: "PLANNED", syntax: "CALENDARAUTO([<fiscal_month>])", param: "Optional fiscal end", desc: "Auto-generates date range from entire model.", trap: "Rogue birthdates/system dates can expand calendar by 100 years." },
+      { id: 61, name: "EDATE", category: "Date & Time", priority: "⭐⭐⭐", status: "PLANNED", syntax: "EDATE(<date>, <months>)", param: "Date + integer offset", desc: "Shifts date by exact months.", trap: "Snaps to last day on shorter months." },
+      { id: 62, name: "EOMONTH", category: "Date & Time", priority: "⭐⭐⭐", status: "PLANNED", syntax: "EOMONTH(<date>, <months>)", param: "Date + integer offset", desc: "Returns last date of target month.", trap: "EOMONTH(date, 0) is standard for month normalization." },
+      { id: 66, name: "DATEADD", category: "Date & Time", priority: "⭐⭐⭐", status: "DONE", syntax: "DATEADD(<dates>, <n>, <interval>)", param: "Date col + offset + interval", desc: "Shifts dates by interval.", trap: "Requires continuous date table with zero gaps." },
+      { id: 67, name: "SAMEPERIODLASTYEAR", category: "Date & Time", priority: "⭐⭐⭐", status: "DONE", syntax: "SAMEPERIODLASTYEAR(<dates>)", param: "Date column", desc: "1-year prior comparison.", trap: "Equivalent to DATEADD(dates, -1, YEAR)." },
+      { id: 68, name: "DATESYTD", category: "Date & Time", priority: "⭐⭐⭐", status: "PLANNED", syntax: "DATESYTD(<dates>[, <year_end>])", param: "Date column + optional end", desc: "Returns year-to-date date set.", trap: "Preferred over TOTALYTD for clean composition." },
+      { id: 71, name: "DATESINPERIOD", category: "Date & Time", priority: "⭐⭐⭐", status: "DONE", syntax: "DATESINPERIOD(<dates>, <start>, <n>, <interval>)", param: "Date col + anchor + offset", desc: "Rolling periods (30D, 3M, 12M).", trap: "Pass MAX(Date) with negative N to roll backwards." },
+
+      { id: 83, name: "OFFSET", category: "Window Functions", priority: "⭐⭐⭐", status: "PLANNED", syntax: "OFFSET(<delta>[, <rel>][, <orderBy>]...)", param: "Delta + order + partitions", desc: "Compares current row against previous/next row.", trap: "Replaces slow EARLIER or complex iterators." },
+      { id: 84, name: "INDEX", category: "Window Functions", priority: "⭐⭐⭐", status: "PLANNED", syntax: "INDEX(<pos>[, <rel>][, <orderBy>]...)", param: "Position + order + partitions", desc: "Returns specific row (1st, last, N-th).", trap: "Positive indices from top (1); negative from bottom (-1)." },
+      { id: 85, name: "WINDOW", category: "Window Functions", priority: "⭐⭐⭐", status: "PLANNED", syntax: "WINDOW(<from>, <type>, <to>, <type>...)", param: "Boundary offsets + types", desc: "Moving window calculations (e.g. 3-mo rolling avg).", trap: "Use PARTITIONBY for group-level calculations." },
+      { id: 89, name: "RUNNINGSUM", category: "Window Functions", priority: "⭐⭐", status: "PLANNED", syntax: "RUNNINGSUM(<column>[, <reset>])", param: "Visual column", desc: "Power BI Visual Calculation running total.", trap: "Visual-only; does not exist in semantic model." },
+
+      { id: 92, name: "PATH", category: "Parent-Child", priority: "⭐⭐⭐", status: "PLANNED", syntax: "PATH(<child_key>, <parent_key>)", param: "Child ID + Parent ID", desc: "Builds pipe-delimited hierarchy string.", trap: "Must be a calculated column in dimension table." },
+      { id: 93, name: "PATHITEM", category: "Parent-Child", priority: "⭐⭐⭐", status: "PLANNED", syntax: "PATHITEM(<path>, <pos>[, <type>])", param: "Path + level + type", desc: "Extracts entity at specific hierarchy depth.", trap: "Out of bounds level returns BLANK." },
+
+      { id: 96, name: "SELECTEDMEASURE", category: "Calculation Groups", priority: "⭐⭐⭐", status: "PLANNED", syntax: "SELECTEDMEASURE()", param: "None", desc: "References currently evaluated measure.", trap: "Only valid inside Calculation Items." },
+      { id: 98, name: "ISSELECTEDMEASURE", category: "Calculation Groups", priority: "⭐⭐", status: "PLANNED", syntax: "ISSELECTEDMEASURE(<meas1>...)", param: "List of measures", desc: "Whitelists measures for calculation items.", trap: "Prevents invalid math on ratios (e.g. % margin)." },
+
+      { id: 101, name: "USERPRINCIPALNAME", category: "Security / Metadata", priority: "⭐⭐⭐", status: "PLANNED", syntax: "USERPRINCIPALNAME()", param: "None", desc: "Returns Entra ID / email of viewing user for RLS.", trap: "In Power BI Desktop returns domain/user; test via 'View As'." },
+      { id: 104, name: "INFO.TABLES", category: "Security / Metadata", priority: "⭐", status: "PLANNED", syntax: "INFO.TABLES()", param: "None", desc: "DAX Query View DMV table metadata.", trap: "Query view only; cannot be used in visual measures." },
+      { id: 107, name: "VAR", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "VAR <name> = <expr>", param: "Name + expr", desc: "Stores constant result in local scope.", trap: "Variables are evaluated once (constants); do not recompute in loops." },
+      { id: 108, name: "RETURN", category: "Scalar / Math", priority: "⭐⭐⭐", status: "DONE", syntax: "RETURN <expr>", param: "Expression", desc: "Returns final measure result using variables.", trap: "Must follow VAR declarations." }
+    ];
+
+    const saved = localStorage.getItem("myces_dax_status");
+    let statusMap = saved ? JSON.parse(saved) : {};
+
+    function getStatus(item) {
+      return statusMap[item.id] || item.status;
+    }
+
+    function toggleStatus(id) {
+      const item = MASTER_DATA.find(x => x.id === id);
+      const cur = getStatus(item);
+      const next = cur === 'DONE' ? 'LEARNING' : (cur === 'LEARNING' ? 'PLANNED' : 'DONE');
+      statusMap[id] = next;
+      localStorage.setItem("myces_dax_status", JSON.stringify(statusMap));
+      updateStats();
+      renderTable();
+    }
+
+    function updateStats() {
+      let done = 0, learning = 0, total = MASTER_DATA.length;
+      MASTER_DATA.forEach(x => {
+        const s = getStatus(x);
+        if (s === 'DONE') done++;
+        else if (s === 'LEARNING') learning++;
+      });
+      const pct = Math.round((done / total) * 100);
+      document.getElementById("statCompleted").innerText = done;
+      document.getElementById("statLearning").innerText = learning;
+      document.getElementById("statPercent").innerText = pct + "%";
+      document.getElementById("progressBarLabel").innerText = `${done} of ${total} Functions Mastered`;
+      document.getElementById("barCompleted").style.width = ((done/total)*100) + "%";
+      document.getElementById("barLearning").style.width = ((learning/total)*100) + "%";
+    }
+
+    function renderTable() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const cat = document.getElementById("categoryFilter").value;
+      const prio = document.getElementById("priorityFilter").value;
+      const stat = document.getElementById("statusFilter").value;
+
+      const filtered = MASTER_DATA.filter(item => {
+        const itemStatus = getStatus(item);
+        if (cat !== 'ALL' && item.category !== cat) return false;
+        if (prio !== 'ALL' && item.priority !== prio) return false;
+        if (stat !== 'ALL' && itemStatus !== stat) return false;
+        if (query) {
+          const hay = (item.name + ' ' + item.category + ' ' + item.desc + ' ' + item.syntax + ' ' + item.trap).toLowerCase();
+          if (!hay.includes(query)) return false;
+        }
+        return true;
+      });
+
+      const tbody = document.getElementById("functionTableBody");
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500 text-sm">No matching functions found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        const s = getStatus(item);
+        let badge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 cursor-pointer hover:border-slate-500">⚪ Planned</span>`;
+        if (s === 'DONE') {
+          badge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-pointer hover:bg-emerald-500/30">🟢 Completed</span>`;
+        } else if (s === 'LEARNING') {
+          badge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 cursor-pointer hover:bg-amber-500/30">🟡 In Progress</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-slate-750/40 transition">
+            <td class="p-3.5 pl-5 font-mono text-xs text-slate-500 font-bold">${item.id}</td>
+            <td class="p-3.5" onclick="toggleStatus(${item.id})">${badge}</td>
+            <td class="p-3.5 font-mono font-bold text-white tracking-wide">${item.name}</td>
+            <td class="p-3.5 text-xs text-slate-400">${item.category}</td>
+            <td class="p-3.5 text-center badge-star text-xs">${item.priority}</td>
+            <td class="p-3.5 font-mono text-xs text-amber-300">
+              <div class="bg-slate-900/90 border border-slate-700/60 rounded px-2 py-1">${item.syntax}</div>
+              <div class="text-[11px] text-slate-400 mt-1 font-sans">${item.param}</div>
+            </td>
+            <td class="p-3.5 text-xs">
+              <div class="text-slate-200 font-medium">${item.desc}</div>
+              <div class="text-rose-300/80 text-[11px] mt-1 bg-rose-950/30 border border-rose-900/30 rounded px-2 py-0.5"><span class="font-semibold text-rose-400">Trap:</span> ${item.trap}</div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function resetFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("categoryFilter").value = "ALL";
+      document.getElementById("priorityFilter").value = "ALL";
+      document.getElementById("statusFilter").value = "ALL";
+      renderTable();
+    }
+
+    function switchTab(tab) {
+      document.getElementById("tabCatalog").classList.add("hidden");
+      document.getElementById("tabRecipes").classList.add("hidden");
+      document.getElementById("tabPbi").classList.add("hidden");
+
+      document.getElementById("tabBtnCatalog").className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
+      document.getElementById("tabBtnRecipes").className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
+      document.getElementById("tabBtnPbi").className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
+
+      if (tab === 'catalog') {
+        document.getElementById("tabCatalog").classList.remove("hidden");
+        document.getElementById("tabBtnCatalog").className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-amber-500 text-amber-400 transition";
+      } else if (tab === 'recipes') {
+        document.getElementById("tabRecipes").classList.remove("hidden");
+        document.getElementById("tabBtnRecipes").className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-amber-500 text-amber-400 transition";
+      } else {
+        document.getElementById("tabPbi").classList.remove("hidden");
+        document.getElementById("tabBtnPbi").className = "px-5 py-2.5 font-semibold text-sm border-b-2 border-amber-500 text-amber-400 transition";
+      }
+    }
+
+    function copyCode(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Copied DAX code recipe to clipboard!");
+      });
+    }
+
+    updateStats();
+    renderTable();
+  </script>
+</body>
+</html>

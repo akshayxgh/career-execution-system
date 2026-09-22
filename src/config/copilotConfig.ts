@@ -1,26 +1,40 @@
 export const COPILOT_CONFIG = {
   get geminiApiKey() {
-    const raw =
-      localStorage.getItem("gemini_api_key") ||
-      (localStorage.getItem("ai_api_key")?.startsWith("AQ.") || localStorage.getItem("ai_api_key")?.startsWith("AIza")
-        ? localStorage.getItem("ai_api_key")
-        : "") ||
-      import.meta.env.VITE_GEMINI_API_KEY ||
-      "";
+    let raw = localStorage.getItem("gemini_api_key");
+    if (!raw) {
+      try {
+        const store = JSON.parse(localStorage.getItem("career_execution_system_state_v1") || "{}");
+        raw = store?.settings?.geminiApiKey;
+      } catch {}
+    }
+    if (!raw) {
+      const aiKey = localStorage.getItem("ai_api_key");
+      if (aiKey && (aiKey.startsWith("AQ.") || aiKey.startsWith("AIza"))) {
+        raw = aiKey;
+      }
+    }
     return (raw || "").trim().replace(/^['"]|['"]$/g, "");
   },
 
   get groqApiKey() {
-    const raw =
-      localStorage.getItem("groq_api_key") ||
-      (localStorage.getItem("ai_api_key")?.startsWith("gsk_") ? localStorage.getItem("ai_api_key") : "") ||
-      import.meta.env.VITE_GROQ_API_KEY ||
-      "";
+    let raw = localStorage.getItem("groq_api_key");
+    if (!raw) {
+      try {
+        const store = JSON.parse(localStorage.getItem("career_execution_system_state_v1") || "{}");
+        raw = store?.settings?.groqApiKey;
+      } catch {}
+    }
+    if (!raw) {
+      const aiKey = localStorage.getItem("ai_api_key");
+      if (aiKey && aiKey.startsWith("gsk_")) {
+        raw = aiKey;
+      }
+    }
     return (raw || "").trim().replace(/^['"]|['"]$/g, "");
   },
 
   get apiKey() {
-    // Return primary available key
+    // Return primary key configured in MyCES
     return this.groqApiKey || this.geminiApiKey || "";
   },
 
@@ -29,24 +43,24 @@ export const COPILOT_CONFIG = {
     if (key.startsWith("gsk_")) return "Groq";
     if (key.startsWith("xai-")) return "Grok";
     if (key.startsWith("sk-or-") || key.startsWith("sk-")) return "OpenRouter";
-    if (import.meta.env.VITE_GROQ_API_KEY) return "Groq";
+    if (this.groqApiKey) return "Groq";
     return "Gemini";
   },
 
   get baseUrl() {
     const prov = this.provider;
-    if (prov === "Groq") return import.meta.env.VITE_GROQ_BASE_URL || "https://api.groq.com/openai/v1";
-    if (prov === "Grok") return import.meta.env.VITE_GROK_BASE_URL || "https://api.x.ai/v1";
-    if (prov === "OpenRouter") return import.meta.env.VITE_OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+    if (prov === "Groq") return "https://api.groq.com/openai/v1";
+    if (prov === "Grok") return "https://api.x.ai/v1";
+    if (prov === "OpenRouter") return "https://openrouter.ai/api/v1";
     return "https://generativelanguage.googleapis.com/v1beta";
   },
 
   get model() {
     const prov = this.provider;
-    if (prov === "Groq") return import.meta.env.VITE_GROQ_MODEL || "openai/gpt-oss-120b";
-    if (prov === "Grok") return import.meta.env.VITE_GROK_MODEL || "grok-2-vision-1212";
-    if (prov === "OpenRouter") return import.meta.env.VITE_OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
-    return import.meta.env.VITE_GEMINI_MODEL || "gemini-3.6-flash";
+    if (prov === "Groq") return "openai/gpt-oss-120b";
+    if (prov === "Grok") return "grok-2-vision-1212";
+    if (prov === "OpenRouter") return "google/gemini-2.0-flash-exp:free";
+    return "gemini-2.5-flash";
   },
 
   timeoutMs: 35000,

@@ -19,6 +19,7 @@ import { Documents } from './views/Documents';
 import { Login } from './views/Login';
 import DecisionIntelligence from './views/DecisionIntelligence';
 import { UniversalFormatter } from './views/UniversalFormatter';
+import { DaxMasteryTracker } from './views/DaxMasteryTracker';
 
 function App() {
   return (
@@ -49,6 +50,9 @@ function App() {
 
             {/* Universal Data Formatter */}
             <Route path="formatter" element={<UniversalFormatter />} />
+
+            {/* DAX & Power BI Mastery Tracker */}
+            <Route path="dax-mastery" element={<DaxMasteryTracker />} />
 
             {/* New Module */}
             <Route
