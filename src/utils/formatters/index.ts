@@ -54,60 +54,124 @@ export function detectLanguage(input: string): FormatterLanguage {
   const trimmed = input.trim();
   if (!trimmed) return 'text';
 
-  // 1. JSON Detection: starts with { or [ and parseable or looks like JSON
-  if (/^[\{\[]/.test(trimmed)) {
-    try {
-      JSON.parse(trimmed);
-      return 'json';
-    } catch {
-      if (/[":\[\]\{\}]/.test(trimmed)) {
-        return 'json';
-      }
-    }
-  }
-
-  // 2. Power Query (M) Detection:
+  // 1. Power Query (M) Detection:
   const pqPatterns = [
     /^\s*let\b[\s\S]*?\bin\b/i,
     /#"[^"]+"\s*=/i,
-    /Table\.(SelectRows|AddColumn|NestedJoin|TransformColumnTypes|RenameColumns)/,
+    /Table\.(SelectRows|AddColumn|NestedJoin|TransformColumnTypes|RenameColumns|FromRows|FromRecords|ExpandTableColumn)/,
   ];
   if (pqPatterns.some((pattern) => pattern.test(trimmed))) {
     return 'powerquery';
   }
 
-  // 3. DAX Detection:
-  // Key DAX signatures: CALCULATE, FILTER, ALLEXCEPT, SUMX, DATESYTD, 'Table'[Col], [Measure], VAR ... RETURN
-  const daxPatterns = [
-    /\b(CALCULATE|CALCULATETABLE|FILTER|ALLEXCEPT|ALLSELECTED|SUMX|AVERAGEX|COUNTROWS|DATESYTD|SAMEPERIODLASTYEAR|RELATED|RELATEDTABLE|KEEPFILTERS)\s*\(/i,
-    /'[^']+'\s*\[[^\]]+\]/, // 'Table'[Column]
-    /\bVAR\b[\s\S]*?\bRETURN\b/i,
-    /^\s*[a-zA-Z0-9_\s]+\s*=\s*(CALCULATE|SUM|AVERAGE|FILTER|VAR)/i,
-  ];
-  if (daxPatterns.some((pattern) => pattern.test(trimmed))) {
+  // 2. DAX (Power BI) Detection - HIGHEST PRIORITY FOR FORMULAS & MEASURES:
+  // a) DAX Core & Signature Functions
+  const daxCoreFunctions = /\b(CALCULATE|CALCULATETABLE|DIVIDE|FILTER|ALL|ALLEXCEPT|ALLSELECTED|ALLNOBLANKROW|SUMX|AVERAGEX|COUNTX|COUNTAX|MINX|MAXX|MEDIANX|PRODUCTX|RANKX|CONCATENATEX|GEOMETRICMEANX|COUNTROWS|COUNTBLANK|DISTINCTCOUNT|DISTINCTCOUNTNOBLANK|DATESYTD|DATESMTD|DATESQTD|TOTALYTD|TOTALMTD|TOTALQTD|SAMEPERIODLASTYEAR|DATEADD|DATEDIFF|DATESBETWEEN|DATESINPERIOD|PARALLELPERIOD|PREVIOUSDAY|PREVIOUSMONTH|PREVIOUSQUARTER|PREVIOUSYEAR|NEXTDAY|NEXTMONTH|NEXTQUARTER|NEXTYEAR|OPENINGBALANCEMONTH|OPENINGBALANCEYEAR|CLOSINGBALANCEMONTH|CLOSINGBALANCEYEAR|RELATED|RELATEDTABLE|USERELATIONSHIP|CROSSFILTER|KEEPFILTERS|REMOVEFILTERS|TREATAS|SELECTEDVALUE|HASONEVALUE|HASONEFILTER|ISINSCOPE|ISFILTERED|ISCROSSFILTERED|LOOKUPVALUE|SUMMARIZE|SUMMARIZECOLUMNS|ADDCOLUMNS|SELECTCOLUMNS|GENERATE|GENERATEALL|ROW|DATATABLE|TOPN|EARLIER|EARLIEST|BLANK|ISBLANK|COALESCE|ROLLUP|ROLLUPGROUP|SUBSTITUTEWITHINDEX|COMBINEVALUES|CUSTOMDATA)\s*\(/i;
+
+  // b) Check for Measure Assignment Header: e.g. "Selected % = ...", "Total Sales = ...", "[Growth %] = ..."
+  const measureHeaderMatch = trimmed.match(/^(\[?[a-zA-Z0-9_\s%#$@\.\-\/\(\)&+]+\]?)\s*=\s*([\s\S]+)$/);
+  let isDaxMeasure = false;
+  if (
+    measureHeaderMatch &&
+    !/^\s*(const|let|var)\s+/i.test(trimmed) &&
+    !/==/.test(measureHeaderMatch[1])
+  ) {
+    const header = measureHeaderMatch[1].trim();
+    const body = measureHeaderMatch[2].trim();
+
+    const headerLooksLikeMeasure =
+      /(\s|[%#$]|\[[^\]]+\])/.test(header) ||
+      /^(sales|total|ytd|margin|growth|measure|qty|revenue|profit|count|avg|target|actual)/i.test(header);
+
+    const bodyLooksLikeDax =
+      daxCoreFunctions.test(body) ||
+      /\[[^\]]+\]/.test(body) ||
+      /'[^']+'\s*\[/.test(body) ||
+      /\b(SUM|AVERAGE|MIN|MAX|COUNT|IF|SWITCH|BLANK|TRUE|FALSE|DIVIDE|CALCULATE|FILTER)\s*\(/i.test(body);
+
+    if (headerLooksLikeMeasure || bodyLooksLikeDax) {
+      isDaxMeasure = true;
+    }
+  }
+
+  const hasDaxTableColumn = /'[^']+'\s*\[[^\]]+\]/.test(trimmed);
+  const hasDaxVarReturn = /\bVAR\b[\s\S]*?\bRETURN\b/i.test(trimmed);
+  const hasDaxEvaluate = /^\s*(EVALUATE|DEFINE\s+MEASURE)\b/i.test(trimmed);
+  const hasDaxMeasureRef = /(?:^|[=+\-*/(,\s])\[[a-zA-Z0-9_\s%#$@\.\-\/]+\]/.test(trimmed) &&
+    !/\[@[^\]]+\]/.test(trimmed);
+
+  // Excel coordinates and Excel-specific signatures:
+  const hasExcelCellCoords = /\b\$?[A-Z]+\$?[0-9]+(?::\$?[A-Z]+\$?[0-9]+)?\b/i.test(trimmed) || /!\$?[A-Z]+\$?[0-9]+/i.test(trimmed);
+  const hasExcelStructuredRowRef = /\[@[^\]]+\]/.test(trimmed);
+  const excelSpecificFunctions = /\b(XLOOKUP|VLOOKUP|HLOOKUP|XMATCH|MATCH|INDEX|LET|LAMBDA|CHOOSECOLS|CHOOSEROWS|HSTACK|VSTACK|TEXTJOIN|TEXTSPLIT|COUNTIF|COUNTIFS|SUMIF|SUMIFS|AVERAGEIF|AVERAGEIFS|SUMPRODUCT|FILTERXML|INDIRECT|OFFSET|ADDRESS|TRANSPOSE|SORTBY|SEQUENCE|UNIQUE)\s*\(/i;
+
+  // If it's a DAX measure declaration
+  if (isDaxMeasure) {
     return 'dax';
   }
 
-  // 4. Excel Formula Detection:
-  const excelPatterns = [
-    /^=\s*(IF|IFS|IFERROR|XLOOKUP|VLOOKUP|HLOOKUP|INDEX|MATCH|XMATCH|SUM|SUMIF|SUMIFS|COUNTIF|COUNTIFS|AVERAGEIFS|LET|LAMBDA|CHOOSE|CHOOSECOLS|HSTACK|VSTACK|TEXTJOIN|TEXTSPLIT)\s*\(/i,
-    /!\$?[A-Z]+\$?[0-9]+/i, // Sheet!A1
-    /\b[A-Z]+\d+:[A-Z]+\d+\b/, // A1:B10
-  ];
-  if (excelPatterns.some((pattern) => pattern.test(trimmed))) {
+  // If it has DAX-specific core functions (DIVIDE, CALCULATE, etc. take precedence even if prefixed with =)
+  if (daxCoreFunctions.test(trimmed)) {
+    return 'dax';
+  }
+
+  // If it has 'Table'[Column], VAR...RETURN, or EVALUATE
+  if (hasDaxTableColumn || hasDaxVarReturn || hasDaxEvaluate) {
+    return 'dax';
+  }
+
+  // If it has bracketed measure references [Measure] and lacks Excel cell coordinates / Excel-only functions
+  if (hasDaxMeasureRef && !hasExcelCellCoords && !hasExcelStructuredRowRef && !excelSpecificFunctions.test(trimmed)) {
+    return 'dax';
+  }
+
+  // 3. Excel Formula Detection:
+  if (
+    excelSpecificFunctions.test(trimmed) ||
+    hasExcelCellCoords ||
+    hasExcelStructuredRowRef ||
+    /^=\s*[A-Z_]/i.test(trimmed)
+  ) {
     return 'excel';
   }
 
-  // 5. SQL Detection:
+  // 4. SQL Detection:
   const sqlPatterns = [
-    /\bSELECT\b[\s\S]*?\bFROM\b/i,
+    /\b(SELECT|WITH)\b[\s\S]*?\bFROM\b/i,
     /\bINSERT\s+INTO\b/i,
     /\bUPDATE\s+[\w.]+\s+SET\b/i,
     /\bDELETE\s+FROM\b/i,
     /\bCREATE\s+TABLE\b/i,
+    /\bALTER\s+TABLE\b/i,
   ];
   if (sqlPatterns.some((pattern) => pattern.test(trimmed))) {
     return 'sql';
+  }
+
+  // 5. JSON Detection:
+  if (trimmed.startsWith('{')) {
+    try {
+      JSON.parse(trimmed);
+      return 'json';
+    } catch {
+      if (/^\{\s*["']?[\w$-]+["']?\s*:/m.test(trimmed)) {
+        return 'json';
+      }
+    }
+  } else if (trimmed.startsWith('[')) {
+    // Array: check if valid JSON or array of objects/primitives, NOT a DAX bracket reference
+    const isDaxBracket = /^\[[^\]]+\]\s*(=|\+|-|\*|\/|,|\)|&&|\|\||$)/.test(trimmed) ||
+                         /\[[^\]]+\]\s*$/.test(trimmed);
+    if (!isDaxBracket) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return 'json';
+      } catch {
+        if (/^\[\s*\{/.test(trimmed) || /^\[\s*["'\d\-\]]/m.test(trimmed)) {
+          return 'json';
+        }
+      }
+    }
   }
 
   // 6. Python Detection:
