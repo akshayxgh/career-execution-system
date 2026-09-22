@@ -101,9 +101,21 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setQuery('');
   };
 
-  // Keyboard shortcut listener: ONLY "/" (slash) outside of inputs
+  // Keyboard shortcut listener: "/" (slash) or Ctrl+F / Cmd+F
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Intercept Control+F or Cmd+F
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isOpen) {
+          closePalette();
+        } else {
+          openPalette();
+        }
+        return;
+      }
+
       // Quick slash "/" when not focused on an input/textarea
       if (e.key === '/' && !isOpen) {
         const activeEl = document.activeElement;
@@ -713,7 +725,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     return [...staticCommands, ...storeCommands];
   }, [staticCommands, storeCommands]);
 
-  // Intelligent Multi-Term Filtering
+  // Intelligent Multi-Term Filtering with Relevance Scoring
   const filteredCommands = useMemo(() => {
     const raw = query.trim().toLowerCase();
     if (!raw) {
@@ -722,20 +734,83 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
     const searchTokens = raw.split(/\s+/).filter(Boolean);
 
-    return allCommands.filter((cmd) => {
-      const titleLower = cmd.title.toLowerCase();
-      const descLower = (cmd.description || '').toLowerCase();
-      const catLower = cmd.category.toLowerCase();
-      const keywordsJoined = cmd.keywords.join(' ').toLowerCase();
+    // Score each command
+    const scored = allCommands
+      .map((cmd) => {
+        const titleLower = cmd.title.toLowerCase();
+        const descLower = (cmd.description || '').toLowerCase();
+        const catLower = cmd.category.toLowerCase();
+        const titleWords = titleLower.split(/[\s—:–\-()]+/).filter(Boolean);
+        const descWords = descLower.split(/[\s—:–\-()]+/).filter(Boolean);
 
-      return searchTokens.every(
-        (token) =>
-          titleLower.includes(token) ||
-          descLower.includes(token) ||
-          catLower.includes(token) ||
-          keywordsJoined.includes(token)
-      );
-    });
+        // Every search token must match somewhere
+        const allTokensMatch = searchTokens.every((token) => {
+          const inTitle = titleLower.includes(token);
+          const inDesc = descLower.includes(token);
+          const inCat = catLower.includes(token);
+          const inKeywords = cmd.keywords.some((k) => k.toLowerCase().includes(token));
+          return inTitle || inDesc || inCat || inKeywords;
+        });
+
+        if (!allTokensMatch) return null;
+
+        let score = 0;
+
+        // 1. Title matching (HIGHEST PRIORITY)
+        // Exact start of title (e.g. "lea" -> "Learning Tracks...")
+        if (titleLower.startsWith(raw)) {
+          score += 15000;
+        }
+
+        // Any word in title starts with token (e.g. "DEXer: DAX Learning...")
+        searchTokens.forEach((token) => {
+          if (titleWords.some((w) => w.startsWith(token))) {
+            score += 5000;
+          } else if (titleLower.includes(token)) {
+            score += 1500;
+          }
+        });
+
+        // 2. Category Priority: Core Sections / Modules appear before sub-tools and actions
+        if (cmd.category === 'Modules') {
+          score += 2500;
+        } else if (cmd.category === 'Sub-Views') {
+          score += 1000;
+        }
+
+        // 3. Keyword matching (prioritize exact word matches over internal substrings)
+        searchTokens.forEach((token) => {
+          for (const kw of cmd.keywords) {
+            const kwLower = kw.toLowerCase();
+            if (kwLower === token) {
+              score += 2000; // exact keyword match e.g. "dax"
+            } else if (kwLower.startsWith(token)) {
+              score += 1000;
+            } else if (kwLower.split(/\s+/).some((w) => w.startsWith(token))) {
+              score += 800;
+            } else if (kwLower.includes(token)) {
+              score += 50; // substring inside keyword e.g. "c[lea]n"
+            }
+          }
+        });
+
+        // 4. Description matching
+        searchTokens.forEach((token) => {
+          if (descWords.some((w) => w.startsWith(token))) {
+            score += 200;
+          } else if (descLower.includes(token)) {
+            score += 30;
+          }
+        });
+
+        return { cmd, score };
+      })
+      .filter((item): item is { cmd: CommandItem; score: number } => item !== null);
+
+    // Sort descending by score
+    scored.sort((a, b) => b.score - a.score);
+
+    return scored.map((item) => item.cmd);
   }, [allCommands, query]);
 
   // Reset selected index when results change
@@ -973,7 +1048,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         {/* Footer shortcuts */}
         <div className="cmd-palette-footer">
           <div className="cmd-palette-footer-item">
-            <kbd className="cmd-kbd">/</kbd> to open
+            <kbd className="cmd-kbd">Ctrl+F</kbd> / <kbd className="cmd-kbd">/</kbd> to open
           </div>
           <div className="cmd-palette-footer-item">
             <kbd className="cmd-kbd">ESC</kbd> to cancel / close
