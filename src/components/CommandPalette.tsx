@@ -31,6 +31,8 @@ import {
   LogOut,
   FolderPlus,
   Compass,
+  Timer,
+  XCircle,
 } from 'lucide-react';
 import './CommandPalette.css';
 
@@ -51,6 +53,8 @@ interface CommandPaletteProps {
   onToggleSidebar?: () => void;
 }
 
+const AUTO_REDIRECT_DELAY_MS = 1500; // 1.5 seconds idle auto-redirect
+
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenAiSettings,
   onToggleTheme,
@@ -59,36 +63,47 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [countdownRemaining, setCountdownRemaining] = useState<number | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<any>(null);
+  const intervalRef = useRef<any>(null);
+  const isCancelledRef = useRef<boolean>(false);
+
   const navigate = useNavigate();
   const { state } = useStore();
 
+  const clearAutoRedirectTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setCountdownRemaining(null);
+  };
+
   const openPalette = () => {
+    isCancelledRef.current = false;
+    clearAutoRedirectTimer();
     setIsOpen(true);
     setQuery('');
     setSelectedIndex(0);
   };
 
   const closePalette = () => {
+    isCancelledRef.current = true;
+    clearAutoRedirectTimer();
     setIsOpen(false);
     setQuery('');
   };
 
-  // Keyboard shortcut listener: Ctrl+F, Ctrl+S, Ctrl+K, Cmd+F, Cmd+S, Cmd+K, or "/"
+  // Keyboard shortcut listener: ONLY "/" (slash) outside of inputs
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      const isModifier = e.ctrlKey || e.metaKey;
-
-      // Intercept Control+F, Control+S, Control+K
-      if (isModifier && (key === 'f' || key === 's' || key === 'k')) {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsOpen((prev) => !prev);
-        return;
-      }
-
       // Quick slash "/" when not focused on an input/textarea
       if (e.key === '/' && !isOpen) {
         const activeEl = document.activeElement;
@@ -103,20 +118,21 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         }
       }
 
-      // Close on Escape
+      // Close on Escape - explicitly guarantees NO auto-redirect
       if (e.key === 'Escape' && isOpen) {
         e.preventDefault();
+        e.stopPropagation();
         closePalette();
       }
     };
 
     const handleCustomOpen = () => openPalette();
 
-    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('ces:open-command-palette', handleCustomOpen);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('ces:open-command-palette', handleCustomOpen);
     };
   }, [isOpen]);
@@ -131,17 +147,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }
   }, [isOpen]);
 
-  // Build the complete universe of commands ("every possibility")
+  // Build the complete universe of commands
   const staticCommands: CommandItem[] = useMemo(() => {
     const nav = (path: string) => {
+      clearAutoRedirectTimer();
       navigate(path);
       closePalette();
     };
 
     return [
-      // -------------------------------------------------------------
       // 1. TOP-LEVEL MODULES
-      // -------------------------------------------------------------
       {
         id: 'mod-formatter',
         title: 'Universal Formatter & Studio',
@@ -283,9 +298,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => nav('/documents'),
       },
 
-      // -------------------------------------------------------------
       // 2. DEEP SUB-VIEWS & DIRECT TABS
-      // -------------------------------------------------------------
       {
         id: 'sub-dax-tracker',
         title: 'DEXer: DAX Learning & Function Log',
@@ -357,9 +370,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => nav('/question-bank'),
       },
 
-      // -------------------------------------------------------------
       // 3. UNIVERSAL FORMATTER DIRECT LANGUAGE MODES
-      // -------------------------------------------------------------
       {
         id: 'fmt-dax',
         title: 'Format DAX Formula',
@@ -431,9 +442,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => nav('/formatter?lang=markdown'),
       },
 
-      // -------------------------------------------------------------
       // 4. QUICK ACTIONS & CREATION SHORTCUTS
-      // -------------------------------------------------------------
       {
         id: 'act-new-app',
         title: 'Add New Job Application',
@@ -495,9 +504,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => nav('/documents'),
       },
 
-      // -------------------------------------------------------------
       // 5. GLOBAL SYSTEM & PREFERENCE ACTIONS
-      // -------------------------------------------------------------
       {
         id: 'sys-toggle-theme',
         title: 'Toggle Obsidian Night / Clean Day Theme',
@@ -505,7 +512,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         description: 'Instantly toggle theme aesthetic between Obsidian Night and Clean Day',
         icon: document.documentElement.getAttribute('data-theme') === 'night' ? <Sun size={18} /> : <Moon size={18} />,
         keywords: ['toggle theme', 'theme', 'dark mode', 'night mode', 'light mode', 'day mode'],
-        badge: 'Shortcut',
+        badge: 'Theme',
         action: () => {
           if (onToggleTheme) {
             onToggleTheme();
@@ -614,7 +621,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     ];
   }, [navigate, onOpenAiSettings, onToggleTheme, onToggleSidebar]);
 
-  // Dynamic items from user's live store state (Applications, Projects, Weaknesses)
+  // Dynamic items from user's live store state
   const storeCommands: CommandItem[] = useMemo(() => {
     const items: CommandItem[] = [];
 
@@ -630,6 +637,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           keywords: [app.company, app.position, app.status, app.location || '', 'job', 'application'],
           badge: 'Application',
           action: () => {
+            clearAutoRedirectTimer();
             navigate('/applications');
             closePalette();
           },
@@ -649,6 +657,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           keywords: [proj.name, proj.status, ...(proj.technologiesUsed || []), 'project', 'portfolio'],
           badge: 'Project',
           action: () => {
+            clearAutoRedirectTimer();
             navigate('/projects');
             closePalette();
           },
@@ -668,6 +677,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           keywords: [w.topic, w.interviewCompany || '', w.status, 'weakness', 'mistake'],
           badge: 'Weakness',
           action: () => {
+            clearAutoRedirectTimer();
             navigate('/weaknesses');
             closePalette();
           },
@@ -687,6 +697,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           keywords: [res.versionName, res.roleTargeted, 'resume', 'cv'],
           badge: 'Resume',
           action: () => {
+            clearAutoRedirectTimer();
             navigate('/resumes');
             closePalette();
           },
@@ -706,7 +717,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const filteredCommands = useMemo(() => {
     const raw = query.trim().toLowerCase();
     if (!raw) {
-      // Default view: Show Core Modules, Top Sub-Views, and Key Actions
       return allCommands.filter((cmd) => cmd.category !== 'My Data');
     }
 
@@ -718,7 +728,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       const catLower = cmd.category.toLowerCase();
       const keywordsJoined = cmd.keywords.join(' ').toLowerCase();
 
-      // Every token must match somewhere in title, desc, keywords, or category
       return searchTokens.every(
         (token) =>
           titleLower.includes(token) ||
@@ -734,20 +743,82 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setSelectedIndex(0);
   }, [filteredCommands.length, query]);
 
+  // =========================================================================
+  // AUTO-REDIRECT ENGINE:
+  // If user types query (e.g. "dax", "formatter") and stops movement for 1.5s,
+  // automatically redirect to the top result! Pressing ESC cancels completely.
+  // =========================================================================
+  useEffect(() => {
+    clearAutoRedirectTimer();
+
+    const trimmed = query.trim();
+    if (!isOpen || !trimmed || filteredCommands.length === 0 || isCancelledRef.current) {
+      setCountdownRemaining(null);
+      return;
+    }
+
+    const targetCommand = filteredCommands[selectedIndex] || filteredCommands[0];
+    if (!targetCommand) return;
+
+    let timeLeft = AUTO_REDIRECT_DELAY_MS;
+    setCountdownRemaining(timeLeft);
+
+    // Update countdown tick every 100ms
+    intervalRef.current = setInterval(() => {
+      timeLeft -= 100;
+      if (timeLeft <= 0) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        setCountdownRemaining(0);
+      } else {
+        setCountdownRemaining(timeLeft);
+      }
+    }, 100);
+
+    // Execute redirection on timer completion
+    timerRef.current = setTimeout(() => {
+      if (!isCancelledRef.current) {
+        targetCommand.action();
+      }
+      clearAutoRedirectTimer();
+    }, AUTO_REDIRECT_DELAY_MS);
+
+    return () => {
+      clearAutoRedirectTimer();
+    };
+  }, [query, selectedIndex, isOpen, filteredCommands]);
+
+  // User movement or activity resets/cancels the timer to give control
+  const handleUserActivity = () => {
+    // If user is actively moving mouse or navigating, delay the redirect
+    if (timerRef.current && countdownRemaining !== null) {
+      clearAutoRedirectTimer();
+    }
+  };
+
   // Keyboard navigation within list
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closePalette();
+      return;
+    }
+
     if (filteredCommands.length === 0) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      clearAutoRedirectTimer();
       setSelectedIndex((prev) => (prev + 1) % filteredCommands.length);
       scrollSelectedIntoView((selectedIndex + 1) % filteredCommands.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      clearAutoRedirectTimer();
       setSelectedIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
       scrollSelectedIntoView((selectedIndex - 1 + filteredCommands.length) % filteredCommands.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      clearAutoRedirectTimer();
       const selected = filteredCommands[selectedIndex];
       if (selected) {
         selected.action();
@@ -766,15 +837,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   if (!isOpen) return null;
 
+  const topTarget = filteredCommands[selectedIndex] || filteredCommands[0];
+  const progressPercent = countdownRemaining !== null
+    ? Math.max(0, Math.min(100, ((AUTO_REDIRECT_DELAY_MS - countdownRemaining) / AUTO_REDIRECT_DELAY_MS) * 100))
+    : 0;
+
   return (
     <div className="cmd-palette-backdrop" onClick={closePalette}>
       <div
         className="cmd-palette-modal"
         onClick={(e) => e.stopPropagation()}
+        onMouseMove={handleUserActivity}
         role="dialog"
         aria-modal="true"
         aria-label="Global Command Palette"
       >
+        {/* Auto-Redirect Progress Bar */}
+        {countdownRemaining !== null && (
+          <div className="cmd-auto-redirect-bar-container">
+            <div
+              className="cmd-auto-redirect-bar-fill"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
+
         {/* Header / Input */}
         <div className="cmd-palette-header">
           <div className="cmd-palette-search-icon">
@@ -784,18 +871,44 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             ref={inputRef}
             type="text"
             className="cmd-palette-input"
-            placeholder="Type anything... e.g. 'formatter', 'dax log', 'sql', 'theme', 'arena'"
+            placeholder="Type anything... (e.g. 'dax', 'formatter', 'arena', 'sql')"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              isCancelledRef.current = false;
+              setQuery(e.target.value);
+            }}
             onKeyDown={handleInputKeyDown}
             autoComplete="off"
             spellCheck="false"
           />
+
+          {countdownRemaining !== null && topTarget && (
+            <div className="cmd-countdown-pill" title="Press Escape to cancel auto-redirect">
+              <Timer size={13} className="cmd-countdown-pulse" />
+              <span>Jumping in {(countdownRemaining / 1000).toFixed(1)}s</span>
+              <button
+                type="button"
+                className="cmd-countdown-cancel-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isCancelledRef.current = true;
+                  clearAutoRedirectTimer();
+                }}
+                title="Cancel Auto-jump"
+              >
+                <XCircle size={13} />
+              </button>
+            </div>
+          )}
+
           {query ? (
             <button
               type="button"
               className="cmd-palette-clear-btn"
-              onClick={() => setQuery('')}
+              onClick={() => {
+                clearAutoRedirectTimer();
+                setQuery('');
+              }}
               title="Clear search"
             >
               Clear
@@ -812,7 +925,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <Sparkles size={28} className="cmd-palette-empty-icon" />
               <p className="cmd-palette-empty-title">No matching modules or data found</p>
               <p className="cmd-palette-empty-sub">
-                Try searching for "formatter", "dax log", "sql", "pbi", "theme", or a company name.
+                Try searching for "dax", "formatter", "sql", "arena", or a company name.
               </p>
             </div>
           ) : (
@@ -823,7 +936,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                   key={cmd.id}
                   className={`cmd-palette-item ${isSelected ? 'selected' : ''}`}
                   onClick={() => cmd.action()}
-                  onMouseEnter={() => setSelectedIndex(idx)}
+                  onMouseEnter={() => {
+                    clearAutoRedirectTimer();
+                    setSelectedIndex(idx);
+                  }}
                 >
                   <div className="cmd-palette-item-icon">{cmd.icon}</div>
                   <div className="cmd-palette-item-content">
@@ -840,7 +956,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                   <div className="cmd-palette-item-enter">
                     {isSelected && (
                       <span className="cmd-palette-enter-hint">
-                        Jump <ArrowRight size={13} />
+                        {countdownRemaining !== null && idx === 0 ? (
+                          <>Auto-jump <Timer size={13} /></>
+                        ) : (
+                          <>Jump <ArrowRight size={13} /></>
+                        )}
                       </span>
                     )}
                   </div>
@@ -853,13 +973,13 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         {/* Footer shortcuts */}
         <div className="cmd-palette-footer">
           <div className="cmd-palette-footer-item">
-            <kbd className="cmd-kbd">Ctrl+F</kbd> / <kbd className="cmd-kbd">Ctrl+S</kbd> to open
+            <kbd className="cmd-kbd">/</kbd> to open
           </div>
           <div className="cmd-palette-footer-item">
-            <kbd className="cmd-kbd">↑</kbd> <kbd className="cmd-kbd">↓</kbd> navigate
+            <kbd className="cmd-kbd">ESC</kbd> to cancel / close
           </div>
           <div className="cmd-palette-footer-item">
-            <kbd className="cmd-kbd">↵</kbd> select
+            <kbd className="cmd-kbd">↵</kbd> jump now
           </div>
           <div className="cmd-palette-footer-brand">
             <Compass size={13} /> MYCES Spotlight
