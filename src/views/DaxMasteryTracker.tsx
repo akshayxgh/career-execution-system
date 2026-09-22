@@ -24,7 +24,8 @@ import {
   Plus,
   Trash2,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  ArrowUpDown
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -419,11 +420,14 @@ export const DaxMasteryTracker: React.FC = () => {
     }
   };
 
-  // Learning Tracker Filters
+  // Learning Tracker Filters & Sorting
   const [trackerSearchQuery, setTrackerSearchQuery] = useState('');
   const [trackerCategoryFilter, setTrackerCategoryFilter] = useState('ALL');
   const [trackerStatusFilter, setTrackerStatusFilter] = useState('ALL');
   const [trackerGrouping, setTrackerGrouping] = useState<'flat' | 'grouped'>('flat');
+  const [trackerSortBy, setTrackerSortBy] = useState<
+    'newest' | 'func-asc' | 'func-desc' | 'cat-asc' | 'status-done' | 'status-plan' | 'default'
+  >('newest');
 
   // Add Item Modal & Form State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -576,8 +580,8 @@ The static rule-based audit results above are 100% active and running locally.`)
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Learning Tracker Metrics & State
-  const allTrackerItems = [...DAX_LEARNING_TRACKER_DATA, ...customTrackerItems];
+  // Learning Tracker Metrics & State (Custom/new entries appear on top by default)
+  const allTrackerItems = [...customTrackerItems, ...DAX_LEARNING_TRACKER_DATA];
   const trackerTotalCount = allTrackerItems.length;
   let trackerCompletedCount = 0;
   let trackerPracticedCount = 0;
@@ -613,6 +617,61 @@ The static rule-based audit results above are 100% active and running locally.`)
       );
     }
     return true;
+  });
+
+  // Learning Tracker Sorted List (New entries on top by default, plus flexible sorting)
+  const sortedTrackerItems = [...filteredTrackerItems].sort((a, b) => {
+    const isCustomA = a.id.startsWith('custom-');
+    const isCustomB = b.id.startsWith('custom-');
+    const statusA = trackerStatusMap[a.id] || a.status;
+    const statusB = trackerStatusMap[b.id] || b.status;
+
+    if (trackerSortBy === 'newest') {
+      // 1. Custom / newly added entries appear on top
+      if (isCustomA && !isCustomB) return -1;
+      if (!isCustomA && isCustomB) return 1;
+      if (isCustomA && isCustomB) {
+        // Newer custom entries first based on timestamp in id
+        const timeA = parseInt(a.id.split('-')[1] || '0', 10);
+        const timeB = parseInt(b.id.split('-')[1] || '0', 10);
+        return timeB - timeA;
+      }
+      return 0; // retain natural matrix order for non-custom items
+    }
+
+    if (trackerSortBy === 'func-asc') {
+      return a.functionName.localeCompare(b.functionName);
+    }
+
+    if (trackerSortBy === 'func-desc') {
+      return b.functionName.localeCompare(a.functionName);
+    }
+
+    if (trackerSortBy === 'cat-asc') {
+      const catComp = a.category.localeCompare(b.category);
+      if (catComp !== 0) return catComp;
+      return a.functionName.localeCompare(b.functionName);
+    }
+
+    if (trackerSortBy === 'status-done') {
+      const rank: Record<string, number> = { 'Completed': 3, 'Introduced/Practiced': 2, 'Planned': 1 };
+      const diff = (rank[statusB] || 0) - (rank[statusA] || 0);
+      if (diff !== 0) return diff;
+      return a.functionName.localeCompare(b.functionName);
+    }
+
+    if (trackerSortBy === 'status-plan') {
+      const rank: Record<string, number> = { 'Planned': 3, 'Introduced/Practiced': 2, 'Completed': 1 };
+      const diff = (rank[statusB] || 0) - (rank[statusA] || 0);
+      if (diff !== 0) return diff;
+      return a.functionName.localeCompare(b.functionName);
+    }
+
+    if (trackerSortBy === 'default') {
+      return 0;
+    }
+
+    return 0;
   });
 
   const TRACKER_CATEGORIES = Array.from(new Set(allTrackerItems.map(d => d.category)));
@@ -776,7 +835,7 @@ Respond with ONLY a raw JSON object (no markdown, no backticks, no extra text) m
 
   const handleExportMarkdownTable = () => {
     const header = `| Category | Function | Status | Syntax | Parameter | What the parameter accepts | What it does | Example |\n| --- | --- | --- | --- | --- | --- | --- | --- |`;
-    const rows = filteredTrackerItems.map(item => {
+    const rows = sortedTrackerItems.map(item => {
       const s = trackerStatusMap[item.id] || item.status;
       return `| ${item.category} | \`${item.functionName}\` | ${s} | \`${item.syntax}\` | ${item.parameter} | ${item.parameterAccepts} | ${item.whatItDoes} | \`${item.example}\` |`;
     }).join('\n');
@@ -1273,6 +1332,22 @@ Make it punchy, practical, and senior-level.`;
                 <option value="Planned">⚪ Planned ({trackerPlannedCount})</option>
               </select>
 
+              {/* Theme-Matching Sort Select */}
+              <select 
+                value={trackerSortBy} 
+                onChange={(e) => setTrackerSortBy(e.target.value as any)}
+                className="dax-select-filter"
+                title="Sort items"
+              >
+                <option value="newest">⚡ Newest / Custom First</option>
+                <option value="func-asc">🔤 Function (A → Z)</option>
+                <option value="func-desc">🔤 Function (Z → A)</option>
+                <option value="cat-asc">📁 Category (A → Z)</option>
+                <option value="status-done">🟢 Status (Done First)</option>
+                <option value="status-plan">⚪ Status (Planned First)</option>
+                <option value="default">📋 Default Matrix Order</option>
+              </select>
+
               {/* View Mode Toggle */}
               <div className="dax-view-toggle-bar">
                 <button
@@ -1328,17 +1403,18 @@ Make it punchy, practical, and senior-level.`;
                 <span>Add</span>
               </button>
 
-              {(trackerSearchQuery || trackerCategoryFilter !== 'ALL' || trackerStatusFilter !== 'ALL') && (
+              {(trackerSearchQuery || trackerCategoryFilter !== 'ALL' || trackerStatusFilter !== 'ALL' || trackerSortBy !== 'newest') && (
                 <button 
                   type="button"
                   onClick={() => {
                     setTrackerSearchQuery('');
                     setTrackerCategoryFilter('ALL');
                     setTrackerStatusFilter('ALL');
+                    setTrackerSortBy('newest');
                   }}
                   className="dax-btn-toolbar-secondary"
                   style={{ color: 'var(--text-muted)', borderStyle: 'dashed' }}
-                  title="Reset all filters"
+                  title="Reset all filters and sorting"
                 >
                   <RotateCcw size={12} />
                   <span>Reset</span>
@@ -1392,9 +1468,48 @@ Make it punchy, practical, and senior-level.`;
                   <table className="dax-table">
                     <thead>
                       <tr>
-                        <th style={{ minWidth: '115px' }}>Category</th>
-                        <th style={{ minWidth: '130px' }}>Function</th>
-                        <th style={{ minWidth: '175px' }}>Status</th>
+                        <th 
+                          style={{ minWidth: '120px', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => setTrackerSortBy(prev => prev === 'cat-asc' ? 'default' : 'cat-asc')}
+                          title="Click to sort by Category"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span>Category</span>
+                            {trackerSortBy === 'cat-asc' ? <ChevronUp size={13} color="var(--accent-primary)" /> : <ArrowUpDown size={11} color="var(--text-muted)" />}
+                          </div>
+                        </th>
+                        <th 
+                          style={{ minWidth: '135px', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => setTrackerSortBy(prev => prev === 'func-asc' ? 'func-desc' : 'func-asc')}
+                          title="Click to sort by Function name"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span>Function</span>
+                            {trackerSortBy === 'func-asc' ? (
+                              <ChevronUp size={13} color="var(--accent-primary)" />
+                            ) : trackerSortBy === 'func-desc' ? (
+                              <ChevronDown size={13} color="var(--accent-primary)" />
+                            ) : (
+                              <ArrowUpDown size={11} color="var(--text-muted)" />
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          style={{ minWidth: '175px', cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => setTrackerSortBy(prev => prev === 'status-done' ? 'status-plan' : 'status-done')}
+                          title="Click to sort by Status"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span>Status</span>
+                            {trackerSortBy === 'status-done' ? (
+                              <ChevronUp size={13} color="var(--accent-primary)" />
+                            ) : trackerSortBy === 'status-plan' ? (
+                              <ChevronDown size={13} color="var(--accent-primary)" />
+                            ) : (
+                              <ArrowUpDown size={11} color="var(--text-muted)" />
+                            )}
+                          </div>
+                        </th>
                         <th style={{ minWidth: '220px' }}>Syntax</th>
                         <th style={{ minWidth: '130px' }}>Parameter</th>
                         <th style={{ minWidth: '180px' }}>What Parameter Accepts</th>
@@ -1404,22 +1519,42 @@ Make it punchy, practical, and senior-level.`;
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredTrackerItems.length === 0 ? (
+                      {sortedTrackerItems.length === 0 ? (
                         <tr>
                           <td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                             No learning tracker items match your filters.
                           </td>
                         </tr>
                       ) : (
-                        filteredTrackerItems.map(item => {
+                        sortedTrackerItems.map(item => {
                           const s = trackerStatusMap[item.id] || item.status;
+                          const isCustom = item.id.startsWith('custom-');
                           return (
                             <tr key={item.id} className={s === 'Completed' ? 'row-done' : s === 'Introduced/Practiced' ? 'row-learning' : ''}>
                               <td>
                                 <span className="dax-category-badge">{item.category}</span>
                               </td>
                               <td>
-                                <span className="dax-func-badge">{item.functionName}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <span className="dax-func-badge">{item.functionName}</span>
+                                  {isCustom && (
+                                    <span 
+                                      style={{ 
+                                        fontSize: '0.6rem', 
+                                        background: 'rgba(16, 185, 129, 0.2)', 
+                                        color: '#10b981', 
+                                        border: '1px solid rgba(16, 185, 129, 0.45)', 
+                                        padding: '1px 5px', 
+                                        borderRadius: '4px', 
+                                        fontWeight: 800,
+                                        letterSpacing: '0.04em'
+                                      }}
+                                      title="Custom user-added entry"
+                                    >
+                                      NEW
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td>
                                 <div className="status-pill-group">
@@ -1517,24 +1652,48 @@ Make it punchy, practical, and senior-level.`;
             ) : (
               /* View 2: Grouped by Function */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {Object.entries(
-                  filteredTrackerItems.reduce<Record<string, DaxLearningItem[]>>((acc, item) => {
-                    if (!acc[item.functionName]) acc[item.functionName] = [];
-                    acc[item.functionName].push(item);
-                    return acc;
-                  }, {})
-                ).map(([funcName, items]) => (
-                  <div key={funcName} className="dax-grouped-card">
-                    <div className="dax-grouped-header">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        <span className="dax-category-badge">{items[0].category}</span>
-                        <span className="dax-func-badge" style={{ fontSize: '0.95rem' }}>{funcName}</span>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                          {items.length} parameter{items.length > 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      <div className="syntax-chip">{items[0].syntax}</div>
-                    </div>
+                {sortedTrackerItems.length === 0 ? (
+                  <div className="dax-grouped-card" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                    No learning tracker items match your filters.
+                  </div>
+                ) : (
+                  Object.entries(
+                    sortedTrackerItems.reduce<Record<string, DaxLearningItem[]>>((acc, item) => {
+                      if (!acc[item.functionName]) acc[item.functionName] = [];
+                      acc[item.functionName].push(item);
+                      return acc;
+                    }, {})
+                  ).map(([funcName, items]) => {
+                    const hasCustom = items.some(i => i.id.startsWith('custom-'));
+                    return (
+                      <div key={funcName} className="dax-grouped-card">
+                        <div className="dax-grouped-header">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <span className="dax-category-badge">{items[0].category}</span>
+                            <span className="dax-func-badge" style={{ fontSize: '0.95rem' }}>{funcName}</span>
+                            {hasCustom && (
+                              <span 
+                                style={{ 
+                                  fontSize: '0.6rem', 
+                                  background: 'rgba(16, 185, 129, 0.2)', 
+                                  color: '#10b981', 
+                                  border: '1px solid rgba(16, 185, 129, 0.45)', 
+                                  padding: '1px 5px', 
+                                  borderRadius: '4px', 
+                                  fontWeight: 800,
+                                  letterSpacing: '0.04em'
+                                }}
+                                title="Custom user-added entry"
+                              >
+                                NEW
+                              </span>
+                            )}
+                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                              {items.length} parameter{items.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="syntax-chip">{items[0].syntax}</div>
+                        </div>
 
                     <div style={{ overflowX: 'auto' }}>
                       <table className="dax-table" style={{ margin: 0 }}>
@@ -1631,11 +1790,12 @@ Make it punchy, practical, and senior-level.`;
                       </table>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                );
+              }))}
+            </div>
+          )}
+        </div>
+      )}
 
         {/* ADD TO LEARNING TRACKER MODAL */}
         {isAddModalOpen && (
