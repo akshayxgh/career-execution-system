@@ -139,15 +139,7 @@ export const UniversalFormatter = () => {
   const [searchParams] = useSearchParams();
   const langParam = searchParams.get('lang') as FormatterLanguage | null;
 
-  const initialPreset = useMemo(() => {
-    if (langParam) {
-      const match = PRESETS.find((p) => p.language === langParam);
-      if (match) return match;
-    }
-    return PRESETS[0];
-  }, [langParam]);
-
-  const [inputCode, setInputCode] = useState<string>(initialPreset.code);
+  const [inputCode, setInputCode] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState<FormatterLanguage>(langParam || 'auto');
   const [indentSize, setIndentSize] = useState<number>(4);
   const [uppercaseKeywords, setUppercaseKeywords] = useState<boolean>(true);
@@ -160,16 +152,12 @@ export const UniversalFormatter = () => {
   useEffect(() => {
     if (langParam) {
       setSelectedLanguage(langParam);
-      const match = PRESETS.find((p) => p.language === langParam);
-      if (match) {
-        setInputCode(match.code);
-      }
     }
   }, [langParam]);
 
-  // Result state
+  // Result state (starts empty with placeholder)
   const [result, setResult] = useState<UniversalFormatterResult>(() =>
-    formatUniversal(initialPreset.code, {
+    formatUniversal('', {
       language: langParam || 'auto',
       indentSize: 4,
       uppercaseKeywords: true,
@@ -451,6 +439,7 @@ export const UniversalFormatter = () => {
           <select
             className="formatter-select"
             onChange={(e) => {
+              if (!e.target.value) return;
               const preset = PRESETS.find((p) => p.id === e.target.value);
               if (preset) {
                 setInputCode(preset.code);
@@ -458,9 +447,10 @@ export const UniversalFormatter = () => {
                 handleFormat(preset.code, preset.language);
               }
             }}
-            defaultValue={PRESETS[0].id}
+            defaultValue=""
             title="Load Data Professional Sample Presets"
           >
+            <option value="">Choose a Template / Preset...</option>
             {PRESETS.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -640,7 +630,7 @@ export const UniversalFormatter = () => {
               onChange={(e) => setInputCode(e.target.value)}
               onScroll={handleInputScroll}
               onKeyDown={handleKeyDownTextarea}
-              placeholder="Paste your DAX measure, SQL query, Power Query M code, JSON payload, or Python script here..."
+              placeholder="Paste your DAX measure, SQL query, Excel formula, Power Query M code, JSON payload, or Python script here... (or choose a preset above)"
               spellCheck={false}
             />
           </div>
@@ -652,7 +642,7 @@ export const UniversalFormatter = () => {
             <div className="formatter-pane-title-group">
               <span className="formatter-pane-title">Formatted Result</span>
               <span className="formatter-stat-pill">
-                Language: <strong>{result.detectedLanguage.toUpperCase()}</strong>
+                Language: <strong>{inputCode.trim() ? result.detectedLanguage.toUpperCase() : (selectedLanguage === 'auto' ? 'AUTO' : selectedLanguage.toUpperCase())}</strong>
               </span>
               <span className="formatter-stat-pill">{result.executionMs}ms</span>
               {result.repaired && <span className="formatter-success-badge">Repaired JSON syntax</span>}
@@ -737,7 +727,7 @@ export const UniversalFormatter = () => {
                   spellCheck={false}
                   onScroll={handleOutputScroll}
                   onKeyDown={handleKeyDownOutput}
-                  placeholder="Formatted result will appear here..."
+                  placeholder="Formatted result will appear here in real-time..."
                 />
               </>
             )}
