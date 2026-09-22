@@ -23,7 +23,8 @@ import {
   Download,
   Plus,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1224,21 +1225,34 @@ Make it punchy, practical, and senior-level.`;
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Filter Bar */}
             <div className="dax-filter-bar">
-              <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-                <Search size={15} style={{ position: 'absolute', left: '9px', top: '9px', color: 'var(--text-muted)' }} />
+              {/* Responsive Clutter-Free Search Input */}
+              <div className="dax-search-box">
+                <Search size={15} className="dax-search-icon" />
                 <input 
                   type="text" 
-                  placeholder="Search function, parameter, syntax, what it does, example..."
+                  placeholder="Search function, parameter, syntax, example..."
                   className="dax-search-input"
                   value={trackerSearchQuery}
                   onChange={(e) => setTrackerSearchQuery(e.target.value)}
                 />
+                {trackerSearchQuery && (
+                  <button
+                    type="button"
+                    className="dax-search-clear-btn"
+                    onClick={() => setTrackerSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
 
+              {/* Theme-Matching Category Select */}
               <select 
                 value={trackerCategoryFilter} 
                 onChange={(e) => setTrackerCategoryFilter(e.target.value)}
                 className="dax-select-filter"
+                title="Filter by Category"
               >
                 <option value="ALL">All Categories ({TRACKER_CATEGORIES.length})</option>
                 {TRACKER_CATEGORIES.map(cat => (
@@ -1246,10 +1260,12 @@ Make it punchy, practical, and senior-level.`;
                 ))}
               </select>
 
+              {/* Theme-Matching Status Select */}
               <select 
                 value={trackerStatusFilter} 
                 onChange={(e) => setTrackerStatusFilter(e.target.value)}
                 className="dax-select-filter"
+                title="Filter by Status"
               >
                 <option value="ALL">All Statuses ({trackerTotalCount})</option>
                 <option value="Completed">🟢 Completed ({trackerCompletedCount})</option>
@@ -1258,20 +1274,11 @@ Make it punchy, practical, and senior-level.`;
               </select>
 
               {/* View Mode Toggle */}
-              <div style={{ display: 'flex', background: 'var(--bg-dark)', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '2px' }}>
+              <div className="dax-view-toggle-bar">
                 <button
                   type="button"
                   onClick={() => setTrackerGrouping('flat')}
-                  style={{
-                    background: trackerGrouping === 'flat' ? 'var(--accent-primary)' : 'transparent',
-                    color: trackerGrouping === 'flat' ? '#fff' : 'var(--text-muted)',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '0.25rem 0.55rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className={`dax-view-toggle-btn ${trackerGrouping === 'flat' ? 'active' : 'inactive'}`}
                   title="Flat table with exact requested columns"
                 >
                   Flat Table
@@ -1279,16 +1286,7 @@ Make it punchy, practical, and senior-level.`;
                 <button
                   type="button"
                   onClick={() => setTrackerGrouping('grouped')}
-                  style={{
-                    background: trackerGrouping === 'grouped' ? 'var(--accent-primary)' : 'transparent',
-                    color: trackerGrouping === 'grouped' ? '#fff' : 'var(--text-muted)',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '0.25rem 0.55rem',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  className={`dax-view-toggle-btn ${trackerGrouping === 'grouped' ? 'active' : 'inactive'}`}
                   title="Grouped by DAX function"
                 >
                   Grouped
@@ -1299,11 +1297,10 @@ Make it punchy, practical, and senior-level.`;
               <button
                 type="button"
                 onClick={handleExportMarkdownTable}
-                className="prompt-chip"
-                style={{ padding: '0.35rem 0.65rem', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem' }}
+                className="dax-btn-toolbar-secondary"
                 title="Copy current filtered items as a GitHub Markdown Table"
               >
-                {copiedId === 'tracker-markdown-export' ? <Check size={12} color="#10b981" /> : <Download size={12} />}
+                {copiedId === 'tracker-markdown-export' ? <Check size={13} color="#10b981" /> : <Download size={13} />}
                 <span>{copiedId === 'tracker-markdown-export' ? 'Table Copied!' : 'Copy Markdown'}</span>
               </button>
 
@@ -1324,36 +1321,27 @@ Make it punchy, practical, and senior-level.`;
                   setFormError(null);
                   setIsAddModalOpen(true);
                 }}
-                className="prompt-chip"
-                style={{
-                  background: 'var(--accent-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem'
-                }}
+                className="dax-btn-toolbar-primary"
                 title="Add new DAX function or parameter to your learning tracker"
               >
-                <Plus size={14} />
+                <Plus size={15} />
                 <span>Add</span>
               </button>
 
               {(trackerSearchQuery || trackerCategoryFilter !== 'ALL' || trackerStatusFilter !== 'ALL') && (
                 <button 
+                  type="button"
                   onClick={() => {
                     setTrackerSearchQuery('');
                     setTrackerCategoryFilter('ALL');
                     setTrackerStatusFilter('ALL');
                   }}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  className="dax-btn-toolbar-secondary"
+                  style={{ color: 'var(--text-muted)', borderStyle: 'dashed' }}
+                  title="Reset all filters"
                 >
-                  Reset
+                  <RotateCcw size={12} />
+                  <span>Reset</span>
                 </button>
               )}
             </div>

@@ -170,30 +170,225 @@
 /* Filter Bar */
 .dax-filter-bar {
   background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.85rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
   align-items: center;
   margin-bottom: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Clutter-free, fully responsive Search Box */
+.dax-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  align-items: center;
+}
+
+.dax-search-icon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 2;
+  transition: color 0.2s ease;
+}
+
+.dax-search-box:focus-within .dax-search-icon {
+  color: var(--accent-primary);
 }
 
 .dax-search-input {
-  flex: 1;
-  min-width: 200px;
+  width: 100%;
+  height: 38px;
   background: var(--bg-dark);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 0.45rem 0.85rem;
+  padding: 0 2.2rem 0 2.45rem;
   font-size: 0.82rem;
   color: var(--text-main);
   outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.dax-search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.dax-search-input:hover {
+  border-color: rgba(16, 185, 129, 0.4);
 }
 
 .dax-search-input:focus {
   border-color: var(--accent-primary);
+  background: var(--bg-dark);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+.dax-search-clear-btn {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.dax-search-clear-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Theme-Matching Dropdown Selects */
+.dax-select-filter {
+  height: 38px;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0 2.2rem 0 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 13px 13px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dax-select-filter:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.dax-select-filter:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+.dax-select-filter option {
+  background-color: #0b1324;
+  color: #f8fafc;
+  padding: 8px 12px;
+}
+
+/* View Mode Toggle Pill Container */
+.dax-view-toggle-bar {
+  display: flex;
+  height: 38px;
+  align-items: center;
+  background: var(--bg-dark);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.dax-view-toggle-btn {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  padding: 0 0.7rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.dax-view-toggle-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+}
+
+.dax-view-toggle-btn.inactive {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.dax-view-toggle-btn.inactive:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Action Secondary Button (Export / Markdown) */
+.dax-btn-toolbar-secondary {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.dax-btn-toolbar-secondary:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  color: var(--accent-primary);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+/* Action Primary Button (+ Add) */
+.dax-btn-toolbar-primary {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  transition: all 0.15s ease;
+}
+
+.dax-btn-toolbar-primary:hover {
+  background: var(--accent-hover, #059669);
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.45);
+  transform: translateY(-1px);
+}
+
+.dax-btn-toolbar-primary:active {
+  transform: translateY(0);
 }
 
 .dax-select {
