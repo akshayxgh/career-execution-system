@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Code2,
   Sparkles,
@@ -135,8 +136,19 @@ in
 ];
 
 export const UniversalFormatter = () => {
-  const [inputCode, setInputCode] = useState<string>(PRESETS[0].code);
-  const [selectedLanguage, setSelectedLanguage] = useState<FormatterLanguage>('auto');
+  const [searchParams] = useSearchParams();
+  const langParam = searchParams.get('lang') as FormatterLanguage | null;
+
+  const initialPreset = useMemo(() => {
+    if (langParam) {
+      const match = PRESETS.find((p) => p.language === langParam);
+      if (match) return match;
+    }
+    return PRESETS[0];
+  }, [langParam]);
+
+  const [inputCode, setInputCode] = useState<string>(initialPreset.code);
+  const [selectedLanguage, setSelectedLanguage] = useState<FormatterLanguage>(langParam || 'auto');
   const [indentSize, setIndentSize] = useState<number>(4);
   const [uppercaseKeywords, setUppercaseKeywords] = useState<boolean>(true);
   const [fixTypos, setFixTypos] = useState<boolean>(true);
@@ -145,10 +157,20 @@ export const UniversalFormatter = () => {
   const [showDiff, setShowDiff] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (langParam) {
+      setSelectedLanguage(langParam);
+      const match = PRESETS.find((p) => p.language === langParam);
+      if (match) {
+        setInputCode(match.code);
+      }
+    }
+  }, [langParam]);
+
   // Result state
   const [result, setResult] = useState<UniversalFormatterResult>(() =>
-    formatUniversal(PRESETS[0].code, {
-      language: 'auto',
+    formatUniversal(initialPreset.code, {
+      language: langParam || 'auto',
       indentSize: 4,
       uppercaseKeywords: true,
       fixTypos: true,

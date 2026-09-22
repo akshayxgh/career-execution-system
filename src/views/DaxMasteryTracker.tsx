@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Calculator, 
   Search, 
@@ -386,7 +387,21 @@ export const DaxMasteryTracker: React.FC = () => {
   };
 
   // Active view tab (Functions catalog removed)
-  const [activeTab, setActiveTab] = useState<'tracker' | 'recipes' | 'pbi'>('tracker');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as 'tracker' | 'recipes' | 'pbi' | null;
+
+  const [activeTab, setActiveTab] = useState<'tracker' | 'recipes' | 'pbi'>(() => {
+    if (tabParam === 'recipes' || tabParam === 'pbi' || tabParam === 'tracker') {
+      return tabParam;
+    }
+    return 'tracker';
+  });
+
+  useEffect(() => {
+    if (tabParam === 'recipes' || tabParam === 'pbi' || tabParam === 'tracker') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Custom User-Added Learning Tracker Items
   const CUSTOM_TRACKER_STORAGE_KEY = 'dax_custom_learning_items_v1';

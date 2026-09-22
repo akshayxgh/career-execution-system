@@ -21,6 +21,7 @@ import {
   PanelLeftOpen,
   Code2,
   Calculator,
+  Search,
 } from 'lucide-react';
 import { AISettingsModal } from './AISettingsModal';
 import './Sidebar.css';
@@ -65,8 +66,19 @@ export const Sidebar = () => {
         }
       }
     };
+
+    const handleCustomToggleSidebar = () => setIsCollapsed((prev) => !prev);
+    const handleCustomOpenAi = () => setShowAiSettings(true);
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('ces:toggle-sidebar', handleCustomToggleSidebar);
+    window.addEventListener('ces:open-ai-settings', handleCustomOpenAi);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('ces:toggle-sidebar', handleCustomToggleSidebar);
+      window.removeEventListener('ces:open-ai-settings', handleCustomOpenAi);
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -169,6 +181,24 @@ export const Sidebar = () => {
             {!isCollapsed && <span className="sidebar-logout-label">Logout</span>}
           </button>
         </div>
+      </div>
+
+      <div className="sidebar-search-container">
+        <button
+          type="button"
+          className="sidebar-search-btn"
+          onClick={() => window.dispatchEvent(new CustomEvent('ces:open-command-palette'))}
+          title={isCollapsed ? 'Quick Search & Commands (Ctrl+F / Ctrl+S)' : undefined}
+          aria-label="Open Command Palette"
+        >
+          <Search size={16} className="sidebar-search-icon" />
+          {!isCollapsed && (
+            <>
+              <span className="sidebar-search-text">Quick Search...</span>
+              <kbd className="sidebar-search-kbd">Ctrl F</kbd>
+            </>
+          )}
+        </button>
       </div>
 
       <nav className="sidebar-nav">
