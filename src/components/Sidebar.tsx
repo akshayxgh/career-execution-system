@@ -188,14 +188,14 @@ export const Sidebar = () => {
           type="button"
           className="sidebar-search-btn"
           onClick={() => window.dispatchEvent(new CustomEvent('ces:open-command-palette'))}
-          title={isCollapsed ? 'Quick Search & Commands (Ctrl+F / Ctrl+S)' : undefined}
+          title={isCollapsed ? 'Quick Search & Commands (/)' : undefined}
           aria-label="Open Command Palette"
         >
           <Search size={16} className="sidebar-search-icon" />
           {!isCollapsed && (
             <>
               <span className="sidebar-search-text">Quick Search...</span>
-              <kbd className="sidebar-search-kbd">Ctrl F</kbd>
+              <kbd className="sidebar-search-kbd">/</kbd>
             </>
           )}
         </button>
