@@ -117,10 +117,10 @@ export const Sidebar = () => {
         key={link.to}
         to={link.to}
         className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-        title={isCollapsed ? link.label : undefined}
+        title={link.label}
       >
         <span className="sidebar-link-icon">{link.icon}</span>
-        {!isCollapsed && <span className="sidebar-link-label">{link.label}</span>}
+        <span className="sidebar-link-label">{link.label}</span>
       </NavLink>
     ));
 

@@ -208,7 +208,7 @@
   flex-shrink: 0;
 }
 
-/* Collapsed Navigation Rules */
+/* Collapsed Navigation Rules (Desktop) */
 .sidebar.collapsed .sidebar-nav {
   padding: 0.75rem 0.4rem;
   align-items: center;
@@ -219,6 +219,10 @@
   width: 100%;
   justify-content: center;
   gap: 0;
+}
+
+.sidebar.collapsed .sidebar-link-label {
+  display: none;
 }
 
 .sidebar.collapsed .sidebar-section-divider {
@@ -245,7 +249,8 @@
 
 /* Sidebar Mobile View (Screens <= 768px) */
 @media (max-width: 768px) {
-  .sidebar {
+  .sidebar,
+  .sidebar.collapsed {
     width: 100% !important;
     height: auto !important;
     flex-direction: column !important;
@@ -259,7 +264,8 @@
     -webkit-backdrop-filter: blur(24px) !important;
   }
 
-  .sidebar-header {
+  .sidebar-header,
+  .sidebar.collapsed .sidebar-header {
     padding: 0.65rem 1rem !important;
     display: flex !important;
     flex-direction: row !important;
@@ -267,9 +273,11 @@
     justify-content: space-between !important;
     gap: 0.75rem !important;
     border-bottom: 1px solid var(--border-color) !important;
+    width: 100% !important;
   }
 
-  .sidebar-header-top {
+  .sidebar-header-top,
+  .sidebar.collapsed .sidebar-header-top {
     width: auto !important;
     display: flex !important;
     align-items: center !important;
@@ -277,7 +285,8 @@
     justify-content: flex-start !important;
   }
 
-  .sidebar-brand-wrap {
+  .sidebar-brand-wrap,
+  .sidebar.collapsed .sidebar-brand-wrap {
     display: flex !important;
     flex-direction: column !important;
   }
@@ -294,7 +303,8 @@
     display: none !important;
   }
 
-  .sidebar-header-actions {
+  .sidebar-header-actions,
+  .sidebar.collapsed .sidebar-header-actions {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -307,7 +317,8 @@
     display: inline-flex !important;
   }
 
-  .sidebar-search-container {
+  .sidebar-search-container,
+  .sidebar.collapsed .sidebar-search-container {
     display: none !important;
   }
 
@@ -324,7 +335,8 @@
     color: var(--text-main) !important;
   }
 
-  .sidebar-logout-btn {
+  .sidebar-logout-btn,
+  .sidebar.collapsed .sidebar-logout-btn {
     flex: none !important;
     width: 2.1rem !important;
     height: 2.1rem !important;
@@ -339,13 +351,18 @@
     display: none !important;
   }
 
-  .sidebar-nav {
+  .sidebar-nav,
+  .sidebar.collapsed .sidebar-nav {
     flex: none !important;
+    width: 100% !important;
     height: auto !important;
+    display: flex !important;
     flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    padding: 0.4rem 0.65rem !important;
+    padding: 0.45rem 0.65rem !important;
     gap: 0.4rem !important;
     background: var(--bg-dark) !important;
     -webkit-overflow-scrolling: touch !important;
@@ -353,7 +370,8 @@
     border-top: none !important;
   }
 
-  .sidebar-nav::-webkit-scrollbar {
+  .sidebar-nav::-webkit-scrollbar,
+  .sidebar.collapsed .sidebar-nav::-webkit-scrollbar {
     display: none !important;
   }
 
@@ -361,9 +379,14 @@
     display: none !important;
   }
 
-  .sidebar-link {
+  .sidebar-link,
+  .sidebar.collapsed .sidebar-link {
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
     display: inline-flex !important;
     align-items: center !important;
+    justify-content: center !important;
     gap: 0.4rem !important;
     padding: 0.35rem 0.75rem !important;
     font-size: 0.78rem !important;
@@ -371,22 +394,25 @@
     background: var(--bg-card) !important;
     border: 1px solid var(--border-color) !important;
     color: var(--text-muted) !important;
-    flex-shrink: 0 !important;
   }
 
-  .sidebar-link-label {
+  .sidebar-link-label,
+  .sidebar.collapsed .sidebar-link-label {
     display: inline-block !important;
     font-size: 0.78rem !important;
     font-weight: 600 !important;
+    color: inherit !important;
   }
 
-  .sidebar-link.active {
+  .sidebar-link.active,
+  .sidebar.collapsed .sidebar-link.active {
     background-color: var(--accent-primary) !important;
     color: #ffffff !important;
     border-color: var(--accent-primary) !important;
   }
 
-  .sidebar-link.active .sidebar-link-label {
+  .sidebar-link.active .sidebar-link-label,
+  .sidebar.collapsed .sidebar-link.active .sidebar-link-label {
     color: #ffffff !important;
   }
 }
