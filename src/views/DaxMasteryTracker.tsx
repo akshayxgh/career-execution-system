@@ -12,7 +12,6 @@ import {
   ShieldCheck, 
   RefreshCw,
   X,
-  MessageSquare,
   AlertTriangle,
   Sliders,
   Play,
@@ -2865,30 +2864,28 @@ Make it punchy, practical, and senior-level.`;
 
         </div>
       ) : (
-        /* Floating Trigger when minimized */
+        /* Floating Add Button */
         <button
-          onClick={toggleCopilot}
-          style={{
-            position: 'fixed',
-            bottom: '1.5rem',
-            right: '1.5rem',
-            background: 'var(--accent-primary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '9999px',
-            padding: '0.65rem 1.15rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
-            cursor: 'pointer',
-            zIndex: 1000,
-            fontWeight: 600,
-            fontSize: '0.85rem'
+          type="button"
+          onClick={() => {
+            setNewItemForm({
+              functionName: '',
+              category: trackerCategoryFilter !== 'ALL' ? trackerCategoryFilter : 'Filter context',
+              parameter: '',
+              parameterAccepts: '',
+              whatItDoes: '',
+              syntax: '',
+              example: '',
+              status: 'Planned'
+            });
+            setFormError(null);
+            setIsAddModalOpen(true);
           }}
+          className="dax-floating-add-btn"
+          title="Add new DAX function or parameter"
         >
-          <MessageSquare size={16} />
-          <span>DEXer Copilot</span>
+          <Plus size={18} />
+          <span>Add</span>
         </button>
       )}
 

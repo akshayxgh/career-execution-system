@@ -128,12 +128,10 @@ export const Sidebar = () => {
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-header-top">
-          {!isCollapsed && (
-            <div className="sidebar-brand-wrap">
-              <h2 className="sidebar-title">Career Execution</h2>
-              <span className="text-xs text-muted">Mission Control</span>
-            </div>
-          )}
+          <div className="sidebar-brand-wrap">
+            <h2 className="sidebar-title">Career Execution</h2>
+            <span className="text-xs text-muted">Mission Control</span>
+          </div>
 
           <button
             type="button"
@@ -147,18 +145,26 @@ export const Sidebar = () => {
         </div>
 
         <div className="sidebar-header-actions">
-          {!isCollapsed && (
-            <button
-              type="button"
-              className="sidebar-theme-toggle"
-              onClick={() => setShowAiSettings(true)}
-              title="AI Copilot API Key Settings (Synced across devices)"
-              aria-label="AI Key Settings"
-              style={{ color: 'var(--accent-primary)' }}
-            >
-              <Key size={18} />
-            </button>
-          )}
+          <button
+            type="button"
+            className="sidebar-theme-toggle sidebar-mobile-search-btn"
+            onClick={() => window.dispatchEvent(new CustomEvent('ces:open-command-palette'))}
+            title="Quick Search & Commands (Ctrl+F)"
+            aria-label="Quick Search"
+          >
+            <Search size={16} />
+          </button>
+
+          <button
+            type="button"
+            className="sidebar-theme-toggle"
+            onClick={() => setShowAiSettings(true)}
+            title="AI Copilot API Key Settings (Synced across devices)"
+            aria-label="AI Key Settings"
+            style={{ color: 'var(--accent-primary)' }}
+          >
+            <Key size={17} />
+          </button>
 
           <button
             type="button"
@@ -167,7 +173,7 @@ export const Sidebar = () => {
             title={theme === 'day' ? 'Switch to Night Mode' : 'Switch to Day Mode'}
             aria-label="Toggle Day/Night Theme"
           >
-            {theme === 'day' ? <Moon size={18} /> : <Sun size={18} />}
+            {theme === 'day' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
 
           <button
@@ -178,7 +184,7 @@ export const Sidebar = () => {
             aria-label="Logout"
           >
             <LogOut size={16} />
-            {!isCollapsed && <span className="sidebar-logout-label">Logout</span>}
+            <span className="sidebar-logout-label">Logout</span>
           </button>
         </div>
       </div>
