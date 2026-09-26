@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Calculator, 
@@ -402,12 +402,24 @@ export const DaxMasteryTracker: React.FC = () => {
     }
   }, [tabParam]);
 
-  // Custom User-Added Learning Tracker Items
+  // Custom User-Added Learning Tracker Items (Automatically sanitized & deduplicated on load)
   const CUSTOM_TRACKER_STORAGE_KEY = 'dax_custom_learning_items_v1';
   const [customTrackerItems, setCustomTrackerItems] = useState<DaxLearningItem[]>(() => {
     try {
       const raw = localStorage.getItem(CUSTOM_TRACKER_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed: DaxLearningItem[] = JSON.parse(raw);
+      const seen = new Set<string>();
+      const deduped: DaxLearningItem[] = [];
+      for (const item of parsed) {
+        if (!item || !item.functionName) continue;
+        const key = `${item.functionName.trim().toUpperCase()}::${(item.parameter || '').trim().toUpperCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(item);
+        }
+      }
+      return deduped;
     } catch {
       return [];
     }
@@ -438,7 +450,7 @@ export const DaxMasteryTracker: React.FC = () => {
   const [trackerSearchQuery, setTrackerSearchQuery] = useState('');
   const [trackerCategoryFilter, setTrackerCategoryFilter] = useState('ALL');
   const [trackerStatusFilter, setTrackerStatusFilter] = useState('ALL');
-  const [trackerGrouping, setTrackerGrouping] = useState<'flat' | 'grouped'>('flat');
+  const [trackerGrouping, setTrackerGrouping] = useState<'merged' | 'flat' | 'grouped'>('merged');
   const [trackerSortBy, setTrackerSortBy] = useState<
     'newest' | 'func-asc' | 'func-desc' | 'cat-asc' | 'status-done' | 'status-plan' | 'default'
   >('newest');
@@ -595,7 +607,33 @@ The static rule-based audit results above are 100% active and running locally.`)
   };
 
   // Learning Tracker Metrics & State (Custom/new entries appear on top by default)
-  const allTrackerItems = [...customTrackerItems, ...DAX_LEARNING_TRACKER_DATA];
+  // Learning Tracker Metrics & State (Custom/new entries appear on top, with strict deduplication)
+  const allTrackerItems = useMemo(() => {
+    const seen = new Set<string>();
+    const result: DaxLearningItem[] = [];
+
+    // 1. Custom / newly added entries first
+    for (const item of customTrackerItems) {
+      if (!item || !item.functionName) continue;
+      const key = `${item.functionName.trim().toUpperCase()}::${(item.parameter || '').trim().toUpperCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    }
+
+    // 2. Base catalog items (prevent duplicates if overridden by custom item)
+    for (const item of DAX_LEARNING_TRACKER_DATA) {
+      const key = `${item.functionName.trim().toUpperCase()}::${(item.parameter || '').trim().toUpperCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    }
+
+    return result;
+  }, [customTrackerItems]);
+
   const trackerTotalCount = allTrackerItems.length;
   let trackerCompletedCount = 0;
   let trackerPracticedCount = 0;
@@ -654,31 +692,41 @@ The static rule-based audit results above are 100% active and running locally.`)
     }
 
     if (trackerSortBy === 'func-asc') {
-      return a.functionName.localeCompare(b.functionName);
+      const f = a.functionName.localeCompare(b.functionName);
+      if (f !== 0) return f;
+      return a.parameter.localeCompare(b.parameter);
     }
 
     if (trackerSortBy === 'func-desc') {
-      return b.functionName.localeCompare(a.functionName);
+      const f = b.functionName.localeCompare(a.functionName);
+      if (f !== 0) return f;
+      return a.parameter.localeCompare(b.parameter);
     }
 
     if (trackerSortBy === 'cat-asc') {
       const catComp = a.category.localeCompare(b.category);
       if (catComp !== 0) return catComp;
-      return a.functionName.localeCompare(b.functionName);
+      const f = a.functionName.localeCompare(b.functionName);
+      if (f !== 0) return f;
+      return a.parameter.localeCompare(b.parameter);
     }
 
     if (trackerSortBy === 'status-done') {
       const rank: Record<string, number> = { 'Completed': 3, 'Introduced/Practiced': 2, 'Planned': 1 };
       const diff = (rank[statusB] || 0) - (rank[statusA] || 0);
       if (diff !== 0) return diff;
-      return a.functionName.localeCompare(b.functionName);
+      const f = a.functionName.localeCompare(b.functionName);
+      if (f !== 0) return f;
+      return a.parameter.localeCompare(b.parameter);
     }
 
     if (trackerSortBy === 'status-plan') {
       const rank: Record<string, number> = { 'Planned': 3, 'Introduced/Practiced': 2, 'Completed': 1 };
       const diff = (rank[statusB] || 0) - (rank[statusA] || 0);
       if (diff !== 0) return diff;
-      return a.functionName.localeCompare(b.functionName);
+      const f = a.functionName.localeCompare(b.functionName);
+      if (f !== 0) return f;
+      return a.parameter.localeCompare(b.parameter);
     }
 
     if (trackerSortBy === 'default') {
@@ -687,6 +735,28 @@ The static rule-based audit results above are 100% active and running locally.`)
 
     return 0;
   });
+
+  // Intelligent Function Row-Spanning for Merged Table View
+  // Computes consecutive rows that belong to the same function so function names never repeat
+  const functionRowSpans = useMemo(() => {
+    const spans: Record<number, number> = {};
+    if (trackerGrouping !== 'merged') return spans;
+
+    let i = 0;
+    while (i < sortedTrackerItems.length) {
+      const currentFunc = sortedTrackerItems[i].functionName;
+      let count = 1;
+      while (
+        i + count < sortedTrackerItems.length &&
+        sortedTrackerItems[i + count].functionName === currentFunc
+      ) {
+        count++;
+      }
+      spans[i] = count;
+      i += count;
+    }
+    return spans;
+  }, [sortedTrackerItems, trackerGrouping]);
 
   const TRACKER_CATEGORIES = Array.from(new Set(allTrackerItems.map(d => d.category)));
 
@@ -822,7 +892,13 @@ Respond with ONLY a raw JSON object (no markdown, no backticks, no extra text) m
       example: example || `${rawName}()`
     };
 
-    const updatedCustom = [newItem, ...customTrackerItems];
+    const updatedCustom = [
+      newItem,
+      ...customTrackerItems.filter(item => 
+        !(item.functionName.trim().toUpperCase() === newItem.functionName.trim().toUpperCase() &&
+          item.parameter.trim().toUpperCase() === newItem.parameter.trim().toUpperCase())
+      )
+    ];
     setCustomTrackerItems(updatedCustom);
     try {
       localStorage.setItem(CUSTOM_TRACKER_STORAGE_KEY, JSON.stringify(updatedCustom));
@@ -1366,19 +1442,27 @@ Make it punchy, practical, and senior-level.`;
               <div className="dax-view-toggle-bar">
                 <button
                   type="button"
+                  onClick={() => setTrackerGrouping('merged')}
+                  className={`dax-view-toggle-btn ${trackerGrouping === 'merged' ? 'active' : 'inactive'}`}
+                  title="Consolidated table (1 function name per block, zero duplicate rows)"
+                >
+                  Merged Table
+                </button>
+                <button
+                  type="button"
                   onClick={() => setTrackerGrouping('flat')}
                   className={`dax-view-toggle-btn ${trackerGrouping === 'flat' ? 'active' : 'inactive'}`}
-                  title="Flat table with exact requested columns"
+                  title="Raw granular parameter rows (all 70 rows)"
                 >
-                  Flat Table
+                  Flat Matrix
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrackerGrouping('grouped')}
                   className={`dax-view-toggle-btn ${trackerGrouping === 'grouped' ? 'active' : 'inactive'}`}
-                  title="Grouped by DAX function"
+                  title="Card layout grouped by DAX function"
                 >
-                  Grouped
+                  Cards
                 </button>
               </div>
 
@@ -1475,8 +1559,8 @@ Make it punchy, practical, and senior-level.`;
               })}
             </div>
 
-            {/* View 1: Flat Parameter Table */}
-            {trackerGrouping === 'flat' ? (
+            {/* View 1: Merged Table / Flat Matrix */}
+            {trackerGrouping !== 'grouped' ? (
               <div className="dax-table-wrapper">
                 <div style={{ overflowX: 'auto' }}>
                   <table className="dax-table">
@@ -1493,7 +1577,7 @@ Make it punchy, practical, and senior-level.`;
                           </div>
                         </th>
                         <th 
-                          style={{ minWidth: '135px', cursor: 'pointer', userSelect: 'none' }}
+                          style={{ minWidth: '140px', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => setTrackerSortBy(prev => prev === 'func-asc' ? 'func-desc' : 'func-asc')}
                           title="Click to sort by Function name"
                         >
@@ -1508,8 +1592,13 @@ Make it punchy, practical, and senior-level.`;
                             )}
                           </div>
                         </th>
+                        <th style={{ minWidth: '220px' }}>Syntax</th>
+                        <th style={{ minWidth: '125px' }}>Parameter</th>
+                        <th style={{ minWidth: '175px' }}>What Parameter Accepts</th>
+                        <th style={{ minWidth: '230px' }}>What It Does</th>
+                        <th style={{ minWidth: '230px' }}>Example</th>
                         <th 
-                          style={{ minWidth: '175px', cursor: 'pointer', userSelect: 'none' }}
+                          style={{ minWidth: '170px', cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => setTrackerSortBy(prev => prev === 'status-done' ? 'status-plan' : 'status-done')}
                           title="Click to sort by Status"
                         >
@@ -1524,11 +1613,6 @@ Make it punchy, practical, and senior-level.`;
                             )}
                           </div>
                         </th>
-                        <th style={{ minWidth: '220px' }}>Syntax</th>
-                        <th style={{ minWidth: '130px' }}>Parameter</th>
-                        <th style={{ minWidth: '180px' }}>What Parameter Accepts</th>
-                        <th style={{ minWidth: '230px' }}>What It Does</th>
-                        <th style={{ minWidth: '240px' }}>Example</th>
                         <th style={{ width: '45px' }}></th>
                       </tr>
                     </thead>
@@ -1540,36 +1624,131 @@ Make it punchy, practical, and senior-level.`;
                           </td>
                         </tr>
                       ) : (
-                        sortedTrackerItems.map(item => {
+                        sortedTrackerItems.map((item, index) => {
                           const s = trackerStatusMap[item.id] || item.status;
                           const isCustom = item.id.startsWith('custom-');
+                          const isMerged = trackerGrouping === 'merged';
+                          const span = isMerged ? functionRowSpans[index] : 1;
+                          const isFirstInGroup = !isMerged || span !== undefined;
+                          const isLastInGroup = !isMerged || 
+                            index === sortedTrackerItems.length - 1 || 
+                            sortedTrackerItems[index].functionName !== sortedTrackerItems[index + 1]?.functionName;
+
                           return (
-                            <tr key={item.id} className={s === 'Completed' ? 'row-done' : s === 'Introduced/Practiced' ? 'row-learning' : ''}>
+                            <tr 
+                              key={item.id} 
+                              className={s === 'Completed' ? 'row-done' : s === 'Introduced/Practiced' ? 'row-learning' : ''}
+                              style={{ 
+                                borderBottom: isLastInGroup ? '2px solid var(--border-color)' : undefined 
+                              }}
+                            >
+                              {/* 1. Category (spanned in merged mode) */}
+                              {isFirstInGroup && (
+                                <td 
+                                  rowSpan={span} 
+                                  style={{ 
+                                    verticalAlign: 'top', 
+                                    borderRight: isMerged && span > 1 ? '1px solid var(--border-color)' : undefined 
+                                  }}
+                                >
+                                  <span className="dax-category-badge">{item.category}</span>
+                                </td>
+                              )}
+
+                              {/* 2. Function (spanned in merged mode - NO duplicate function names!) */}
+                              {isFirstInGroup && (
+                                <td 
+                                  rowSpan={span} 
+                                  style={{ 
+                                    verticalAlign: 'top', 
+                                    borderRight: isMerged && span > 1 ? '1px solid var(--border-color)' : undefined 
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                      <span className="dax-func-badge">{item.functionName}</span>
+                                      {isCustom && (
+                                        <span 
+                                          style={{ 
+                                            fontSize: '0.6rem', 
+                                            background: 'rgba(16, 185, 129, 0.2)', 
+                                            color: '#10b981', 
+                                            border: '1px solid rgba(16, 185, 129, 0.45)', 
+                                            padding: '1px 5px', 
+                                            borderRadius: '4px', 
+                                            fontWeight: 800,
+                                            letterSpacing: '0.04em'
+                                          }}
+                                          title="Custom user-added entry"
+                                        >
+                                          NEW
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isMerged && span > 1 && (
+                                      <span 
+                                        style={{ 
+                                          fontSize: '0.66rem', 
+                                          color: 'var(--text-muted)', 
+                                          background: 'rgba(255, 255, 255, 0.05)', 
+                                          padding: '2px 6px', 
+                                          borderRadius: '4px',
+                                          width: 'fit-content',
+                                          fontWeight: 600
+                                        }}
+                                      >
+                                        {span} parameters
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
+
+                              {/* 3. Syntax (spanned in merged mode) */}
+                              {isFirstInGroup && (
+                                <td 
+                                  rowSpan={span} 
+                                  style={{ 
+                                    verticalAlign: 'top', 
+                                    borderRight: isMerged && span > 1 ? '1px solid var(--border-color)' : undefined 
+                                  }}
+                                >
+                                  <div className="syntax-chip">{item.syntax}</div>
+                                </td>
+                              )}
+
+                              {/* 4. Parameter */}
                               <td>
-                                <span className="dax-category-badge">{item.category}</span>
+                                <span className="dax-param-tag">{item.parameter}</span>
                               </td>
+
+                              {/* 5. What Parameter Accepts */}
                               <td>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                  <span className="dax-func-badge">{item.functionName}</span>
-                                  {isCustom && (
-                                    <span 
-                                      style={{ 
-                                        fontSize: '0.6rem', 
-                                        background: 'rgba(16, 185, 129, 0.2)', 
-                                        color: '#10b981', 
-                                        border: '1px solid rgba(16, 185, 129, 0.45)', 
-                                        padding: '1px 5px', 
-                                        borderRadius: '4px', 
-                                        fontWeight: 800,
-                                        letterSpacing: '0.04em'
-                                      }}
-                                      title="Custom user-added entry"
-                                    >
-                                      NEW
-                                    </span>
-                                  )}
+                                <span className="dax-accepts-badge">{item.parameterAccepts}</span>
+                              </td>
+
+                              {/* 6. What It Does */}
+                              <td>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-main)', lineHeight: '1.4' }}>
+                                  {item.whatItDoes}
                                 </div>
                               </td>
+
+                              {/* 7. Example */}
+                              <td>
+                                <div className="dax-example-cell">
+                                  <code>{item.example}</code>
+                                  <button 
+                                    className="dax-example-copy-btn"
+                                    onClick={() => handleCopy(item.example, item.id)}
+                                    title="Copy DAX example"
+                                  >
+                                    {copiedId === item.id ? <Check size={11} color="#10b981" /> : <Copy size={11} />}
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* 8. Status */}
                               <td>
                                 <div className="status-pill-group">
                                   <button
@@ -1598,32 +1777,8 @@ Make it punchy, practical, and senior-level.`;
                                   </button>
                                 </div>
                               </td>
-                              <td>
-                                <div className="syntax-chip">{item.syntax}</div>
-                              </td>
-                              <td>
-                                <span className="dax-param-tag">{item.parameter}</span>
-                              </td>
-                              <td>
-                                <span className="dax-accepts-badge">{item.parameterAccepts}</span>
-                              </td>
-                              <td>
-                                <div style={{ fontSize: '0.78rem', color: 'var(--text-main)', lineHeight: '1.4' }}>
-                                  {item.whatItDoes}
-                                </div>
-                              </td>
-                              <td>
-                                <div className="dax-example-cell">
-                                  <code>{item.example}</code>
-                                  <button 
-                                    className="dax-example-copy-btn"
-                                    onClick={() => handleCopy(item.example, item.id)}
-                                    title="Copy DAX example"
-                                  >
-                                    {copiedId === item.id ? <Check size={11} color="#10b981" /> : <Copy size={11} />}
-                                  </button>
-                                </div>
-                              </td>
+
+                              {/* 9. Actions */}
                               <td>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                   <button
@@ -1634,7 +1789,7 @@ Make it punchy, practical, and senior-level.`;
                                   >
                                     <Bot size={13} />
                                   </button>
-                                  {item.id.startsWith('custom-') && (
+                                  {isCustom && (
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteCustomItem(item.id)}
