@@ -1,9 +1,43 @@
 import { loadState, saveState } from "../services/cloudStorage";
 import { setCustomApiKey, setDualApiKeys } from "../config/copilotConfig";
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { StoreState, LearningTrack } from '../types';
+import type { StoreState, LearningTrack, DaxLearningItem, DaxLearningStatus } from '../types';
 
 const STORAGE_KEY = 'career_execution_system_data';
+const CUSTOM_TRACKER_STORAGE_KEY = 'dax_custom_learning_items_v1';
+const TRACKER_STATUS_STORAGE_KEY = 'dax_learning_tracker_status_v1';
+
+function mergeDaxItems(primary: DaxLearningItem[], secondary: DaxLearningItem[]): DaxLearningItem[] {
+  const seen = new Set<string>();
+  const result: DaxLearningItem[] = [];
+  for (const item of [...primary, ...secondary]) {
+    if (!item || !item.functionName) continue;
+    const key = `${item.functionName.trim().toUpperCase()}::${(item.parameter || '').trim().toUpperCase()}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+function getLocalDaxItems(): DaxLearningItem[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TRACKER_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getLocalDaxStatuses(): Record<string, DaxLearningStatus> {
+  try {
+    const raw = localStorage.getItem(TRACKER_STATUS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 const initialTracks: LearningTrack[] = [
   {
@@ -66,7 +100,9 @@ const defaultState: StoreState = {
   },
   learningTracks: initialTracks,
   concepts: [],
-  questionBank: []
+  questionBank: [],
+  daxCustomTrackerItems: [],
+  daxTrackerStatuses: {}
 };
 
 interface StoreContextType {
@@ -91,8 +127,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       setIsSyncing(true);
       const cloudState = await loadState();
+      const localDaxItems = getLocalDaxItems();
+      const localDaxStatuses = getLocalDaxStatuses();
+
       if (cloudState) {
-        const merged = { ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] };
+        const mergedDaxItems = mergeDaxItems(cloudState.daxCustomTrackerItems || [], localDaxItems);
+        const mergedDaxStatuses = { ...localDaxStatuses, ...(cloudState.daxTrackerStatuses || {}) };
+
+        const merged: StoreState = { 
+          ...defaultState, 
+          ...cloudState, 
+          questionBank: cloudState.questionBank || [],
+          daxCustomTrackerItems: mergedDaxItems,
+          daxTrackerStatuses: mergedDaxStatuses
+        };
+
         if (merged.settings?.geminiApiKey || merged.settings?.groqApiKey) {
           setDualApiKeys({
             geminiKey: merged.settings.geminiApiKey,
@@ -101,8 +150,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         } else if (merged.settings?.aiApiKey) {
           setCustomApiKey(merged.settings.aiApiKey);
         }
+
         setState(merged);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        localStorage.setItem(CUSTOM_TRACKER_STORAGE_KEY, JSON.stringify(mergedDaxItems));
+        localStorage.setItem(TRACKER_STATUS_STORAGE_KEY, JSON.stringify(mergedDaxStatuses));
+
+        // If local storage had items that were not yet in cloud, save back to cloud
+        if (localDaxItems.length > (cloudState.daxCustomTrackerItems?.length || 0)) {
+          await saveState(merged);
+        }
+
         setLastSyncedAt(new Date());
         return true;
       }
@@ -118,9 +176,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     async function initialize() {
       const cloudState = await loadState();
+      const localDaxItems = getLocalDaxItems();
+      const localDaxStatuses = getLocalDaxStatuses();
 
       if (cloudState) {
-        const merged = { ...defaultState, ...cloudState, questionBank: cloudState.questionBank || [] };
+        const mergedDaxItems = mergeDaxItems(cloudState.daxCustomTrackerItems || [], localDaxItems);
+        const mergedDaxStatuses = { ...localDaxStatuses, ...(cloudState.daxTrackerStatuses || {}) };
+
+        const merged: StoreState = { 
+          ...defaultState, 
+          ...cloudState, 
+          questionBank: cloudState.questionBank || [],
+          daxCustomTrackerItems: mergedDaxItems,
+          daxTrackerStatuses: mergedDaxStatuses
+        };
+
         // If cloudState has AI API keys, sync to browser localStorage
         if (merged.settings?.geminiApiKey || merged.settings?.groqApiKey) {
           setDualApiKeys({
@@ -130,7 +200,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         } else if (merged.settings?.aiApiKey) {
           setCustomApiKey(merged.settings.aiApiKey);
         }
+
         setState(merged);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        localStorage.setItem(CUSTOM_TRACKER_STORAGE_KEY, JSON.stringify(mergedDaxItems));
+        localStorage.setItem(TRACKER_STATUS_STORAGE_KEY, JSON.stringify(mergedDaxStatuses));
+
+        // If local storage had items that were not yet in cloud, push to cloud
+        if (localDaxItems.length > (cloudState.daxCustomTrackerItems?.length || 0)) {
+          saveState(merged).catch(console.error);
+        }
+
         setLastSyncedAt(new Date());
       } else {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -138,7 +218,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (saved) {
           try {
             const parsed = JSON.parse(saved);
-            const merged = { ...defaultState, ...parsed, questionBank: parsed.questionBank || [] };
+            const mergedDaxItems = mergeDaxItems(parsed.daxCustomTrackerItems || [], localDaxItems);
+            const mergedDaxStatuses = { ...localDaxStatuses, ...(parsed.daxTrackerStatuses || {}) };
+
+            const merged: StoreState = { 
+              ...defaultState, 
+              ...parsed, 
+              questionBank: parsed.questionBank || [],
+              daxCustomTrackerItems: mergedDaxItems,
+              daxTrackerStatuses: mergedDaxStatuses
+            };
+
             if (merged.settings?.geminiApiKey || merged.settings?.groqApiKey) {
               setDualApiKeys({
                 geminiKey: merged.settings.geminiApiKey,
@@ -174,6 +264,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (loading) return;
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (state.daxCustomTrackerItems) {
+      localStorage.setItem(CUSTOM_TRACKER_STORAGE_KEY, JSON.stringify(state.daxCustomTrackerItems));
+    }
+    if (state.daxTrackerStatuses) {
+      localStorage.setItem(TRACKER_STATUS_STORAGE_KEY, JSON.stringify(state.daxTrackerStatuses));
+    }
 
     const timer = setTimeout(async () => {
       try {

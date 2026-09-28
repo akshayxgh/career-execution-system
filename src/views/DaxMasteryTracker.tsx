@@ -32,6 +32,7 @@ import remarkGfm from 'remark-gfm';
 import { DAX_RECIPES } from '../data/daxMasteryData';
 import { DAX_LEARNING_TRACKER_DATA, type DaxLearningItem } from '../data/daxLearningTrackerData';
 import { copilotService } from '../services/copilotService';
+import { useStore } from '../store/StoreContext';
 import './DaxMasteryTracker.css';
 
 const SMART_DAX_DEFAULTS: Record<string, Partial<DaxLearningItem>> = {
@@ -372,6 +373,23 @@ RETURN
 };
 
 export const DaxMasteryTracker: React.FC = () => {
+  // Global Store & Supabase Cloud Sync
+  const { 
+    state: storeState, 
+    updateState: updateStoreState, 
+    syncWithCloud, 
+    isSyncing: isStoreSyncing, 
+    lastSyncedAt 
+  } = useStore();
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  // Measure Detail Modal State
+  const [selectedMeasureDetail, setSelectedMeasureDetail] = useState<{
+    item: DaxLearningItem;
+    allParams: DaxLearningItem[];
+    activeParamIndex: number;
+  } | null>(null);
+
   // Copilot panel visibility (Saved to localStorage)
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(() => {
     return localStorage.getItem('myces_dax_copilot_open') !== 'false';
@@ -406,6 +424,8 @@ export const DaxMasteryTracker: React.FC = () => {
   const CUSTOM_TRACKER_STORAGE_KEY = 'dax_custom_learning_items_v1';
   const [customTrackerItems, setCustomTrackerItems] = useState<DaxLearningItem[]>(() => {
     try {
+      const fromStore = storeState.daxCustomTrackerItems;
+      if (fromStore && fromStore.length > 0) return fromStore;
       const raw = localStorage.getItem(CUSTOM_TRACKER_STORAGE_KEY);
       if (!raw) return [];
       const parsed: DaxLearningItem[] = JSON.parse(raw);
@@ -429,12 +449,42 @@ export const DaxMasteryTracker: React.FC = () => {
   const TRACKER_STORAGE_KEY = 'dax_learning_tracker_status_v1';
   const [trackerStatusMap, setTrackerStatusMap] = useState<Record<string, 'Completed' | 'Introduced/Practiced' | 'Planned'>>(() => {
     try {
+      const fromStore = storeState.daxTrackerStatuses;
+      if (fromStore && Object.keys(fromStore).length > 0) return fromStore;
       const raw = localStorage.getItem(TRACKER_STORAGE_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   });
+
+  // Sync state from store when Supabase sync updates
+  useEffect(() => {
+    if (storeState.daxCustomTrackerItems && storeState.daxCustomTrackerItems.length > 0) {
+      setCustomTrackerItems(prev => {
+        const seen = new Set<string>();
+        const merged: DaxLearningItem[] = [];
+        for (const item of [...storeState.daxCustomTrackerItems!, ...prev]) {
+          if (!item || !item.functionName) continue;
+          const key = `${item.functionName.trim().toUpperCase()}::${(item.parameter || '').trim().toUpperCase()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            merged.push(item);
+          }
+        }
+        return merged;
+      });
+    }
+  }, [storeState.daxCustomTrackerItems]);
+
+  useEffect(() => {
+    if (storeState.daxTrackerStatuses && Object.keys(storeState.daxTrackerStatuses).length > 0) {
+      setTrackerStatusMap(prev => ({
+        ...prev,
+        ...storeState.daxTrackerStatuses
+      }));
+    }
+  }, [storeState.daxTrackerStatuses]);
 
   const setTrackerStatus = (id: string, status: 'Completed' | 'Introduced/Practiced' | 'Planned') => {
     const updated = { ...trackerStatusMap, [id]: status };
@@ -444,6 +494,42 @@ export const DaxMasteryTracker: React.FC = () => {
     } catch (e) {
       console.error('Failed to save DAX tracker status', e);
     }
+    updateStoreState({ daxTrackerStatuses: updated });
+    if (selectedMeasureDetail && selectedMeasureDetail.item.id === id) {
+      setSelectedMeasureDetail(prev => prev ? {
+        ...prev,
+        item: { ...prev.item, status }
+      } : null);
+    }
+  };
+
+  // Manual Supabase Cloud Sync
+  const handleManualSync = async () => {
+    setSyncFeedback('Syncing...');
+    const ok = await syncWithCloud();
+    setSyncFeedback(ok ? 'Synced with Supabase Cloud!' : 'Sync failed, check connection');
+    setTimeout(() => setSyncFeedback(null), 3500);
+  };
+
+  // Evaluation Context & Gotchas Helper
+  const getEvaluationContextNuance = (item: DaxLearningItem): string => {
+    const cat = (item.category || '').toLowerCase();
+    if (cat.includes('filter')) {
+      return '⚡ Modifies or inspects the active Filter Context. When called inside row iteration (like calculated columns or SUMX), wrapping with CALCULATE initiates Context Transition, converting the current row context into equivalent filter context.';
+    }
+    if (cat.includes('iterator')) {
+      return '⚡ Iterates row-by-row through the specified table, evaluating the expression per row within an active Row Context. Be cautious of measure references inside the row expression—they trigger context transition which can drastically change filter results and impact VertiPaq engine performance.';
+    }
+    if (cat.includes('virtual') || cat.includes('table')) {
+      return '⚡ Generates or manipulates in-memory virtual tables. Preserves column data lineage so downstream CALCULATE or TREATAS can propagate filters back into the data model correctly.';
+    }
+    if (cat.includes('time')) {
+      return '⚡ Relies on a standard Date dimension with contiguous calendar dates marked as a Date Table. Alters the active date filter context using internal CALCULATE and ALL() mechanics.';
+    }
+    if (cat.includes('aggregation')) {
+      return '⚡ Evaluates over column values under the current filter context. Non-iterator aggregations push evaluation directly down to the storage engine (SE) for optimal multi-million row scan speeds.';
+    }
+    return '⚡ Evaluates within the active DAX filter context. Always verify model relationships and cross-filter propagation to ensure accurate calculation output.';
   };
 
   // Learning Tracker Filters & Sorting
@@ -907,7 +993,19 @@ Respond with ONLY a raw JSON object (no markdown, no backticks, no extra text) m
     }
 
     // Save initial status
-    setTrackerStatus(newItem.id, newItemForm.status);
+    const updatedStatuses = { ...trackerStatusMap, [newItem.id]: newItemForm.status };
+    setTrackerStatusMap(updatedStatuses);
+    try {
+      localStorage.setItem(TRACKER_STORAGE_KEY, JSON.stringify(updatedStatuses));
+    } catch (e) {
+      console.error('Failed to save tracker status', e);
+    }
+
+    // Sync to Supabase cloud store
+    updateStoreState({
+      daxCustomTrackerItems: updatedCustom,
+      daxTrackerStatuses: updatedStatuses
+    });
 
     setIsAiFilling(false);
     setIsAddModalOpen(false);
@@ -921,6 +1019,32 @@ Respond with ONLY a raw JSON object (no markdown, no backticks, no extra text) m
     } catch (e) {
       console.error('Failed to remove custom DAX item', e);
     }
+    updateStoreState({
+      daxCustomTrackerItems: updated
+    });
+  };
+
+  // Open measure in detailed modal view
+  const handleOpenMeasureDetail = (clickedItem: DaxLearningItem) => {
+    const allParams = allTrackerItems.filter(
+      it => it.functionName.trim().toUpperCase() === clickedItem.functionName.trim().toUpperCase()
+    );
+    const activeIdx = allParams.findIndex(it => it.id === clickedItem.id);
+    setSelectedMeasureDetail({
+      item: clickedItem,
+      allParams: allParams.length > 0 ? allParams : [clickedItem],
+      activeParamIndex: activeIdx >= 0 ? activeIdx : 0
+    });
+  };
+
+  const handleOpenGroupedCardDetail = (items: DaxLearningItem[], paramItem?: DaxLearningItem) => {
+    const target = paramItem || items[0];
+    const activeIdx = items.findIndex(it => it.id === target.id);
+    setSelectedMeasureDetail({
+      item: target,
+      allParams: items,
+      activeParamIndex: activeIdx >= 0 ? activeIdx : 0
+    });
   };
 
   const handleExportMarkdownTable = () => {
@@ -1466,6 +1590,26 @@ Make it punchy, practical, and senior-level.`;
                 </button>
               </div>
 
+              {/* Cloud Sync Button */}
+              <button
+                type="button"
+                onClick={handleManualSync}
+                disabled={isStoreSyncing}
+                className="dax-btn-toolbar-secondary"
+                style={{
+                  borderColor: syncFeedback?.includes('Synced') ? '#10b981' : undefined,
+                  color: syncFeedback?.includes('Synced') ? '#10b981' : undefined
+                }}
+                title={
+                  lastSyncedAt 
+                    ? `Sync with Supabase Cloud. Last synced: ${lastSyncedAt.toLocaleTimeString()}` 
+                    : "Sync all DAX learning tracker items with Supabase Cloud across devices"
+                }
+              >
+                <RefreshCw size={13} className={isStoreSyncing ? 'animate-spin' : ''} />
+                <span>{isStoreSyncing ? 'Syncing...' : (syncFeedback || 'Cloud Sync')}</span>
+              </button>
+
               {/* Export Markdown Button */}
               <button
                 type="button"
@@ -1637,7 +1781,9 @@ Make it punchy, practical, and senior-level.`;
                           return (
                             <tr 
                               key={item.id} 
-                              className={s === 'Completed' ? 'row-done' : s === 'Introduced/Practiced' ? 'row-learning' : ''}
+                              className={`dax-tracker-row dax-clickable-row ${s === 'Completed' ? 'row-done' : s === 'Introduced/Practiced' ? 'row-learning' : ''}`}
+                              onClick={() => handleOpenMeasureDetail(item)}
+                              title="Click to view detailed measure specifications and mechanics in modal"
                               style={{ 
                                 borderBottom: isLastInGroup ? '2px solid var(--border-color)' : undefined 
                               }}
@@ -1740,7 +1886,10 @@ Make it punchy, practical, and senior-level.`;
                                   <code>{item.example}</code>
                                   <button 
                                     className="dax-example-copy-btn"
-                                    onClick={() => handleCopy(item.example, item.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopy(item.example, item.id);
+                                    }}
                                     title="Copy DAX example"
                                   >
                                     {copiedId === item.id ? <Check size={11} color="#10b981" /> : <Copy size={11} />}
@@ -1754,7 +1903,10 @@ Make it punchy, practical, and senior-level.`;
                                   <button
                                     type="button"
                                     className={`status-pill-btn ${s === 'Completed' ? 'active-done' : ''}`}
-                                    onClick={() => setTrackerStatus(item.id, 'Completed')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTrackerStatus(item.id, 'Completed');
+                                    }}
                                     title="Mark as Completed"
                                   >
                                     🟢 Done
@@ -1762,7 +1914,10 @@ Make it punchy, practical, and senior-level.`;
                                   <button
                                     type="button"
                                     className={`status-pill-btn ${s === 'Introduced/Practiced' ? 'active-practiced' : ''}`}
-                                    onClick={() => setTrackerStatus(item.id, 'Introduced/Practiced')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTrackerStatus(item.id, 'Introduced/Practiced');
+                                    }}
                                     title="Mark as Introduced/Practiced"
                                   >
                                     🟡 Practiced
@@ -1770,7 +1925,10 @@ Make it punchy, practical, and senior-level.`;
                                   <button
                                     type="button"
                                     className={`status-pill-btn ${s === 'Planned' ? 'active-planned' : ''}`}
-                                    onClick={() => setTrackerStatus(item.id, 'Planned')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTrackerStatus(item.id, 'Planned');
+                                    }}
                                     title="Mark as Planned"
                                   >
                                     ⚪ Plan
@@ -1784,7 +1942,10 @@ Make it punchy, practical, and senior-level.`;
                                   <button
                                     className="prompt-chip"
                                     style={{ padding: '0.25rem 0.45rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
-                                    onClick={() => handleAskAboutTrackerParam(item)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAskAboutTrackerParam(item);
+                                    }}
                                     title={`Ask DEXer Copilot about ${item.functionName} parameter: ${item.parameter}`}
                                   >
                                     <Bot size={13} />
@@ -1792,7 +1953,10 @@ Make it punchy, practical, and senior-level.`;
                                   {isCustom && (
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteCustomItem(item.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteCustomItem(item.id);
+                                      }}
                                       style={{
                                         background: 'transparent',
                                         border: 'none',
@@ -1835,7 +1999,12 @@ Make it punchy, practical, and senior-level.`;
                   ).map(([funcName, items]) => {
                     const hasCustom = items.some(i => i.id.startsWith('custom-'));
                     return (
-                      <div key={funcName} className="dax-grouped-card">
+                      <div 
+                        key={funcName} 
+                        className="dax-grouped-card dax-clickable-card"
+                        onClick={() => handleOpenGroupedCardDetail(items)}
+                        title="Click to view detailed measure specifications and mechanics in modal"
+                      >
                         <div className="dax-grouped-header">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                             <span className="dax-category-badge">{items[0].category}</span>
@@ -1880,7 +2049,15 @@ Make it punchy, practical, and senior-level.`;
                           {items.map(paramItem => {
                             const s = trackerStatusMap[paramItem.id] || paramItem.status;
                             return (
-                              <tr key={paramItem.id}>
+                              <tr 
+                                key={paramItem.id}
+                                className="dax-clickable-row"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenGroupedCardDetail(items, paramItem);
+                                }}
+                                title="Click to view parameter details in modal"
+                              >
                                 <td><span className="dax-param-tag">{paramItem.parameter}</span></td>
                                 <td><span className="dax-accepts-badge">{paramItem.parameterAccepts}</span></td>
                                 <td style={{ fontSize: '0.78rem' }}>{paramItem.whatItDoes}</td>
@@ -1889,7 +2066,10 @@ Make it punchy, practical, and senior-level.`;
                                     <code>{paramItem.example}</code>
                                     <button 
                                       className="dax-example-copy-btn"
-                                      onClick={() => handleCopy(paramItem.example, paramItem.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCopy(paramItem.example, paramItem.id);
+                                      }}
                                       title="Copy example"
                                     >
                                       {copiedId === paramItem.id ? <Check size={11} color="#10b981" /> : <Copy size={11} />}
@@ -1901,21 +2081,30 @@ Make it punchy, practical, and senior-level.`;
                                     <button
                                       type="button"
                                       className={`status-pill-btn ${s === 'Completed' ? 'active-done' : ''}`}
-                                      onClick={() => setTrackerStatus(paramItem.id, 'Completed')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTrackerStatus(paramItem.id, 'Completed');
+                                      }}
                                     >
                                       Done
                                     </button>
                                     <button
                                       type="button"
                                       className={`status-pill-btn ${s === 'Introduced/Practiced' ? 'active-practiced' : ''}`}
-                                      onClick={() => setTrackerStatus(paramItem.id, 'Introduced/Practiced')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTrackerStatus(paramItem.id, 'Introduced/Practiced');
+                                      }}
                                     >
                                       Practiced
                                     </button>
                                     <button
                                       type="button"
                                       className={`status-pill-btn ${s === 'Planned' ? 'active-planned' : ''}`}
-                                      onClick={() => setTrackerStatus(paramItem.id, 'Planned')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTrackerStatus(paramItem.id, 'Planned');
+                                      }}
                                     >
                                       Plan
                                     </button>
@@ -1926,7 +2115,10 @@ Make it punchy, practical, and senior-level.`;
                                     <button
                                       className="prompt-chip"
                                       style={{ padding: '0.2rem 0.4rem' }}
-                                      onClick={() => handleAskAboutTrackerParam(paramItem)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAskAboutTrackerParam(paramItem);
+                                      }}
                                       title={`Ask DEXer Copilot about ${paramItem.functionName} parameter: ${paramItem.parameter}`}
                                     >
                                       <Bot size={12} />
@@ -1934,7 +2126,10 @@ Make it punchy, practical, and senior-level.`;
                                     {paramItem.id.startsWith('custom-') && (
                                       <button
                                         type="button"
-                                        onClick={() => handleDeleteCustomItem(paramItem.id)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteCustomItem(paramItem.id);
+                                        }}
                                         style={{
                                           background: 'transparent',
                                           border: 'none',
@@ -1965,6 +2160,267 @@ Make it punchy, practical, and senior-level.`;
           )}
         </div>
       )}
+
+        {/* MEASURE DETAIL MODAL */}
+        {selectedMeasureDetail && (
+          <div className="dax-modal-backdrop" onClick={() => setSelectedMeasureDetail(null)}>
+            <div className="dax-modal-box dax-measure-detail-modal" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="dax-modal-header" style={{ alignItems: 'flex-start', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className="dax-category-badge">{selectedMeasureDetail.item.category}</span>
+                    <span className="dax-func-badge" style={{ fontSize: '1.15rem', padding: '0.2rem 0.6rem' }}>
+                      {selectedMeasureDetail.item.functionName}
+                    </span>
+                    {selectedMeasureDetail.item.id.startsWith('custom-') && (
+                      <span 
+                        style={{ 
+                          fontSize: '0.62rem', 
+                          background: 'rgba(16, 185, 129, 0.2)', 
+                          color: '#10b981', 
+                          border: '1px solid rgba(16, 185, 129, 0.45)', 
+                          padding: '2px 6px', 
+                          borderRadius: '4px', 
+                          fontWeight: 800
+                        }}
+                      >
+                        CUSTOM MEASURE
+                      </span>
+                    )}
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {selectedMeasureDetail.allParams.length} parameter{selectedMeasureDetail.allParams.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Detailed measure signature, parameter specs, evaluation mechanics, and production recipes.
+                  </div>
+                </div>
+
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedMeasureDetail(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+                  title="Close details"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="dax-modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+                {/* Syntax block */}
+                <div className="dax-detail-section">
+                  <div className="dax-detail-label">
+                    <span>DAX Syntax Signature</span>
+                    <button
+                      className="dax-example-copy-btn"
+                      onClick={() => handleCopy(selectedMeasureDetail.item.syntax, 'modal-syntax')}
+                      title="Copy syntax"
+                    >
+                      {copiedId === 'modal-syntax' ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                  <div className="syntax-chip" style={{ fontSize: '0.85rem', padding: '0.55rem 0.85rem', width: '100%', wordBreak: 'break-all' }}>
+                    {selectedMeasureDetail.item.syntax}
+                  </div>
+                </div>
+
+                {/* Status for current item */}
+                <div className="dax-detail-section">
+                  <div className="dax-detail-label">Current Parameter Status</div>
+                  <div className="status-pill-group" style={{ width: 'fit-content' }}>
+                    <button
+                      type="button"
+                      className={`status-pill-btn ${(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Completed' ? 'active-done' : ''}`}
+                      onClick={() => {
+                        setTrackerStatus(selectedMeasureDetail.item.id, 'Completed');
+                      }}
+                    >
+                      🟢 Completed
+                    </button>
+                    <button
+                      type="button"
+                      className={`status-pill-btn ${(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Introduced/Practiced' ? 'active-practiced' : ''}`}
+                      onClick={() => {
+                        setTrackerStatus(selectedMeasureDetail.item.id, 'Introduced/Practiced');
+                      }}
+                    >
+                      🟡 Introduced / Practiced
+                    </button>
+                    <button
+                      type="button"
+                      className={`status-pill-btn ${(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Planned' ? 'active-planned' : ''}`}
+                      onClick={() => {
+                        setTrackerStatus(selectedMeasureDetail.item.id, 'Planned');
+                      }}
+                    >
+                      ⚪ Planned
+                    </button>
+                  </div>
+                </div>
+
+                {/* Parameters Section */}
+                <div className="dax-detail-section">
+                  <div className="dax-detail-label">
+                    <span>Parameters Breakdown ({selectedMeasureDetail.allParams.length})</span>
+                  </div>
+
+                  {/* If multiple parameters, show selectable chips/tabs */}
+                  {selectedMeasureDetail.allParams.length > 1 && (
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                      {selectedMeasureDetail.allParams.map((p, idx) => {
+                        const isSelected = p.id === selectedMeasureDetail.item.id;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedMeasureDetail(prev => prev ? { ...prev, item: p, activeParamIndex: idx } : null);
+                            }}
+                            style={{
+                              background: isSelected ? 'var(--accent-primary)' : 'var(--bg-dark)',
+                              color: isSelected ? '#ffffff' : 'var(--text-main)',
+                              border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+                              borderRadius: '6px',
+                              padding: '0.3rem 0.65rem',
+                              fontSize: '0.74rem',
+                              fontFamily: 'monospace',
+                              cursor: 'pointer',
+                              fontWeight: isSelected ? 700 : 500,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem'
+                            }}
+                          >
+                            <span>{p.parameter}</span>
+                            {(trackerStatusMap[p.id] || p.status) === 'Completed' && (
+                              <span style={{ fontSize: '0.6rem' }}>🟢</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Active parameter detail card */}
+                  <div style={{ 
+                    background: 'var(--bg-dark)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: '8px', 
+                    padding: '0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.6rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Parameter:</span>
+                        <span className="dax-param-tag" style={{ fontSize: '0.82rem' }}>
+                          {selectedMeasureDetail.item.parameter}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Accepts:</span>
+                        <span className="dax-accepts-badge" style={{ fontSize: '0.75rem' }}>
+                          {selectedMeasureDetail.item.parameterAccepts}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--text-muted)', fontSize: '0.72rem', display: 'block', marginBottom: '0.2rem', textTransform: 'uppercase' }}>
+                        What This Parameter Does:
+                      </strong>
+                      {selectedMeasureDetail.item.whatItDoes}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Practical Example */}
+                <div className="dax-detail-section">
+                  <div className="dax-detail-label">
+                    <span>DAX Production Example</span>
+                    <button
+                      className="dax-example-copy-btn"
+                      onClick={() => handleCopy(selectedMeasureDetail.item.example, 'modal-example')}
+                      title="Copy code example"
+                    >
+                      {copiedId === 'modal-example' ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                  <div className="dax-detail-code-block">
+                    <code>{selectedMeasureDetail.item.example}</code>
+                  </div>
+                </div>
+
+                {/* Evaluation Context & Performance Gotchas */}
+                <div className="dax-detail-section">
+                  <div className="dax-detail-label">Context Mechanics & Performance Nuances</div>
+                  <div style={{ 
+                    background: 'rgba(59, 130, 246, 0.05)', 
+                    border: '1px solid rgba(59, 130, 246, 0.2)', 
+                    borderRadius: '8px', 
+                    padding: '0.85rem',
+                    fontSize: '0.78rem',
+                    lineHeight: '1.5',
+                    color: 'var(--text-main)'
+                  }}>
+                    {getEvaluationContextNuance(selectedMeasureDetail.item)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="dax-modal-footer" style={{ justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="dax-btn-toolbar-primary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.78rem' }}
+                    onClick={() => {
+                      const item = selectedMeasureDetail.item;
+                      const allParams = selectedMeasureDetail.allParams;
+                      setSelectedMeasureDetail(null);
+                      setIsCopilotOpen(true);
+                      handleSendMessage(
+                        `Deep dive analysis for DAX function ${item.functionName}. Syntax: ${item.syntax}. Parameters: ${allParams.map(p => `${p.parameter} (${p.parameterAccepts})`).join(', ')}. Explain filter vs row context mechanics, performance optimization in VertiPaq, and 2 production patterns.`
+                      );
+                    }}
+                  >
+                    <Bot size={14} />
+                    <span>Deep Dive in Copilot</span>
+                  </button>
+
+                  {selectedMeasureDetail.item.id.startsWith('custom-') && (
+                    <button
+                      type="button"
+                      className="dax-btn-toolbar-secondary"
+                      style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                      onClick={() => {
+                        if (confirm(`Delete custom function ${selectedMeasureDetail.item.functionName}?`)) {
+                          handleDeleteCustomItem(selectedMeasureDetail.item.id);
+                          setSelectedMeasureDetail(null);
+                        }
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete Measure</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="dax-btn-toolbar-secondary"
+                  onClick={() => setSelectedMeasureDetail(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ADD TO LEARNING TRACKER MODAL */}
         {isAddModalOpen && (

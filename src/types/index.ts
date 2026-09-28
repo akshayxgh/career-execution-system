@@ -174,6 +174,20 @@ export interface QuestionBankItem {
   updatedAt: string;
 }
 
+export type DaxLearningStatus = 'Completed' | 'Introduced/Practiced' | 'Planned';
+
+export interface DaxLearningItem {
+  id: string;
+  category: string;
+  functionName: string;
+  status: DaxLearningStatus;
+  syntax: string;
+  parameter: string;
+  parameterAccepts: string;
+  whatItDoes: string;
+  example: string;
+}
+
 export interface StoreState {
   applications: JobApplication[];
   interviews: Interview[];
@@ -187,4 +201,7 @@ export interface StoreState {
   learningTracks: LearningTrack[];
   concepts: Concept[];
   questionBank: QuestionBankItem[];
+  daxCustomTrackerItems?: DaxLearningItem[];
+  daxTrackerStatuses?: Record<string, DaxLearningStatus>;
 }
+
