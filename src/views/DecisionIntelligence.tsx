@@ -141,7 +141,19 @@ export default function DecisionIntelligence() {
   const [isShineModalOpen, setIsShineModalOpen] = useState(false);
 
   const naukriJobsCount = useMemo(() => {
-    return jobs.filter((j) => (j.url || "").toLowerCase().includes("naukri.com")).length;
+    return jobs.filter((j) => {
+      const u = (j.url || "").toLowerCase();
+      const s = (j.source || "").toLowerCase();
+      const c = (j.company_name || "").toLowerCase();
+      return (
+        u.includes("naukri.com") ||
+        u.includes("ibm.com") ||
+        u.includes("brassring.com") ||
+        c.includes("ibm") ||
+        s.includes("naukri") ||
+        s.includes("ibm")
+      );
+    }).length;
   }, [jobs]);
 
   const shineJobsCount = useMemo(() => {

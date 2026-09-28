@@ -37,7 +37,21 @@ export default function NaukriCheckModal({
   const [isFinished, setIsFinished] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const naukriJobs = jobs.filter((j) => (j.url || "").toLowerCase().includes("naukri.com"));
+  // Target jobs: Both Naukri and IBM Careers
+  const targetJobs = jobs.filter((j) => {
+    const url = (j.url || "").toLowerCase();
+    const source = (j.source || "").toLowerCase();
+    const company = (j.company_name || "").toLowerCase();
+    return (
+      url.includes("naukri.com") ||
+      url.includes("ibm.com") ||
+      url.includes("brassring.com") ||
+      company.includes("ibm") ||
+      source.includes("naukri") ||
+      source.includes("ibm")
+    );
+  });
+
   const pingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ping the extension on modal open
@@ -126,8 +140,8 @@ export default function NaukriCheckModal({
   }, [isOpen]);
 
   const handleStartCheck = () => {
-    if (naukriJobs.length === 0) {
-      setErrorMessage("No active Naukri jobs found in current view.");
+    if (targetJobs.length === 0) {
+      setErrorMessage("No active Naukri or IBM jobs found in current view.");
       return;
     }
 
@@ -136,10 +150,10 @@ export default function NaukriCheckModal({
     setDetectedExpired([]);
     setUntouchedCount(0);
     setIsFinished(false);
-    setProgress({ current: 0, total: naukriJobs.length });
+    setProgress({ current: 0, total: targetJobs.length });
     setIsChecking(true);
 
-    const formattedJobs = naukriJobs.map((j) => ({
+    const formattedJobs = targetJobs.map((j) => ({
       id: j.id,
       title: j.title,
       company_name: j.company_name,
@@ -182,7 +196,7 @@ export default function NaukriCheckModal({
         <div className="naukri-modal-header">
           <div className="naukri-modal-title">
             <Sparkles size={20} className="naukri-modal-icon" />
-            <h3>Check Naukri Applied & Expired Jobs</h3>
+            <h3>Check Naukri & IBM Status</h3>
           </div>
           <button className="naukri-modal-close" onClick={onClose}>
             <X size={18} />
@@ -199,7 +213,7 @@ export default function NaukriCheckModal({
                 <div>
                   <h4>Browser Companion Extension Required</h4>
                   <p>
-                    To check applied and expired status directly on Naukri using your authenticated session, load the companion extension once into your browser:
+                    To check applied and expired status directly on Naukri & IBM using your authenticated browser session, make sure Job Autofill Pro is loaded:
                   </p>
                 </div>
               </div>
@@ -208,17 +222,17 @@ export default function NaukriCheckModal({
                 <div className="naukri-step">
                   <span className="naukri-step-num">1</span>
                   <span>
-                    Open a new tab and go to <code>chrome://extensions</code> (or <code>brave://extensions</code>)
+                    Open a new tab and go to <code>chrome://extensions</code>
                   </span>
                 </div>
                 <div className="naukri-step">
                   <span className="naukri-step-num">2</span>
-                  <span>Enable <strong>"Developer mode"</strong> in the top-right toggle.</span>
+                  <span>Enable <strong>"Developer mode"</strong>.</span>
                 </div>
                 <div className="naukri-step">
                   <span className="naukri-step-num">3</span>
                   <span>
-                    Click <strong>"Load unpacked"</strong> and select folder:
+                    Click <strong>"Load unpacked"</strong> and select:
                     <br />
                     <code className="naukri-path-code">
                       form_filler_chrome_extension\job-autofill
@@ -243,13 +257,13 @@ export default function NaukriCheckModal({
               {!isChecking && !isFinished && (
                 <div className="naukri-ready-state">
                   <p className="naukri-ready-desc">
-                    Found <strong>{naukriJobs.length} active Naukri jobs</strong> in your Decision Intelligence view.
-                    The companion extension will inspect each in the background using your active Naukri session, marking already applied jobs as <strong>APPLIED</strong> and expired jobs as <strong>HIDDEN</strong> in Supabase.
+                    Found <strong>{targetJobs.length} checkable jobs</strong> (Naukri & IBM) in your Decision Intelligence view.
+                    The companion extension will inspect each in the background using your active session, marking already applied jobs as <strong>APPLIED</strong> and closed/expired jobs as <strong>HIDDEN</strong> in Supabase.
                   </p>
 
                   <div className="naukri-summary-pills">
                     <span className="naukri-pill total">
-                      Total Naukri Jobs: <strong>{naukriJobs.length}</strong>
+                      Total Checkable Jobs: <strong>{targetJobs.length}</strong>
                     </span>
                   </div>
 
@@ -262,7 +276,7 @@ export default function NaukriCheckModal({
                       type="button"
                       className="naukri-start-btn"
                       onClick={handleStartCheck}
-                      disabled={naukriJobs.length === 0}
+                      disabled={targetJobs.length === 0}
                     >
                       <Sparkles size={16} /> Start Checking Now
                     </button>
@@ -316,7 +330,7 @@ export default function NaukriCheckModal({
                     </div>
                     <div className="naukri-stat-card expired">
                       <span className="naukri-stat-val">{detectedExpired.length}</span>
-                      <span className="naukri-stat-name">Hidden (Expired)</span>
+                      <span className="naukri-stat-name">Hidden (Closed/Expired)</span>
                     </div>
                     <div className="naukri-stat-card untouched">
                       <span className="naukri-stat-val">{untouchedCount}</span>
@@ -346,7 +360,7 @@ export default function NaukriCheckModal({
                   <p>
                     Inspection finished. Found{" "}
                     <strong>{detectedApplied.length} applied</strong> and{" "}
-                    <strong>{detectedExpired.length} expired</strong> jobs.
+                    <strong>{detectedExpired.length} closed/expired</strong> jobs.
                     They have been updated in Supabase and automatically removed from Decision Intelligence.
                   </p>
 
@@ -357,7 +371,7 @@ export default function NaukriCheckModal({
                     </div>
                     <div className="naukri-stat-card expired">
                       <span className="naukri-stat-val">{detectedExpired.length}</span>
-                      <span className="naukri-stat-name">Hidden (Expired)</span>
+                      <span className="naukri-stat-name">Hidden (Closed/Expired)</span>
                     </div>
                     <div className="naukri-stat-card untouched">
                       <span className="naukri-stat-val">{untouchedCount}</span>
@@ -393,7 +407,7 @@ export default function NaukriCheckModal({
                         <AlertCircle size={14} style={{ color: "#f43f5e" }} />
                         <span className="naukri-item-title">{item.title}</span>
                         <span className="naukri-item-company">@{item.company}</span>
-                        <span className="naukri-item-badge expired">EXPIRED</span>
+                        <span className="naukri-item-badge expired">CLOSED</span>
                       </div>
                     ))}
                   </div>
