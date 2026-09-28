@@ -20,6 +20,7 @@ import { Login } from './views/Login';
 import DecisionIntelligence from './views/DecisionIntelligence';
 import { UniversalFormatter } from './views/UniversalFormatter';
 import { DaxMasteryTracker } from './views/DaxMasteryTracker';
+import { LinkedInAgent } from './views/LinkedInAgent';
 
 function App() {
   return (
@@ -59,6 +60,9 @@ function App() {
               path="decision-intelligence"
               element={<DecisionIntelligence />}
             />
+
+            {/* LinkedIn AI Agent Module */}
+            <Route path="linkedin-agent" element={<LinkedInAgent />} />
           </Route>
         </Routes>
       </BrowserRouter>

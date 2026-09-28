@@ -4,12 +4,14 @@ import type { StudyLog } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   Database, BarChart3, Send, MessageSquare, CheckCircle2, 
-  Clock, Play, Pause, RotateCcw, Sparkles, Check
+  Clock, Play, Pause, RotateCcw, Sparkles, Check, Code2
 } from 'lucide-react';
 import { getOperationalISTDate, formatToOperationalDate } from '../utils/dateUtils';
 
+type RoutinePillarId = 'sql' | 'pbi' | 'apps' | 'interview' | 'python';
+
 interface RoutinePillar {
-  id: 'sql' | 'pbi' | 'apps' | 'interview';
+  id: RoutinePillarId;
   title: string;
   subtitle: string;
   targetMinutes: number;
@@ -25,12 +27,12 @@ const PILLARS: RoutinePillar[] = [
     id: 'sql',
     title: 'SQL Practice',
     subtitle: 'Queries, LeetCode, Window Fns',
-    targetMinutes: 60, // Set to 60 min
+    targetMinutes: 45, // Set to 45 min
     color: '#6366f1', // Indigo
     accentColor: 'rgba(99, 102, 241, 0.15)',
     icon: <Database size={20} />,
     subject: 'SQL Track',
-    defaultTopic: 'Daily SQL Practice (60m Target)'
+    defaultTopic: 'Daily SQL Practice (45m Target)'
   },
   {
     id: 'pbi',
@@ -44,26 +46,37 @@ const PILLARS: RoutinePillar[] = [
     defaultTopic: 'Power BI & DAX Practice (90m Target)'
   },
   {
+    id: 'python',
+    title: 'Python Practice',
+    subtitle: 'Pandas, NumPy, Scripting',
+    targetMinutes: 30, // Set to 30 min
+    color: '#f59e0b', // Amber / Gold
+    accentColor: 'rgba(245, 158, 11, 0.15)',
+    icon: <Code2 size={20} />,
+    subject: 'Python for Analytics Track',
+    defaultTopic: 'Python for Analytics Practice (30m Target)'
+  },
+  {
     id: 'apps',
     title: 'Job Applications',
     subtitle: 'Decision Engine, Naukri, LinkedIn',
-    targetMinutes: 90,
+    targetMinutes: 30, // Set to 30 min
     color: '#0284c7', // Sky
     accentColor: 'rgba(2, 132, 199, 0.15)',
     icon: <Send size={20} />,
     subject: 'Job Applications',
-    defaultTopic: 'Targeted Job Applications (90m Target)'
+    defaultTopic: 'Targeted Job Applications (30m Target)'
   },
   {
     id: 'interview',
     title: 'Interview Prep',
     subtitle: 'Verbal Pitches, Scenarios, Mock',
-    targetMinutes: 45,
+    targetMinutes: 30, // Set to 30 min
     color: '#8b5cf6', // Violet
     accentColor: 'rgba(139, 92, 246, 0.15)',
     icon: <MessageSquare size={20} />,
     subject: 'Interview Practice',
-    defaultTopic: 'Interview Question Prep (45m Target)'
+    defaultTopic: 'Interview Question Prep (30m Target)'
   }
 ];
 
@@ -73,12 +86,12 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
   const todayStr = getOperationalISTDate();
 
   // Focus Timer state
-  const [activeTimerPillar, setActiveTimerPillar] = useState<'sql' | 'pbi' | 'apps' | 'interview' | null>(null);
+  const [activeTimerPillar, setActiveTimerPillar] = useState<RoutinePillarId | null>(null);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [customTopic, setCustomTopic] = useState<string>('');
   const [sessionNotes, setSessionNotes] = useState<string>('');
-  const [quickPillarAdd, setQuickPillarAdd] = useState<'sql' | 'pbi' | 'apps' | 'interview' | null>(null);
+  const [quickPillarAdd, setQuickPillarAdd] = useState<RoutinePillarId | null>(null);
   const [customMinutesInput, setCustomMinutesInput] = useState<number>(30);
 
   // Live timer interval
@@ -96,9 +109,10 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
 
   // Aggregate today's minutes for each pillar from state.studyLogs
   const loggedMinutesMap = useMemo(() => {
-    const map: Record<'sql' | 'pbi' | 'apps' | 'interview', number> = {
+    const map: Record<RoutinePillarId, number> = {
       sql: 0,
       pbi: 0,
+      python: 0,
       apps: 0,
       interview: 0
     };
@@ -116,6 +130,8 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
           map.sql += minutes;
         } else if (subj.includes('power bi') || subj.includes('dax') || top.includes('power bi') || top.includes('dax')) {
           map.pbi += minutes;
+        } else if (subj.includes('python') || top.includes('python') || subj.includes('pandas') || top.includes('pandas') || notes.includes('python')) {
+          map.python += minutes;
         } else if (subj.includes('application') || subj.includes('job') || top.includes('application') || top.includes('applied') || notes.includes('application')) {
           map.apps += minutes;
         } else if (subj.includes('interview') || top.includes('interview') || top.includes('pitch') || top.includes('prep') || notes.includes('interview')) {
@@ -127,15 +143,15 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
     return map;
   }, [state.studyLogs, todayStr]);
 
-  // Compute overall completion stats (60 + 90 + 90 + 45 = 285m)
-  const totalTargetMinutes = 285;
-  const totalLoggedMinutes = loggedMinutesMap.sql + loggedMinutesMap.pbi + loggedMinutesMap.apps + loggedMinutesMap.interview;
+  // Compute overall completion stats (45 + 90 + 30 + 30 + 30 = 225m)
+  const totalTargetMinutes = 225;
+  const totalLoggedMinutes = loggedMinutesMap.sql + loggedMinutesMap.pbi + loggedMinutesMap.python + loggedMinutesMap.apps + loggedMinutesMap.interview;
   const overallPercentage = Math.min(100, Math.round((totalLoggedMinutes / totalTargetMinutes) * 100));
   const allCompleted = PILLARS.every(p => loggedMinutesMap[p.id] >= p.targetMinutes);
 
   // Quick log handler with notes support
   const handleAddMinutes = (
-    pillarId: 'sql' | 'pbi' | 'apps' | 'interview', 
+    pillarId: RoutinePillarId, 
     minutes: number, 
     topicNote?: string,
     notesContent?: string
@@ -152,7 +168,7 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
       plannedHours: hours,
       actualHours: hours,
       confidenceScore: 8,
-      notes: notesContent?.trim() || `Logged via Daily 4-Pillar Focus Protocol (+${minutes} min)`,
+      notes: notesContent?.trim() || `Logged via Daily 5-Pillar Focus Protocol (+${minutes} min)`,
       completed: true
     };
 
@@ -197,7 +213,7 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
             )}
           </div>
           <p className="text-xs text-muted" style={{ marginTop: '0.25rem' }}>
-            Daily commitment: <strong>SQL (60m)</strong> • <strong>Power BI/DAX (90m)</strong> • <strong>Applications (90m)</strong> • <strong>Interview Prep (45m)</strong> — <em>285 min total</em>
+            Daily commitment: <strong>Power BI/DAX (90m)</strong> • <strong>SQL (45m)</strong> • <strong>Python (30m)</strong> • <strong>Applications (30m)</strong> • <strong>Interview Prep (30m)</strong> — <em>225 min total</em>
           </p>
         </div>
 
@@ -331,13 +347,13 @@ export const DailyRoutineTracker: React.FC<{ compact?: boolean }> = ({ compact =
         </div>
       )}
 
-      {/* 4 Pillar Cards Grid */}
+      {/* 5 Pillar Cards Grid */}
       <div 
         className="grid gap-4" 
         style={{ 
           gridTemplateColumns: compact 
-            ? 'repeat(auto-fit, minmax(200px, 1fr))' 
-            : 'repeat(auto-fit, minmax(240px, 1fr))' 
+            ? 'repeat(auto-fit, minmax(180px, 1fr))' 
+            : 'repeat(auto-fit, minmax(210px, 1fr))' 
         }}
       >
         {PILLARS.map(pillar => {

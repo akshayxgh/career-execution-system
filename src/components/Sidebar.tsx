@@ -22,6 +22,7 @@ import {
   Code2,
   Calculator,
   Search,
+  Share2,
 } from 'lucide-react';
 import { AISettingsModal } from './AISettingsModal';
 import './Sidebar.css';
@@ -104,6 +105,7 @@ export const Sidebar = () => {
     { to: '/documents', label: 'Documents', icon: <Files size={20} /> },
     { to: '/formatter', label: 'Universal Formatter', icon: <Code2 size={20} /> },
     { to: '/decision-intelligence', label: 'Decision Intelligence', icon: <Brain size={20} /> },
+    { to: '/linkedin-agent', label: 'LinkedIn Agent', icon: <Share2 size={20} /> },
   ];
 
   const handleLogout = async () => {
