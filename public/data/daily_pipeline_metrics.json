@@ -4861,14 +4861,14 @@
   },
   "2026-09-28": {
     "date": "2026-09-28",
-    "total_scraped": 350,
-    "total_deduplicated": 2,
-    "total_filtered": 34,
-    "total_analyzed": 316,
-    "total_apply": 45,
-    "total_maybe": 59,
-    "total_skip": 246,
-    "total_high_matches": 112,
+    "total_scraped": 535,
+    "total_deduplicated": 6,
+    "total_filtered": 39,
+    "total_analyzed": 496,
+    "total_apply": 54,
+    "total_maybe": 62,
+    "total_skip": 419,
+    "total_high_matches": 124,
     "sources": {
       "career:Accenture": {
         "scraped": 1,
@@ -4882,16 +4882,40 @@
         "avg_score": 55.0,
         "conversion_pct": 0.0
       },
-      "career:EY": {
-        "scraped": 2,
+      "career:Birlasoft": {
+        "scraped": 1,
         "deduplicated": 0,
         "filtered": 0,
-        "analyzed": 2,
+        "analyzed": 1,
         "apply": 0,
         "maybe": 0,
-        "skip": 2,
+        "skip": 1,
         "high_matches": 0,
-        "avg_score": 5.0,
+        "avg_score": 15.0,
+        "conversion_pct": 0.0
+      },
+      "career:Deloitte": {
+        "scraped": 3,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 3,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 3,
+        "high_matches": 0,
+        "avg_score": 25.0,
+        "conversion_pct": 0.0
+      },
+      "career:EY": {
+        "scraped": 3,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 3,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 3,
+        "high_matches": 0,
+        "avg_score": 8.3,
         "conversion_pct": 0.0
       },
       "career:Ey": {
@@ -4907,15 +4931,15 @@
         "conversion_pct": 10.6
       },
       "career:Genpact": {
-        "scraped": 5,
+        "scraped": 4,
         "deduplicated": 0,
         "filtered": 0,
-        "analyzed": 5,
+        "analyzed": 4,
         "apply": 0,
         "maybe": 0,
-        "skip": 5,
+        "skip": 4,
         "high_matches": 0,
-        "avg_score": 37.2,
+        "avg_score": 40.2,
         "conversion_pct": 0.0
       },
       "career:IBM": {
@@ -4943,18 +4967,90 @@
         "conversion_pct": 0.0
       },
       "career:KPMG": {
-        "scraped": 10,
+        "scraped": 20,
         "deduplicated": 0,
         "filtered": 0,
-        "analyzed": 10,
+        "analyzed": 20,
         "apply": 1,
         "maybe": 0,
-        "skip": 9,
+        "skip": 19,
         "high_matches": 1,
-        "avg_score": 28.7,
-        "conversion_pct": 10.0
+        "avg_score": 24.4,
+        "conversion_pct": 5.0
+      },
+      "career:LTIMindtree": {
+        "scraped": 2,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 2,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 2,
+        "high_matches": 0,
+        "avg_score": 25.0,
+        "conversion_pct": 0.0
+      },
+      "career:Tata Consultancy Services": {
+        "scraped": 15,
+        "deduplicated": 0,
+        "filtered": 1,
+        "analyzed": 14,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 15,
+        "high_matches": 0,
+        "avg_score": 10.7,
+        "conversion_pct": 0.0
       },
       "links:Indeed": {
+        "scraped": 2,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 2,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 2,
+        "high_matches": 0,
+        "avg_score": 45.0,
+        "conversion_pct": 0.0
+      },
+      "links:LinkedIn": {
+        "scraped": 17,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 17,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 17,
+        "high_matches": 0,
+        "avg_score": 19.4,
+        "conversion_pct": 0.0
+      },
+      "links:Naukri": {
+        "scraped": 144,
+        "deduplicated": 4,
+        "filtered": 5,
+        "analyzed": 139,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 144,
+        "high_matches": 0,
+        "avg_score": 15.7,
+        "conversion_pct": 0.0
+      },
+      "naukri_recommended:Naukri": {
+        "scraped": 119,
+        "deduplicated": 0,
+        "filtered": 6,
+        "analyzed": 113,
+        "apply": 33,
+        "maybe": 16,
+        "skip": 70,
+        "high_matches": 49,
+        "avg_score": 61.8,
+        "conversion_pct": 27.7
+      },
+      "portals:Foundit": {
         "scraped": 1,
         "deduplicated": 0,
         "filtered": 0,
@@ -4966,77 +5062,29 @@
         "avg_score": 45.0,
         "conversion_pct": 0.0
       },
-      "links:LinkedIn": {
-        "scraped": 16,
-        "deduplicated": 0,
-        "filtered": 0,
-        "analyzed": 16,
-        "apply": 0,
-        "maybe": 0,
-        "skip": 16,
-        "high_matches": 0,
-        "avg_score": 19.7,
-        "conversion_pct": 0.0
-      },
-      "naukri_recommended:Naukri": {
-        "scraped": 101,
-        "deduplicated": 0,
-        "filtered": 6,
-        "analyzed": 95,
-        "apply": 23,
-        "maybe": 12,
-        "skip": 66,
-        "high_matches": 35,
-        "avg_score": 59.8,
-        "conversion_pct": 22.8
-      },
-      "portals:Foundit": {
-        "scraped": 6,
-        "deduplicated": 0,
-        "filtered": 0,
-        "analyzed": 6,
-        "apply": 2,
-        "maybe": 0,
-        "skip": 4,
-        "high_matches": 2,
-        "avg_score": 39.0,
-        "conversion_pct": 33.3
-      },
-      "portals:Indeed": {
-        "scraped": 4,
-        "deduplicated": 1,
-        "filtered": 0,
-        "analyzed": 4,
-        "apply": 0,
-        "maybe": 0,
-        "skip": 4,
-        "high_matches": 0,
-        "avg_score": 20.0,
-        "conversion_pct": 0.0
-      },
       "portals:LinkedIn": {
         "scraped": 1,
         "deduplicated": 0,
         "filtered": 0,
         "analyzed": 1,
-        "apply": 0,
+        "apply": 1,
         "maybe": 0,
-        "skip": 1,
-        "high_matches": 0,
-        "avg_score": 25.0,
-        "conversion_pct": 0.0
+        "skip": 0,
+        "high_matches": 1,
+        "avg_score": 82.0,
+        "conversion_pct": 100.0
       },
       "portals:Naukri": {
-        "scraped": 6,
-        "deduplicated": 1,
-        "filtered": 1,
+        "scraped": 5,
+        "deduplicated": 2,
+        "filtered": 0,
         "analyzed": 5,
         "apply": 2,
-        "maybe": 1,
+        "maybe": 0,
         "skip": 3,
-        "high_matches": 3,
+        "high_matches": 2,
         "avg_score": 48.4,
-        "conversion_pct": 33.3
+        "conversion_pct": 40.0
       }
     }
   }
