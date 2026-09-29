@@ -37,7 +37,7 @@ export default function NaukriCheckModal({
   const [isFinished, setIsFinished] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Target jobs: Both Naukri and IBM Careers
+  // Target jobs: Naukri, IBM Careers, and EY Careers
   const targetJobs = jobs.filter((j) => {
     const url = (j.url || "").toLowerCase();
     const source = (j.source || "").toLowerCase();
@@ -46,9 +46,14 @@ export default function NaukriCheckModal({
       url.includes("naukri.com") ||
       url.includes("ibm.com") ||
       url.includes("brassring.com") ||
+      url.includes("ey.com") ||
+      url.includes("careers.ey.com") ||
       company.includes("ibm") ||
+      company.includes("ey") ||
+      company.includes("ernst") ||
       source.includes("naukri") ||
-      source.includes("ibm")
+      source.includes("ibm") ||
+      source.includes("ey")
     );
   });
 
@@ -141,7 +146,7 @@ export default function NaukriCheckModal({
 
   const handleStartCheck = () => {
     if (targetJobs.length === 0) {
-      setErrorMessage("No active Naukri or IBM jobs found in current view.");
+      setErrorMessage("No active Naukri, IBM, or EY jobs found in current view.");
       return;
     }
 
@@ -196,7 +201,7 @@ export default function NaukriCheckModal({
         <div className="naukri-modal-header">
           <div className="naukri-modal-title">
             <Sparkles size={20} className="naukri-modal-icon" />
-            <h3>Check Naukri & IBM Status</h3>
+            <h3>Check Status (Naukri, IBM, EY)</h3>
           </div>
           <button className="naukri-modal-close" onClick={onClose}>
             <X size={18} />
@@ -213,7 +218,7 @@ export default function NaukriCheckModal({
                 <div>
                   <h4>Browser Companion Extension Required</h4>
                   <p>
-                    To check applied and expired status directly on Naukri & IBM using your authenticated browser session, make sure Job Autofill Pro is loaded:
+                    To check applied and expired/closed status directly on Naukri, IBM, & EY using your authenticated browser session, make sure Job Autofill Pro is loaded:
                   </p>
                 </div>
               </div>
@@ -257,7 +262,7 @@ export default function NaukriCheckModal({
               {!isChecking && !isFinished && (
                 <div className="naukri-ready-state">
                   <p className="naukri-ready-desc">
-                    Found <strong>{targetJobs.length} checkable jobs</strong> (Naukri & IBM) in your Decision Intelligence view.
+                    Found <strong>{targetJobs.length} checkable jobs</strong> (Naukri, IBM & EY) in your Decision Intelligence view.
                     The companion extension will inspect each in the background using your active session, marking already applied jobs as <strong>APPLIED</strong> and closed/expired jobs as <strong>HIDDEN</strong> in Supabase.
                   </p>
 

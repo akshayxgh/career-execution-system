@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X, Check, RotateCcw } from "lucide-react";
-import type { DecisionJob } from "../../services/decisionIntelligenceService";
+import { formatStatusLabel, type DecisionJob } from "../../services/decisionIntelligenceService";
 import type { FilterColumnKey, ColumnFiltersState } from "../../types/decisionFilters";
 import { formatToISTShortDate } from "../../utils/dateUtils";
 
@@ -131,8 +131,11 @@ export default function ColumnFilterPopover({
   const filteredOptions = useMemo(() => {
     if (!itemSearchQuery.trim()) return optionsWithCounts;
     const q = itemSearchQuery.toLowerCase();
-    return optionsWithCounts.filter((opt) => opt.value.toLowerCase().includes(q));
-  }, [optionsWithCounts, itemSearchQuery]);
+    return optionsWithCounts.filter((opt) => {
+      const display = column === "status" ? formatStatusLabel(opt.value) : opt.value;
+      return opt.value.toLowerCase().includes(q) || display.toLowerCase().includes(q);
+    });
+  }, [optionsWithCounts, itemSearchQuery, column]);
 
   // Handle Apply
   const handleApply = () => {
@@ -497,7 +500,9 @@ export default function ColumnFilterPopover({
                           }
                         }}
                       />
-                      <span className="decision-filter-item-name">{opt.value}</span>
+                      <span className="decision-filter-item-name">
+                        {column === "status" ? formatStatusLabel(opt.value) : opt.value}
+                      </span>
                       <span className="decision-filter-item-count">{opt.count}</span>
                     </label>
                   );

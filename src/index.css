@@ -472,7 +472,7 @@ h3 { font-size: 1.25rem; }
 .decision-table-header,
 .decision-row {
   display: grid;
-  grid-template-columns: 100px minmax(180px, 1.8fr) minmax(110px, 1.1fr) 75px 105px 120px 100px 95px 105px 100px;
+  grid-template-columns: 100px minmax(180px, 1.8fr) minmax(110px, 1.1fr) 75px 105px 120px 100px 95px 135px 100px;
 }
 
 
@@ -1327,6 +1327,18 @@ h3 { font-size: 1.25rem; }
   box-shadow: 0 0 0 3px rgb(29 97 224 / 0.15);
 }
 
+.decision-status-select.decision-status-company_portal,
+.decision-status-select.decision-status-company_website {
+  color: #d97706;
+  border-color: rgba(217, 119, 6, 0.4);
+}
+
+[data-theme="night"] .decision-status-select.decision-status-company_portal,
+[data-theme="night"] .decision-status-select.decision-status-company_website {
+  color: #fbbf24 !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+}
+
 .decision-view-button {
   display: inline-flex;
   align-items: center;
@@ -1826,18 +1838,20 @@ h3 { font-size: 1.25rem; }
 .decision-modal-ribbon {
   position: absolute;
   top: -0.35rem;
-  left: -1.35rem;
-  width: 5.5rem;
+  left: -1.5rem;
+  min-width: 5.5rem;
+  max-width: 8.5rem;
   transform: rotate(-24deg);
   border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
   color: #ffffff;
-  padding: 0.2rem 0;
+  padding: 0.2rem 0.5rem;
   text-align: center;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
   box-shadow: 0 4px 10px rgb(0 0 0 / 0.15);
   z-index: 2;
 }

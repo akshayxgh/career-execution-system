@@ -149,9 +149,14 @@ export default function DecisionIntelligence() {
         u.includes("naukri.com") ||
         u.includes("ibm.com") ||
         u.includes("brassring.com") ||
+        u.includes("ey.com") ||
+        u.includes("careers.ey.com") ||
         c.includes("ibm") ||
+        c.includes("ey") ||
+        c.includes("ernst") ||
         s.includes("naukri") ||
-        s.includes("ibm")
+        s.includes("ibm") ||
+        s.includes("ey")
       );
     }).length;
   }, [jobs]);

@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   decisionStatuses,
+  formatStatusLabel,
   type DecisionJob,
   type DecisionStatus,
 } from "../../services/decisionIntelligenceService";
@@ -204,7 +205,7 @@ export default function DecisionJobModal({
           </div>
 
           <div className="decision-modal-title-card">
-            <div className="decision-modal-ribbon">{job.my_status}</div>
+            <div className="decision-modal-ribbon">{formatStatusLabel(job.my_status)}</div>
             <h2 id="decision-modal-title">{job.title}</h2>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.2rem" }}>
               <p style={{ margin: 0 }}>{job.company_name}</p>
@@ -376,7 +377,7 @@ export default function DecisionJobModal({
           >
             {decisionStatuses.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {formatStatusLabel(status)}
               </option>
             ))}
           </select>

@@ -1,5 +1,6 @@
 import {
   decisionStatuses,
+  formatStatusLabel,
   type DecisionJob,
   type DecisionStatus,
 } from "../../services/decisionIntelligenceService";
@@ -21,7 +22,7 @@ export default function StatusDropdown({
       onChange={(event) =>
         onChange?.(event.target.value as DecisionStatus)
       }
-      className="decision-status-select"
+      className={`decision-status-select decision-status-${(value || "").toLowerCase()}`}
     >
       {value === "NEW" && (
         <option value="NEW" disabled hidden>
@@ -31,7 +32,7 @@ export default function StatusDropdown({
 
       {options.map((item) => (
         <option key={item} value={item}>
-          {item}
+          {formatStatusLabel(item)}
         </option>
       ))}
     </select>

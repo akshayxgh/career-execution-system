@@ -321,6 +321,8 @@ export const Applications = () => {
       const map: Record<DecisionStatus, ApplicationStatus> = {
         'NEW': 'Applied',
         'SAVED': 'Saved',
+        'COMPANY_PORTAL': 'Saved',
+        'COMPANY_WEBSITE': 'Saved',
         'APPLIED': 'Applied',
         'INTERVIEW': 'Interview Scheduled',
         'OFFER': 'Offer Received',

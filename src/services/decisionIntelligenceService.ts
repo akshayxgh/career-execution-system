@@ -41,6 +41,8 @@ export interface DecisionJob {
 export type DecisionStatus =
   | "NEW"
   | "SAVED"
+  | "COMPANY_PORTAL"
+  | "COMPANY_WEBSITE"
   | "APPLIED"
   | "INTERVIEW"
   | "OFFER"
@@ -53,6 +55,7 @@ export type DecisionStatus =
 export const decisionStatuses: DecisionStatus[] = [
   "NEW",
   "SAVED",
+  "COMPANY_PORTAL",
   "APPLIED",
   "INTERVIEW",
   "OFFER",
@@ -62,6 +65,14 @@ export const decisionStatuses: DecisionStatus[] = [
   "DECLINED",
   "HIDDEN",
 ];
+
+export function formatStatusLabel(status: string | null | undefined): string {
+  if (!status) return "—";
+  if (status === "COMPANY_PORTAL" || status === "COMPANY_WEBSITE") {
+    return "COMPANY WEBSITE";
+  }
+  return status;
+}
 
 
 const DECISION_JOBS_CACHE_KEY = "decision_jobs_cache";
