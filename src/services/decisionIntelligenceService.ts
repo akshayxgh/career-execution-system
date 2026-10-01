@@ -69,17 +69,18 @@ export const decisionStatuses: DecisionStatus[] = [
 
 export function formatStatusLabel(status: string | null | undefined): string {
   if (!status) return "—";
-  if (status === "COMPANY_WEBSITE" || status === "COMPANY_PORTAL") {
+  const s = status.toUpperCase().trim();
+  if (s === "COMPANY_WEBSITE" || s === "COMPANY_PORTAL") {
     return "COMPANY WEBSITE";
   }
   return status;
 }
 
-
-const DECISION_JOBS_CACHE_KEY = "decision_jobs_cache";
+const DECISION_JOBS_CACHE_KEY = "decision_jobs_cache_v2";
 
 export function getCachedDecisionJobs(): DecisionJob[] {
   try {
+    localStorage.removeItem("decision_jobs_cache"); // clear legacy cache
     const raw = localStorage.getItem(DECISION_JOBS_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);

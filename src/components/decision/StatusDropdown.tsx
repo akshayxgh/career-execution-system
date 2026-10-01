@@ -16,21 +16,27 @@ export default function StatusDropdown({
   onChange,
   options = decisionStatuses,
 }: StatusDropdownProps) {
+  // Normalize value
+  let normalizedValue = value ? (value.toUpperCase().trim() as DecisionStatus) : value;
+  if (normalizedValue === "COMPANY_PORTAL") {
+    normalizedValue = "COMPANY_WEBSITE";
+  }
+
   // Ensure value is present in options so select never defaults to the first option
   const effectiveOptions = [...options];
-  if (value && value !== "NEW" && !effectiveOptions.includes(value)) {
-    effectiveOptions.push(value);
+  if (normalizedValue && normalizedValue !== "NEW" && !effectiveOptions.includes(normalizedValue)) {
+    effectiveOptions.push(normalizedValue);
   }
 
   return (
     <select
-      value={value}
+      value={normalizedValue}
       onChange={(event) =>
         onChange?.(event.target.value as DecisionStatus)
       }
-      className={`decision-status-select decision-status-${(value || "").toLowerCase()}`}
+      className={`decision-status-select decision-status-${(normalizedValue || "").toLowerCase()}`}
     >
-      {value === "NEW" && (
+      {normalizedValue === "NEW" && (
         <option value="NEW" disabled hidden>
           NEW
         </option>
