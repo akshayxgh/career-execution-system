@@ -1327,13 +1327,11 @@ h3 { font-size: 1.25rem; }
   box-shadow: 0 0 0 3px rgb(29 97 224 / 0.15);
 }
 
-.decision-status-select.decision-status-company_portal,
 .decision-status-select.decision-status-company_website {
   color: #d97706;
   border-color: rgba(217, 119, 6, 0.4);
 }
 
-[data-theme="night"] .decision-status-select.decision-status-company_portal,
 [data-theme="night"] .decision-status-select.decision-status-company_website {
   color: #fbbf24 !important;
   border-color: rgba(251, 191, 36, 0.45) !important;

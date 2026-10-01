@@ -1,4 +1,22 @@
 ﻿Date,Category,Source,Scraped,Deduplicated,Filtered,AI_Analyzed,Apply_Matches,Maybe_Review,Skipped,High_Value_60plus,Avg_Score,Conversion_Pct
+2026-09-30,career,Cognizant,2,0,0,2,0,0,2,0,15.5,0.0
+2026-09-30,career,Deloitte USI,2,0,0,2,0,0,2,0,15.0,0.0
+2026-09-30,career,EY,4,0,0,4,0,0,4,0,17.5,0.0
+2026-09-30,career,Ey,160,0,25,135,17,46,97,71,46.7,10.6
+2026-09-30,career,Genpact,8,0,0,8,1,0,7,1,25.9,12.5
+2026-09-30,career,IBM,91,0,0,91,5,0,86,5,19.9,5.5
+2026-09-30,career,Infosys,59,0,0,59,0,0,59,0,20.1,0.0
+2026-09-30,career,KPMG,27,0,0,27,1,0,26,1,21.6,3.7
+2026-09-30,career,LTIMindtree,1,0,0,1,0,0,1,0,10.0,0.0
+2026-09-30,career,PricewaterhouseCoopers Services LLP,1,0,0,1,0,0,1,0,10.0,0.0
+2026-09-30,career,Tata Consultancy Services,35,0,2,33,1,2,32,3,25.3,2.9
+2026-09-30,links,Indeed,11,0,1,10,0,0,11,0,24.1,0.0
+2026-09-30,links,LinkedIn,31,0,1,30,0,0,31,0,13.3,0.0
+2026-09-30,naukri_recommended,Naukri,132,0,3,129,29,18,85,47,58.5,22.0
+2026-09-30,portals,Foundit,14,0,0,14,2,0,12,2,26.9,14.3
+2026-09-30,portals,Indeed,3,1,0,3,2,0,1,2,70.7,66.7
+2026-09-30,portals,LinkedIn,5,0,0,5,3,0,2,3,61.2,60.0
+2026-09-30,portals,Naukri,6,0,0,6,0,0,6,0,28.3,0.0
 2026-09-28,career,Accenture,1,0,0,1,0,0,1,0,55.0,0.0
 2026-09-28,career,Birlasoft,1,0,0,1,0,0,1,0,15.0,0.0
 2026-09-28,career,Deloitte,3,0,0,3,0,0,3,0,25.0,0.0

@@ -55,6 +55,7 @@ export type DecisionStatus =
 export const decisionStatuses: DecisionStatus[] = [
   "NEW",
   "SAVED",
+  "COMPANY_WEBSITE",
   "COMPANY_PORTAL",
   "APPLIED",
   "INTERVIEW",
@@ -68,7 +69,7 @@ export const decisionStatuses: DecisionStatus[] = [
 
 export function formatStatusLabel(status: string | null | undefined): string {
   if (!status) return "—";
-  if (status === "COMPANY_PORTAL" || status === "COMPANY_WEBSITE") {
+  if (status === "COMPANY_WEBSITE" || status === "COMPANY_PORTAL") {
     return "COMPANY WEBSITE";
   }
   return status;

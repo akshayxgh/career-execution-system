@@ -16,6 +16,12 @@ export default function StatusDropdown({
   onChange,
   options = decisionStatuses,
 }: StatusDropdownProps) {
+  // Ensure value is present in options so select never defaults to the first option
+  const effectiveOptions = [...options];
+  if (value && value !== "NEW" && !effectiveOptions.includes(value)) {
+    effectiveOptions.push(value);
+  }
+
   return (
     <select
       value={value}
@@ -30,7 +36,7 @@ export default function StatusDropdown({
         </option>
       )}
 
-      {options.map((item) => (
+      {effectiveOptions.map((item) => (
         <option key={item} value={item}>
           {formatStatusLabel(item)}
         </option>

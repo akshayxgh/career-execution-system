@@ -222,7 +222,7 @@ export default function DecisionJobRow({
       >
         <StatusDropdown
           value={job.my_status}
-          options={["SAVED", "COMPANY_PORTAL", "APPLIED", "HIDDEN"]}
+          options={["SAVED", "COMPANY_WEBSITE", "APPLIED", "HIDDEN"]}
           onChange={(status) => onStatusChange(job.id, status)}
         />
       </div>
