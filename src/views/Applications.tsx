@@ -91,6 +91,7 @@ export const Applications = () => {
   const formatStatus = (status: string) => {
     const map: Record<string, string> = {
       'APPLIED': 'Applied',
+      'SCREENING': 'Screening',
       'INTERVIEW': 'Interview Scheduled',
       'OFFER': 'Offer Received',
       'REJECTED': 'Rejected',
@@ -253,7 +254,7 @@ export const Applications = () => {
     const map: Record<ApplicationStatus, DecisionStatus> = {
       'Saved': 'SAVED',
       'Applied': 'APPLIED',
-      'Screening': 'APPLIED',
+      'Screening': 'SCREENING',
       'Assessment': 'APPLIED',
       'Interview Scheduled': 'INTERVIEW',
       'Interview Completed': 'INTERVIEW',
@@ -330,6 +331,7 @@ export const Applications = () => {
         'COMPANY_PORTAL': 'Saved',
         'COMPANY_WEBSITE': 'Saved',
         'APPLIED': 'Applied',
+        'SCREENING': 'Screening',
         'INTERVIEW': 'Interview Scheduled',
         'OFFER': 'Offer Received',
         'REJECTED': 'Rejected',
@@ -543,6 +545,7 @@ export const Applications = () => {
       {selectedJob ? (
         <DecisionJobModal
           job={selectedJob}
+          isApplicationView={true}
           saving={savingStatus}
           saveError={statusSaveError}
           onClose={() => setSelectedJob(null)}

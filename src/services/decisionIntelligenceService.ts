@@ -36,6 +36,7 @@ export interface DecisionJob {
   my_status: DecisionStatus;
   status_updated_at: string | null;
   resume?: any;
+  screening_logs?: any[] | null;
 }
 
 export type DecisionStatus =
@@ -44,6 +45,7 @@ export type DecisionStatus =
   | "COMPANY_PORTAL"
   | "COMPANY_WEBSITE"
   | "APPLIED"
+  | "SCREENING"
   | "INTERVIEW"
   | "OFFER"
   | "REJECTED"
@@ -56,8 +58,8 @@ export const decisionStatuses: DecisionStatus[] = [
   "NEW",
   "SAVED",
   "COMPANY_WEBSITE",
-  "COMPANY_PORTAL",
   "APPLIED",
+  "SCREENING",
   "INTERVIEW",
   "OFFER",
   "REJECTED",
@@ -214,6 +216,7 @@ export async function updateDecisionJobStatus(
   jobId: string,
   status: DecisionStatus,
   hideReason?: string,
+  screeningLogs?: any[],
 ) {
   const payload: Record<string, any> = {
     job_id: jobId,
@@ -224,14 +227,42 @@ export async function updateDecisionJobStatus(
   if (hideReason) {
     payload.notes = hideReason;
   }
+  if (screeningLogs !== undefined) {
+    payload.screening_logs = screeningLogs;
+  }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from("my_jobs")
     .upsert(payload, {
       onConflict: "job_id",
     });
 
+  // If screening_logs column doesn't exist yet in Supabase table
+  if (error && error.message && error.message.includes("screening_logs")) {
+    console.warn("screening_logs column not yet migrated in Supabase. Saving without screening_logs column.");
+    delete payload.screening_logs;
+    const retryRes = await supabase.from("my_jobs").upsert(payload, { onConflict: "job_id" });
+    error = retryRes.error;
+  }
+
   if (error) {
+    if (error.message && error.message.includes("my_jobs_status_check") && status === "SCREENING") {
+      console.warn("my_jobs_status_check constraint doesn't have SCREENING yet. Falling back to APPLIED with [SCREENING] in notes.");
+      const fallbackPayload: Record<string, any> = {
+        ...payload,
+        status: "APPLIED",
+        notes: (payload.notes ? `${payload.notes} ` : "") + "[SCREENING]",
+      };
+      const { error: fallbackError } = await supabase
+        .from("my_jobs")
+        .upsert(fallbackPayload, {
+          onConflict: "job_id",
+        });
+      if (fallbackError) {
+        throw fallbackError;
+      }
+      return;
+    }
     throw error;
   }
 }
@@ -339,7 +370,7 @@ export async function getAppliedJobs(): Promise<AppliedJobFromDB[]> {
         )
       )
     `)
-    .in("status", ["APPLIED", "INTERVIEW", "OFFER", "REJECTED", "JOINED", "WITHDRAWN", "DECLINED"]);
+    .in("status", ["APPLIED", "SCREENING", "INTERVIEW", "OFFER", "REJECTED", "JOINED", "WITHDRAWN", "DECLINED"]);
 
   if (error) {
     throw error;
