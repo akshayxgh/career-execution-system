@@ -8,7 +8,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Dashboard } from './views/Dashboard';
 import { LearningTracks } from './views/LearningTracks';
 import { Applications } from './views/Applications';
-import { Interviews } from './views/Interviews';
 import { InterviewArena } from './views/InterviewArena';
 import { QuestionBank } from './views/QuestionBank';
 import { Weaknesses } from './views/Weaknesses';
@@ -40,7 +39,6 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="tracks" element={<LearningTracks />} />
             <Route path="applications" element={<Applications />} />
-            <Route path="interviews" element={<Interviews />} />
             <Route path="interview-arena" element={<InterviewArena />} />
             <Route path="question-bank" element={<QuestionBank />} />
             <Route path="weaknesses" element={<Weaknesses />} />

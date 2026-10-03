@@ -134,9 +134,9 @@ export const Applications = () => {
   const filteredApps = allApps.filter(app => {
     const q = searchTerm.toLowerCase();
     if (
-      app.company.toLowerCase().includes(q) || 
-      app.jobTitle.toLowerCase().includes(q) ||
-      app.source.toLowerCase().includes(q)
+      (app.company || '').toLowerCase().includes(q) || 
+      (app.jobTitle || '').toLowerCase().includes(q) ||
+      (app.source || '').toLowerCase().includes(q)
     ) return true;
 
     if (app.isAutomatic) {
@@ -173,8 +173,8 @@ export const Applications = () => {
   const sortedApps = [...filteredApps].sort((a, b) => {
     if (!sortColumn) {
       // Default order: sort by appliedDate descending
-      const dateA = new Date(a.appliedDate || 0).getTime();
-      const dateB = new Date(b.appliedDate || 0).getTime();
+      const dateA = new Date(a.appliedDate || 0).getTime() || 0;
+      const dateB = new Date(b.appliedDate || 0).getTime() || 0;
       return dateB - dateA;
     }
 
@@ -184,6 +184,12 @@ export const Applications = () => {
       const scoreA = a.score !== undefined ? a.score : -1;
       const scoreB = b.score !== undefined ? b.score : -1;
       return (scoreA - scoreB) * directionModifier;
+    }
+
+    if (sortColumn === 'appliedDate') {
+      const dateA = new Date(a.appliedDate || 0).getTime() || 0;
+      const dateB = new Date(b.appliedDate || 0).getTime() || 0;
+      return (dateA - dateB) * directionModifier;
     }
 
     const valA = String(a[sortColumn] || '').toLowerCase();
