@@ -286,6 +286,10 @@ export function formatDax(input: string, options: DaxFormatOptions = {}): string
     lineHasContent = indentCount > 0;
   };
 
+  const isLineStart = () => {
+    return /\n[ \t]*$/.test(formatted) || formatted === '';
+  };
+
   for (let idx = 0; idx < tokens.length; idx++) {
     const t = tokens[idx];
     const prev = idx > 0 ? tokens[idx - 1] : null;
@@ -317,13 +321,16 @@ export function formatDax(input: string, options: DaxFormatOptions = {}): string
 
       // Check if next token is '(' -> Function Call!
       if (next && next.type === 'paren_open') {
+        if (!isLineStart() && !formatted.endsWith(' ') && prev && prev.type !== 'paren_open') {
+          append(' ');
+        }
         append(val);
         continue;
       }
 
       // Standalone identifier or boolean
-      if (prev && (prev.type === 'operator' || prev.type === 'comma' || prev.type === 'paren_open')) {
-        if (prev.type !== 'paren_open') append(' ');
+      if (!isLineStart() && !formatted.endsWith(' ') && prev && prev.type !== 'paren_open') {
+        append(' ');
       }
       append(val);
       continue;
