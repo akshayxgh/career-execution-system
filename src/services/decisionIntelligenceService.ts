@@ -111,21 +111,40 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number, errorMsg: string): 
 
 export async function getDecisionJobs(): Promise<DecisionJob[]> {
   try {
-    const query = supabase
-      .from("vw_decision_intelligence")
-      .select("*");
+    const PAGE_SIZE = 1000;
+    let allJobs: DecisionJob[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    const { data, error } = await withTimeout(
-      query,
-      9000,
-      "Supabase query timed out. Retrying with cache..."
-    );
+    while (hasMore) {
+      const query = supabase
+        .from("vw_decision_intelligence")
+        .select("*")
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (error) {
-      throw error;
+      const { data, error } = await withTimeout(
+        query,
+        9000,
+        "Supabase query timed out. Retrying with cache..."
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        allJobs = allJobs.concat(data as DecisionJob[]);
+        if (data.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    const jobs = (data ?? []) as DecisionJob[];
+    const jobs = allJobs;
 
     if (jobs.length > 0) {
       // Chunk IDs to avoid huge URL length in PostgREST
@@ -335,46 +354,65 @@ export interface AppliedJobFromDB {
 }
 
 export async function getAppliedJobs(): Promise<AppliedJobFromDB[]> {
-  const { data, error } = await supabase
-    .from("my_jobs")
-    .select(`
-      id,
-      status,
-      updated_at,
-      job_id,
-      jobs:jobs(
-        company_id,
-        external_id,
-        title,
-        company_name,
-        location,
-        description,
-        experience,
-        salary,
-        posted_date,
-        url,
-        source,
-        scraper,
-        search_keyword,
-        search_location,
+  const PAGE_SIZE = 1000;
+  let allData: AppliedJobFromDB[] = [];
+  let from = 0;
+  let hasMore = true;
 
-        job_analysis:job_analysis(
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("my_jobs")
+      .select(`
+        id,
+        status,
+        updated_at,
+        job_id,
+        jobs:jobs(
+          company_id,
+          external_id,
+          title,
+          company_name,
+          location,
+          description,
+          experience,
+          salary,
+          posted_date,
+          url,
+          source,
+          scraper,
+          search_keyword,
+          search_location,
 
-          score,
-          reason,
-          recommendation,
-          email_to_hr,
-          hr_email,
-          confidence,
-          analyzed_at
+          job_analysis:job_analysis(
+            score,
+            reason,
+            recommendation,
+            email_to_hr,
+            hr_email,
+            confidence,
+            analyzed_at
+          )
         )
-      )
-    `)
-    .in("status", ["APPLIED", "SCREENING", "INTERVIEW", "OFFER", "REJECTED", "JOINED", "WITHDRAWN", "DECLINED"]);
+      `)
+      .in("status", ["APPLIED", "SCREENING", "INTERVIEW", "OFFER", "REJECTED", "JOINED", "WITHDRAWN", "DECLINED"])
+      .order("updated_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
 
-  if (error) {
-    throw error;
+    if (error) {
+      throw error;
+    }
+
+    if (data && data.length > 0) {
+      allData = allData.concat(data as unknown as AppliedJobFromDB[]);
+      if (data.length < PAGE_SIZE) {
+        hasMore = false;
+      } else {
+        from += PAGE_SIZE;
+      }
+    } else {
+      hasMore = false;
+    }
   }
 
-  return (data ?? []) as unknown as AppliedJobFromDB[];
+  return allData;
 }
