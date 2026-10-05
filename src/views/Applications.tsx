@@ -38,9 +38,17 @@ export const Applications = () => {
   const [dbApplications, setDbApplications] = useState<AppliedJobFromDB[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const ROWS_PER_PAGE = 50;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Sorting state
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   // Modal & Row Interaction state
   const [selectedJob, setSelectedJob] = useState<DecisionJob | null>(null);
@@ -197,6 +205,12 @@ export const Applications = () => {
     const valB = String(b[sortColumn] || '').toLowerCase();
     return valA.localeCompare(valB) * directionModifier;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sortedApps.length / ROWS_PER_PAGE));
+  const effectivePage = Math.min(currentPage, totalPages);
+  const pageStart = sortedApps.length === 0 ? 0 : (effectivePage - 1) * ROWS_PER_PAGE + 1;
+  const pageEnd = Math.min(effectivePage * ROWS_PER_PAGE, sortedApps.length);
+  const paginatedApps = sortedApps.slice((effectivePage - 1) * ROWS_PER_PAGE, effectivePage * ROWS_PER_PAGE);
 
   const getScoreStyle = (score: number) => {
     if (score >= 90) return { color: 'var(--success)', fontWeight: 'bold' };
@@ -486,7 +500,7 @@ export const Applications = () => {
                     No applications found. Start applying!
                   </td>
                 </tr>
-              ) : sortedApps.map(app => (
+              ) : paginatedApps.map(app => (
                 <tr 
                   key={app.id} 
                   style={{ 
@@ -540,6 +554,33 @@ export const Applications = () => {
             </tbody>
           </table>
         </div>
+
+        {sortedApps.length > 0 && (
+          <div className="decision-pagination" style={{ margin: '0 -1.5rem -1.5rem -1.5rem', borderBottomLeftRadius: 'var(--radius-md)', borderBottomRightRadius: 'var(--radius-md)' }}>
+            <span>
+              Showing {pageStart}–{pageEnd} of {sortedApps.length} applications
+            </span>
+            <div className="decision-pagination-actions">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={effectivePage === 1}
+              >
+                Previous
+              </button>
+              <span className="decision-page-count">
+                {effectivePage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={effectivePage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedJob ? (
