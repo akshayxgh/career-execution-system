@@ -160,3 +160,46 @@ h3 {
 .hidden {
   display: none;
 }
+
+/* Naukri 1-Click Icon Button */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.naukri-icon-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 3px 6px;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.naukri-icon-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  transform: scale(1.05);
+}
+
+.naukri-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+@keyframes icon-spin {
+  100% { transform: rotate(360deg); }
+}
+
+.naukri-icon-btn.spinning {
+  animation: icon-spin 0.8s linear infinite;
+  border-color: #0284c7;
+  background-color: #eff6ff;
+}
+

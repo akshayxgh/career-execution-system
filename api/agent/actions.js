@@ -153,6 +153,7 @@ export default async function handler(req, res) {
         const validTransitions = {
           PENDING_APPROVAL: ['APPROVED', 'REJECTED', 'PENDING_APPROVAL'],
           APPROVED: ['REJECTED', 'READY_FOR_MANUAL'],
+          READY_FOR_MANUAL: ['EXECUTED', 'CANCELLED', 'APPROVED', 'REJECTED'],
           REJECTED: ['PENDING_APPROVAL'],
         };
 

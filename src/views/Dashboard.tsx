@@ -27,6 +27,7 @@ import {
 } from '../utils/dateUtils';
 import { DailyRoutineTracker } from '../components/DailyRoutineTracker';
 import { PipelineSurveillanceWidget } from '../components/dashboard/PipelineSurveillanceWidget';
+import { LinkedInAgentWidget } from '../components/dashboard/LinkedInAgentWidget';
 
 export const Dashboard = () => {
   const { state } = useStore();
@@ -474,6 +475,9 @@ export const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* LinkedIn AI Agent Surveillance Widget */}
+      <LinkedInAgentWidget />
 
       {/* Automated Job Pipeline Surveillance Widget */}
       <PipelineSurveillanceWidget />

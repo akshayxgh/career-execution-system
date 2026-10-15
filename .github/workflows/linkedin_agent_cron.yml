@@ -1,0 +1,43 @@
+name: Autonomous LinkedIn Content Agent Cron
+
+on:
+  # Daily run at 02:30 UTC (08:00 AM IST)
+  schedule:
+    - cron: '30 2 * * *'
+
+  # Allow manual dispatch from GitHub UI for testing
+  workflow_dispatch:
+    inputs:
+      force_draft:
+        description: 'Force draft even if pending queue exists'
+        required: false
+        default: 'false'
+
+jobs:
+  run-linkedin-agent:
+    name: Run Autonomous Content Proposer
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Run Autonomous LinkedIn Agent
+        env:
+          MYCES_API_URL: ${{ secrets.MYCES_API_URL }}
+          MYCES_AGENT_SECRET: ${{ secrets.MYCES_AGENT_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/linkedin_content_agent.js

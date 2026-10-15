@@ -49,7 +49,7 @@ export function authenticateAgentRequest(req) {
   // 3. Local Development Auth Bypass (mirroring ProtectedRoute.tsx in Vite dev)
   const isDev = process.env.NODE_ENV !== 'production';
   const devBypass = process.env.VITE_DEV_AUTH_BYPASS !== 'false';
-  if (isDev && devBypass && !agentSecret) {
+  if (isDev && devBypass) {
     return {
       authenticated: true,
       role: 'human',

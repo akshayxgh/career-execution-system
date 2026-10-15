@@ -160,4 +160,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   });
+
+    // ==========================================
+    // NAUKRI 1-CLICK PROFILE BUMPER ICON
+    // ==========================================
+    const btnNaukriBump = document.getElementById('btn-naukri-bump');
+
+    if (btnNaukriBump) {
+      btnNaukriBump.addEventListener('click', () => {
+        btnNaukriBump.disabled = true;
+        btnNaukriBump.classList.add('spinning');
+        btnNaukriBump.title = "Bumping Naukri profile in background...";
+
+        chrome.runtime.sendMessage({ action: "BUMP_NAUKRI_PROFILE" }, (response) => {
+          btnNaukriBump.classList.remove('spinning');
+          btnNaukriBump.disabled = false;
+
+          if (chrome.runtime.lastError || !response || !response.success) {
+            btnNaukriBump.textContent = "❌";
+            const err = (response && response.error) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || "Failed to update Naukri profile. Make sure you are logged into naukri.com";
+            btnNaukriBump.title = err;
+            alert(err);
+            setTimeout(() => {
+              btnNaukriBump.textContent = "🔄";
+              btnNaukriBump.title = "1-Click Bump Naukri Title";
+            }, 3000);
+            return;
+          }
+
+          // Success!
+          btnNaukriBump.textContent = "✅";
+          btnNaukriBump.title = `Updated to Variant ${response.updatedTo}! Naukri timestamp refreshed.`;
+          setTimeout(() => {
+            btnNaukriBump.textContent = "🔄";
+            btnNaukriBump.title = "1-Click Bump Naukri Title";
+          }, 3500);
+        });
+      });
+    }
 });

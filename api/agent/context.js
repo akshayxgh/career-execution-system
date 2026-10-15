@@ -15,11 +15,11 @@ export default async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const purpose = url.searchParams.get('purpose') || 'content';
 
-  if (purpose !== 'content') {
-    // For Phase 1, purpose=content is the primary requirement
+  const supportedPurposes = ['content', 'networking', 'opportunities'];
+  if (!supportedPurposes.includes(purpose)) {
     return res.status(400).json({
       ok: false,
-      message: `Unsupported purpose '${purpose}'. Phase 1 supports purpose=content.`,
+      message: `Unsupported purpose '${purpose}'. Supported values: ${supportedPurposes.join(', ')}.`,
     });
   }
 
@@ -40,24 +40,7 @@ export default async function handler(req, res) {
 
     const fullState = stateRow.data;
 
-    // 1. Process Concepts: prioritize unposted concepts
-    const allConcepts = Array.isArray(fullState.concepts) ? fullState.concepts : [];
-    const sanitizedConcepts = allConcepts.map((c) => ({
-      id: c.id,
-      name: c.name,
-      status: c.status,
-      notes: c.notes || '',
-      notebookLmAudioLink: c.notebookLmAudioLink || '',
-      notebookLmResearchLink: c.notebookLmResearchLink || '',
-      linkedinPostLink: c.linkedinPostLink || '',
-      learningDate: c.learningDate,
-      hasPost: Boolean(c.linkedinPostLink && c.linkedinPostLink.trim().length > 0),
-    }));
-
-    // Unposted concepts first
-    sanitizedConcepts.sort((a, b) => (a.hasPost === b.hasPost ? 0 : a.hasPost ? 1 : -1));
-
-    // 2. Process Projects: completed/published projects with lessons learned
+    // Common: Projects
     const allProjects = Array.isArray(fullState.projects) ? fullState.projects : [];
     const relevantProjects = allProjects
       .filter((p) => p.lessonsLearned || ['Completed', 'Published', 'Building'].includes(p.status))
@@ -72,26 +55,117 @@ export default async function handler(req, res) {
         portfolioLink: p.portfolioLink || '',
       }));
 
-    // 3. Relevant Learning Context: modules actively learned or mastered
-    const allTracks = Array.isArray(fullState.learningTracks) ? fullState.learningTracks : [];
-    const activeLearning = allTracks.map((track) => ({
-      name: track.name,
-      masteredModules: (track.modules || [])
-        .filter((m) => m.status === 'Mastered' || m.status === 'Interview Ready')
-        .map((m) => m.name),
-      inProgressModules: (track.modules || [])
-        .filter((m) => m.status === 'Learning' || m.status === 'Practicing')
-        .map((m) => m.name),
-    }));
+    if (purpose === 'content') {
+      // 1. Process Concepts: prioritize unposted concepts
+      const allConcepts = Array.isArray(fullState.concepts) ? fullState.concepts : [];
+      const sanitizedConcepts = allConcepts.map((c) => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        notes: c.notes || '',
+        notebookLmAudioLink: c.notebookLmAudioLink || '',
+        notebookLmResearchLink: c.notebookLmResearchLink || '',
+        linkedinPostLink: c.linkedinPostLink || '',
+        learningDate: c.learningDate,
+        hasPost: Boolean(c.linkedinPostLink && c.linkedinPostLink.trim().length > 0),
+      }));
+
+      // Unposted concepts first
+      sanitizedConcepts.sort((a, b) => (a.hasPost === b.hasPost ? 0 : a.hasPost ? 1 : -1));
+
+      // 2. Relevant Learning Context: modules actively learned or mastered
+      const allTracks = Array.isArray(fullState.learningTracks) ? fullState.learningTracks : [];
+      const activeLearning = allTracks.map((track) => ({
+        name: track.name,
+        masteredModules: (track.modules || [])
+          .filter((m) => m.status === 'Mastered' || m.status === 'Interview Ready')
+          .map((m) => m.name),
+        inProgressModules: (track.modules || [])
+          .filter((m) => m.status === 'Learning' || m.status === 'Practicing')
+          .map((m) => m.name),
+      }));
+
+      // Fetch active content memories (style guide, topic performance)
+      const { data: contentMemories } = await supabase
+        .from('linkedin_agent_memory')
+        .select('*')
+        .eq('user_id', 'Akshay')
+        .in('memory_type', ['WRITING_STYLE_GUIDE', 'TOPIC_PERFORMANCE', 'LESSON_LEARNED'])
+        .order('confidence', { ascending: false });
+
+      return res.status(200).json({
+        ok: true,
+        purpose: 'content',
+        user: 'Akshay',
+        context: {
+          concepts: sanitizedConcepts,
+          projects: relevantProjects,
+          learning: activeLearning,
+          memories: contentMemories || [],
+        },
+      });
+    }
+
+    // Networking & Opportunities
+    const targetRoles = Array.isArray(fullState.targetRoles) && fullState.targetRoles.length > 0
+      ? fullState.targetRoles
+      : ['Senior Data Engineer', 'Power BI Specialist', 'Fabric / Cloud BI Architect'];
+
+    // Target Companies derived from application pipeline
+    const apps = Array.isArray(fullState.applications) ? fullState.applications : [];
+    const targetCompanies = Array.from(
+      new Set(
+        apps
+          .map((a) => a.company?.trim())
+          .filter((c) => Boolean(c && c.length > 1))
+      )
+    ).slice(0, 25);
+
+    // Extract core skills
+    const skills = [
+      'Power BI',
+      'DAX Optimization',
+      'Microsoft Fabric (Direct Lake)',
+      'SQL / T-SQL',
+      'Python',
+      'Data Modeling (Star Schema)',
+      'Azure Data Factory',
+    ];
+
+    // Fetch existing tracked people, opportunities, and strategic outreach memories
+    const [{ data: people }, { data: opportunities }, { data: networkingMemories }] = await Promise.all([
+      supabase
+        .from('linkedin_people')
+        .select('*')
+        .eq('user_id', 'Akshay')
+        .order('updated_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('linkedin_opportunities')
+        .select('*, contact_person:linkedin_people(*)')
+        .eq('user_id', 'Akshay')
+        .order('updated_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('linkedin_agent_memory')
+        .select('*')
+        .eq('user_id', 'Akshay')
+        .in('memory_type', ['OUTREACH_STRATEGY', 'AUDIENCE_PREFERENCE', 'LESSON_LEARNED'])
+        .order('confidence', { ascending: false }),
+    ]);
 
     return res.status(200).json({
       ok: true,
-      purpose: 'content',
+      purpose,
       user: 'Akshay',
       context: {
-        concepts: sanitizedConcepts,
+        targetRoles,
+        targetCompanies,
+        skills,
         projects: relevantProjects,
-        learning: activeLearning,
+        people: people || [],
+        opportunities: opportunities || [],
+        memories: networkingMemories || [],
       },
     });
   } catch (err) {

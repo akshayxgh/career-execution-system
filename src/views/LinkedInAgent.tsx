@@ -10,25 +10,44 @@ import {
   Headphones,
   Check,
   Filter,
+  Users,
+  Briefcase,
+  Layers,
+  TrendingUp,
 } from 'lucide-react';
 import { linkedinAgentService } from '../services/linkedinAgentService';
 import { copilotService } from '../services/copilotService';
 import { ActionApprovalCard } from '../components/linkedin/ActionApprovalCard';
 import { ActionEditModal } from '../components/linkedin/ActionEditModal';
+import { ManualExecutionModal } from '../components/linkedin/ManualExecutionModal';
+import { NetworkingTab } from '../components/linkedin/NetworkingTab';
+import { OpportunitiesTab } from '../components/linkedin/OpportunitiesTab';
+import { AnalyticsMemoryTab } from '../components/linkedin/AnalyticsMemoryTab';
 import type {
   LinkedInAction,
   ContentContextConcept,
   AgentContentContext,
+  AgentNetworkingContext,
+  LinkedInPerson,
+  LinkedInOpportunity,
+  AnalyticsDashboardSummary,
   ActionStatus,
 } from '../types/linkedin';
 
 export const LinkedInAgent: React.FC = () => {
+  // Navigation tab state
+  const [activeTab, setActiveTab] = useState<'content' | 'networking' | 'opportunities' | 'approvals' | 'analytics'>('content');
+
   // Context & Content state
-  const [context, setContext] = useState<AgentContentContext | null>(null);
+  const [contentContext, setContentContext] = useState<AgentContentContext | null>(null);
+  const [networkingContext, setNetworkingContext] = useState<AgentNetworkingContext | null>(null);
+  const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsDashboardSummary | null>(null);
+  const [people, setPeople] = useState<LinkedInPerson[]>([]);
+  const [opportunities, setOpportunities] = useState<LinkedInOpportunity[]>([]);
   const [loadingContext, setLoadingContext] = useState(true);
   const [selectedConceptId, setSelectedConceptId] = useState<string>('');
 
-  // Generation state
+  // Generation state (Content)
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDraft, setGeneratedDraft] = useState<string>('');
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -39,59 +58,50 @@ export const LinkedInAgent: React.FC = () => {
   const [actions, setActions] = useState<LinkedInAction[]>([]);
   const [loadingActions, setLoadingActions] = useState(true);
   const [statusFilter, setStatusFilter] = useState<ActionStatus | 'ALL'>('PENDING_APPROVAL');
+  const [actionTypeFilter, setActionTypeFilter] = useState<string>('ALL');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionProcessingId, setActionProcessingId] = useState<string | null>(null);
 
-  // Edit Modal state
+  // Modals state
   const [editingAction, setEditingAction] = useState<LinkedInAction | null>(null);
+  const [publishingAction, setPublishingAction] = useState<LinkedInAction | null>(null);
 
-  // Initial data loading effects
-  useEffect(() => {
-    let isMounted = true;
-    linkedinAgentService
-      .fetchContentContext()
-      .then((data) => {
-        if (isMounted) {
-          setContext(data);
-          if (data.concepts.length > 0 && !selectedConceptId) {
-            setSelectedConceptId(data.concepts[0].id);
-          }
+  // Initial data loading
+  const refreshAll = useCallback(async () => {
+    setLoadingContext(true);
+    setLoadingActions(true);
+    try {
+      const [cCtx, nCtx, acts, ppl, opps, aSummary] = await Promise.all([
+        linkedinAgentService.fetchContentContext().catch(() => null),
+        linkedinAgentService.fetchNetworkingContext().catch(() => null),
+        linkedinAgentService.fetchActions(statusFilter === 'ALL' ? undefined : statusFilter).catch(() => []),
+        linkedinAgentService.fetchPeople().catch(() => []),
+        linkedinAgentService.fetchOpportunities().catch(() => []),
+        linkedinAgentService.fetchAnalyticsSummary().catch(() => null),
+      ]);
+
+      if (cCtx) {
+        setContentContext(cCtx);
+        if (cCtx.concepts.length > 0 && !selectedConceptId) {
+          setSelectedConceptId(cCtx.concepts[0].id);
         }
-      })
-      .catch((err: unknown) => {
-        if (isMounted) console.error('Failed to load MYCES context:', err);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingContext(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedConceptId]);
+      }
+      if (nCtx) setNetworkingContext(nCtx);
+      setActions(acts);
+      setPeople(ppl);
+      setOpportunities(opps);
+      if (aSummary) setAnalyticsSummary(aSummary);
+    } catch (err: unknown) {
+      console.error('Failed to refresh LinkedIn Agent:', err);
+    } finally {
+      setLoadingContext(false);
+      setLoadingActions(false);
+    }
+  }, [statusFilter, selectedConceptId]);
 
   useEffect(() => {
-    let isMounted = true;
-    const filter = statusFilter === 'ALL' ? undefined : statusFilter;
-    linkedinAgentService
-      .fetchActions(filter)
-      .then((data) => {
-        if (isMounted) setActions(data);
-      })
-      .catch((err: unknown) => {
-        if (isMounted) {
-          const message = err instanceof Error ? err.message : 'Failed to load actions.';
-          setActionError(message);
-        }
-      })
-      .finally(() => {
-        if (isMounted) setLoadingActions(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [statusFilter]);
+    refreshAll();
+  }, [refreshAll]);
 
   const refreshActions = useCallback(async () => {
     try {
@@ -104,41 +114,23 @@ export const LinkedInAgent: React.FC = () => {
     }
   }, [statusFilter]);
 
-  const refreshAll = useCallback(async () => {
-    setLoadingContext(true);
-    setLoadingActions(true);
-    try {
-      const [ctx, acts] = await Promise.all([
-        linkedinAgentService.fetchContentContext(),
-        linkedinAgentService.fetchActions(statusFilter === 'ALL' ? undefined : statusFilter),
-      ]);
-      setContext(ctx);
-      setActions(acts);
-    } catch (err: unknown) {
-      console.error('Failed to refresh LinkedIn Agent:', err);
-    } finally {
-      setLoadingContext(false);
-      setLoadingActions(false);
-    }
-  }, [statusFilter]);
-
   const selectedConcept = useMemo<ContentContextConcept | undefined>(() => {
-    return context?.concepts.find((c) => c.id === selectedConceptId);
-  }, [context, selectedConceptId]);
+    return contentContext?.concepts.find((c) => c.id === selectedConceptId);
+  }, [contentContext, selectedConceptId]);
 
   const conceptMap = useMemo(() => {
     const map = new Map<string, string>();
-    (context?.concepts || []).forEach((c) => {
+    (contentContext?.concepts || []).forEach((c) => {
       map.set(c.id, c.name);
     });
     return map;
-  }, [context]);
+  }, [contentContext]);
 
   const pendingApprovalsCount = useMemo(() => {
     return actions.filter((a) => a.status === 'PENDING_APPROVAL').length;
   }, [actions]);
 
-  // AI LinkedIn Post Draft Generator
+  // AI Content Post Generator
   const handleGenerateDraft = async () => {
     if (!selectedConcept) return;
 
@@ -148,11 +140,23 @@ export const LinkedInAgent: React.FC = () => {
       setGenerationSuccess(null);
       setGeneratedDraft('');
 
+      const memoryDirectives =
+        contentContext?.memories && contentContext.memories.length > 0
+          ? `\nStrategic Memory Directives (Confirmed Style & Tone Rules):\n` +
+            contentContext.memories
+              .map((m) => {
+                const val = typeof m.value === 'string' ? m.value : JSON.stringify(m.value);
+                return `• [${m.memory_type}] ${m.key}: ${val}`;
+              })
+              .join('\n') +
+            '\n'
+          : '';
+
       const prompt = `You are a Senior Principal Data & BI Engineer writing a high-impact, technical LinkedIn post.
 Topic: ${selectedConcept.name}
 ${selectedConcept.notes ? `Technical Notes / Context:\n${selectedConcept.notes}\n` : ''}
 ${selectedConcept.notebookLmAudioLink ? `NotebookLM Podcast Audio Available: ${selectedConcept.notebookLmAudioLink}\n` : ''}
-
+${memoryDirectives}
 Rules for the post:
 1. Hook (Lines 1-2): Direct, non-generic problem statement or practitioner observation. DO NOT start with "In today's fast-paced world...", "Excited to share...", or questions like "Have you ever wondered...?".
 2. Practical Architecture / Execution: Explain the DAX / SQL / Power BI / data pattern clearly with skimmable bullet points or short paragraphs.
@@ -172,7 +176,6 @@ Return ONLY the ready-to-publish post content.`;
     }
   };
 
-  // Submit Draft to the Pending Approval Queue
   const handleSubmitProposedAction = async () => {
     if (!generatedDraft.trim() || !selectedConcept) return;
 
@@ -192,6 +195,7 @@ Return ONLY the ready-to-publish post content.`;
       setGenerationSuccess('Draft submitted to Pending Approvals queue!');
       setGeneratedDraft('');
       await refreshActions();
+      setActiveTab('approvals');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to submit proposed action.';
       setGenerationError(msg);
@@ -232,8 +236,42 @@ Return ONLY the ready-to-publish post content.`;
     await refreshActions();
   };
 
+  const handleOpenPublish = async (action: LinkedInAction) => {
+    try {
+      if (action.status === 'APPROVED') {
+        const updated = await linkedinAgentService.prepareManualExecution(action.id);
+        setPublishingAction(updated);
+        await refreshActions();
+      } else {
+        setPublishingAction(action);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to prepare execution.';
+      alert(msg);
+    }
+  };
+
+  const handleConfirmPublished = async (
+    actionId: string,
+    url?: string,
+    conceptId?: string | null
+  ) => {
+    await linkedinAgentService.confirmPublished({
+      action_id: actionId,
+      linkedin_url: url,
+      concept_id: conceptId,
+    });
+    await refreshAll();
+  };
+
+  // Filter actions by type if set
+  const filteredActions = actions.filter((act) => {
+    if (actionTypeFilter === 'ALL') return true;
+    return act.action_type === actionTypeFilter;
+  });
+
   return (
-    <div className="view-container" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="view-container" style={{ padding: '1.5rem', maxWidth: '1240px', margin: '0 auto' }}>
       {/* Top Header */}
       <div
         style={{
@@ -242,7 +280,7 @@ Return ONLY the ready-to-publish post content.`;
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '1rem',
-          marginBottom: '1.75rem',
+          marginBottom: '1.5rem',
         }}
       >
         <div>
@@ -265,13 +303,14 @@ Return ONLY the ready-to-publish post content.`;
               LinkedIn AI Agent
             </h1>
           </div>
-          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Autonomous Drafting & Human-in-the-Loop Action Approval Center
+          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Career Command Center • Content Generation, Strategic Networking & Opportunity Radar
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div
+            onClick={() => setActiveTab('approvals')}
             style={{
               padding: '0.4rem 0.85rem',
               borderRadius: '9999px',
@@ -285,14 +324,15 @@ Return ONLY the ready-to-publish post content.`;
                   : 'rgba(16, 185, 129, 0.3)'
               }`,
               color: pendingApprovalsCount > 0 ? '#f59e0b' : '#10b981',
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               gap: '0.4rem',
+              cursor: 'pointer',
             }}
           >
-            <CheckCircle2 size={16} />
+            <CheckCircle2 size={15} />
             <span>
               {pendingApprovalsCount} {pendingApprovalsCount === 1 ? 'Action' : 'Actions'} Pending Approval
             </span>
@@ -303,10 +343,10 @@ Return ONLY the ready-to-publish post content.`;
             className="btn btn-secondary"
             onClick={refreshAll}
             disabled={loadingActions || loadingContext}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.825rem' }}
           >
             <RefreshCw
-              size={15}
+              size={14}
               className={loadingActions || loadingContext ? 'animate-spin' : ''}
             />
             <span>Refresh</span>
@@ -314,8 +354,159 @@ Return ONLY the ready-to-publish post content.`;
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem' }}>
-        {/* SECTION 1: Draft Post Generator */}
+      {/* Primary Tab Navigation */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: '0.75rem',
+          marginBottom: '1.5rem',
+          overflowX: 'auto',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('content')}
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: '0.5rem',
+            border: activeTab === 'content' ? '1px solid #0a66c2' : '1px solid transparent',
+            background: activeTab === 'content' ? 'rgba(10, 102, 194, 0.15)' : 'transparent',
+            color: activeTab === 'content' ? '#0a66c2' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+          }}
+        >
+          <Sparkles size={16} />
+          <span>Content Copilot</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('networking')}
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: '0.5rem',
+            border: activeTab === 'networking' ? '1px solid #10b981' : '1px solid transparent',
+            background: activeTab === 'networking' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+            color: activeTab === 'networking' ? '#10b981' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+          }}
+        >
+          <Users size={16} />
+          <span>Strategic Networking</span>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              padding: '0.1rem 0.4rem',
+              borderRadius: '999px',
+              background: 'rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            {people.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('opportunities')}
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: '0.5rem',
+            border: activeTab === 'opportunities' ? '1px solid #8b5cf6' : '1px solid transparent',
+            background: activeTab === 'opportunities' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+            color: activeTab === 'opportunities' ? '#8b5cf6' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+          }}
+        >
+          <Briefcase size={16} />
+          <span>Opportunity Radar</span>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              padding: '0.1rem 0.4rem',
+              borderRadius: '999px',
+              background: 'rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            {opportunities.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('approvals')}
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: '0.5rem',
+            border: activeTab === 'approvals' ? '1px solid #f59e0b' : '1px solid transparent',
+            background: activeTab === 'approvals' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'approvals' ? '#f59e0b' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+          }}
+        >
+          <Layers size={16} />
+          <span>Approvals Queue</span>
+          {pendingApprovalsCount > 0 && (
+            <span
+              style={{
+                fontSize: '0.7rem',
+                padding: '0.1rem 0.45rem',
+                borderRadius: '999px',
+                background: '#f59e0b',
+                color: '#000000',
+                fontWeight: 800,
+              }}
+            >
+              {pendingApprovalsCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('analytics')}
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: '0.5rem',
+            border: activeTab === 'analytics' ? '1px solid #10b981' : '1px solid transparent',
+            background: activeTab === 'analytics' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+            color: activeTab === 'analytics' ? '#10b981' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+          }}
+        >
+          <TrendingUp size={16} />
+          <span>Analytics & Strategy</span>
+        </button>
+      </div>
+
+      {/* TAB 1: CONTENT COPILOT */}
+      {activeTab === 'content' && (
         <section
           className="card"
           style={{
@@ -342,7 +533,6 @@ Return ONLY the ready-to-publish post content.`;
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-            {/* Concept Selector */}
             <div>
               <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
                 Select Concept Context:
@@ -353,7 +543,7 @@ Return ONLY the ready-to-publish post content.`;
                 onChange={(e) => setSelectedConceptId(e.target.value)}
                 style={{ width: '100%', padding: '0.6rem', borderRadius: '6px' }}
               >
-                {context?.concepts.map((concept) => (
+                {contentContext?.concepts.map((concept) => (
                   <option key={concept.id} value={concept.id}>
                     {concept.hasPost ? '✓ [Published] ' : '★ [Unposted] '}
                     {concept.name}
@@ -362,7 +552,6 @@ Return ONLY the ready-to-publish post content.`;
               </select>
             </div>
 
-            {/* Concept Info Preview */}
             {selectedConcept && (
               <div
                 style={{
@@ -394,7 +583,6 @@ Return ONLY the ready-to-publish post content.`;
             )}
           </div>
 
-          {/* Action Trigger */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
             <button
               type="button"
@@ -448,7 +636,6 @@ Return ONLY the ready-to-publish post content.`;
             </div>
           )}
 
-          {/* Draft Preview & Submit Area */}
           {generatedDraft && (
             <div
               style={{
@@ -518,8 +705,37 @@ Return ONLY the ready-to-publish post content.`;
             </div>
           )}
         </section>
+      )}
 
-        {/* SECTION 2: Pending Approvals Queue */}
+      {/* TAB 2: STRATEGIC NETWORKING */}
+      {activeTab === 'networking' && (
+        <NetworkingTab
+          people={people}
+          context={networkingContext}
+          onRefresh={refreshAll}
+          onActionProposed={() => {
+            refreshActions();
+            setActiveTab('approvals');
+          }}
+        />
+      )}
+
+      {/* TAB 3: OPPORTUNITY RADAR */}
+      {activeTab === 'opportunities' && (
+        <OpportunitiesTab
+          opportunities={opportunities}
+          people={people}
+          context={networkingContext}
+          onRefresh={refreshAll}
+          onActionProposed={() => {
+            refreshActions();
+            setActiveTab('approvals');
+          }}
+        />
+      )}
+
+      {/* TAB 4: ACTION APPROVALS QUEUE */}
+      {activeTab === 'approvals' && (
         <section
           className="card"
           style={{
@@ -548,9 +764,23 @@ Return ONLY the ready-to-publish post content.`;
               </h2>
             </div>
 
-            {/* Filter Toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* Filter Toggles */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <Filter size={15} style={{ color: 'var(--text-muted)' }} />
+
+              <select
+                className="input"
+                value={actionTypeFilter}
+                onChange={(e) => setActionTypeFilter(e.target.value)}
+                style={{ padding: '0.35rem 0.6rem', fontSize: '0.825rem', borderRadius: '6px' }}
+              >
+                <option value="ALL">All Action Types</option>
+                <option value="PUBLISH_POST">Post Publishing</option>
+                <option value="SEND_CONNECTION">Connection Requests</option>
+                <option value="COMMENT">Post Comments</option>
+                <option value="MESSAGE">Direct Outreaches</option>
+              </select>
+
               <select
                 className="input"
                 value={statusFilter}
@@ -559,8 +789,10 @@ Return ONLY the ready-to-publish post content.`;
               >
                 <option value="PENDING_APPROVAL">Pending Approval ({pendingApprovalsCount})</option>
                 <option value="APPROVED">Approved</option>
+                <option value="READY_FOR_MANUAL">Ready for Manual</option>
+                <option value="EXECUTED">Executed</option>
                 <option value="REJECTED">Rejected</option>
-                <option value="ALL">All Actions</option>
+                <option value="ALL">All Statuses</option>
               </select>
             </div>
           </div>
@@ -585,7 +817,7 @@ Return ONLY the ready-to-publish post content.`;
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               Loading action queue...
             </div>
-          ) : actions.length === 0 ? (
+          ) : filteredActions.length === 0 ? (
             <div
               style={{
                 padding: '3rem 1.5rem',
@@ -600,12 +832,12 @@ Return ONLY the ready-to-publish post content.`;
                 No actions currently {statusFilter === 'ALL' ? 'found' : `in ${statusFilter}`}
               </h3>
               <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Use the draft generator above or let the scheduled agent propose posts.
+                Generate posts in Content Copilot, connection notes in Networking, or pitch comments in Opportunities.
               </p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {actions.map((action) => (
+              {filteredActions.map((action) => (
                 <ActionApprovalCard
                   key={action.id}
                   action={action}
@@ -617,13 +849,22 @@ Return ONLY the ready-to-publish post content.`;
                   onApprove={handleApprove}
                   onReject={handleReject}
                   onEdit={(act) => setEditingAction(act)}
+                  onPreparePublish={handleOpenPublish}
                   isProcessing={actionProcessingId === action.id}
                 />
               ))}
             </div>
           )}
         </section>
-      </div>
+      )}
+
+      {/* TAB 5: ANALYTICS & STRATEGIC MEMORY */}
+      {activeTab === 'analytics' && (
+        <AnalyticsMemoryTab
+          summary={analyticsSummary}
+          onRefresh={refreshAll}
+        />
+      )}
 
       {/* Edit Modal */}
       <ActionEditModal
@@ -631,6 +872,14 @@ Return ONLY the ready-to-publish post content.`;
         isOpen={Boolean(editingAction)}
         onClose={() => setEditingAction(null)}
         onSave={handleSaveEdit}
+      />
+
+      {/* Manual Execution Fallback Modal */}
+      <ManualExecutionModal
+        action={publishingAction}
+        isOpen={Boolean(publishingAction)}
+        onClose={() => setPublishingAction(null)}
+        onConfirmPublished={handleConfirmPublished}
       />
     </div>
   );

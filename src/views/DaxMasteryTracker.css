@@ -451,6 +451,10 @@
   background: rgba(245, 158, 11, 0.04);
 }
 
+.dax-table tr.row-parked {
+  background: rgba(249, 115, 22, 0.04);
+}
+
 /* Clean 3-Option Segmented Status Switcher */
 .status-pill-group {
   display: inline-flex;
@@ -480,18 +484,25 @@
 }
 
 .status-pill-btn.active-done {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
 }
 
-.status-pill-btn.active-learning {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
+.status-pill-btn.active-learning,
+.status-pill-btn.active-practiced {
+  background: #f59e0b;
+  color: #000000;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.3);
 }
 
 .status-pill-btn.active-planned {
-  background: rgba(148, 163, 184, 0.15);
-  color: var(--text-main);
+  background: #f97316;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(249, 115, 22, 0.3);
 }
 
 .syntax-chip {

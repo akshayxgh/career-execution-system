@@ -174,7 +174,7 @@ export interface QuestionBankItem {
   updatedAt: string;
 }
 
-export type DaxLearningStatus = 'Completed' | 'Introduced/Practiced' | 'Planned';
+export type DaxLearningStatus = 'Practised' | 'Introduced' | 'Partial / parked' | 'Completed' | 'Planned';
 
 export interface DaxLearningItem {
   id: string;

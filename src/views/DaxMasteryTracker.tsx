@@ -30,7 +30,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { DAX_RECIPES } from '../data/daxMasteryData';
-import { DAX_LEARNING_TRACKER_DATA, type DaxLearningItem } from '../data/daxLearningTrackerData';
+import { DAX_LEARNING_TRACKER_DATA, type DaxLearningItem, type DaxLearningStatus } from '../data/daxLearningTrackerData';
 import { copilotService } from '../services/copilotService';
 import { useStore } from '../store/StoreContext';
 import './DaxMasteryTracker.css';
@@ -447,7 +447,7 @@ export const DaxMasteryTracker: React.FC = () => {
 
   // DAX Learning Tracker Storage & State
   const TRACKER_STORAGE_KEY = 'dax_learning_tracker_status_v1';
-  const [trackerStatusMap, setTrackerStatusMap] = useState<Record<string, 'Completed' | 'Introduced/Practiced' | 'Planned'>>(() => {
+  const [trackerStatusMap, setTrackerStatusMap] = useState<Record<string, DaxLearningStatus>>(() => {
     try {
       const fromStore = storeState.daxTrackerStatuses;
       if (fromStore && Object.keys(fromStore).length > 0) return fromStore;
@@ -457,6 +457,12 @@ export const DaxMasteryTracker: React.FC = () => {
       return {};
     }
   });
+
+  const normalizeStatus = (s?: string): DaxLearningStatus => {
+    if (s === 'Practised' || s === 'Completed') return 'Practised';
+    if (s === 'Introduced' || s === 'Introduced/Practiced') return 'Introduced';
+    return 'Partial / parked';
+  };
 
   // Sync state from store when Supabase sync updates
   useEffect(() => {
@@ -486,7 +492,7 @@ export const DaxMasteryTracker: React.FC = () => {
     }
   }, [storeState.daxTrackerStatuses]);
 
-  const setTrackerStatus = (id: string, status: 'Completed' | 'Introduced/Practiced' | 'Planned') => {
+  const setTrackerStatus = (id: string, status: DaxLearningStatus) => {
     const updated = { ...trackerStatusMap, [id]: status };
     setTrackerStatusMap(updated);
     try {
@@ -523,10 +529,16 @@ export const DaxMasteryTracker: React.FC = () => {
     if (cat.includes('virtual') || cat.includes('table')) {
       return '⚡ Generates or manipulates in-memory virtual tables. Preserves column data lineage so downstream CALCULATE or TREATAS can propagate filters back into the data model correctly.';
     }
-    if (cat.includes('time')) {
+    if (cat.includes('date') || cat.includes('time')) {
       return '⚡ Relies on a standard Date dimension with contiguous calendar dates marked as a Date Table. Alters the active date filter context using internal CALCULATE and ALL() mechanics.';
     }
-    if (cat.includes('aggregation')) {
+    if (cat.includes('window')) {
+      return '⚡ Modern window function (INDEX, OFFSET, WINDOW). Requires clear ORDERBY and PARTITIONBY definitions to ensure deterministic frame boundaries in memory.';
+    }
+    if (cat.includes('pattern')) {
+      return '⚡ Reusable business pattern. Combines multiple DAX context modifiers (CALCULATE, ALLSELECTED, iterators) to solve enterprise analytical problems.';
+    }
+    if (cat.includes('core') || cat.includes('aggregation')) {
       return '⚡ Evaluates over column values under the current filter context. Non-iterator aggregations push evaluation directly down to the storage engine (SE) for optimal multi-million row scan speeds.';
     }
     return '⚡ Evaluates within the active DAX filter context. Always verify model relationships and cross-filter propagation to ensure accurate calculation output.';
@@ -553,16 +565,16 @@ export const DaxMasteryTracker: React.FC = () => {
     whatItDoes: string;
     syntax: string;
     example: string;
-    status: 'Completed' | 'Introduced/Practiced' | 'Planned';
+    status: DaxLearningStatus;
   }>({
     functionName: '',
-    category: 'Filter context',
+    category: 'Core calculations and logic',
     parameter: '',
     parameterAccepts: '',
     whatItDoes: '',
     syntax: '',
     example: '',
-    status: 'Planned'
+    status: 'Practised'
   });
 
   // Copy indicator
@@ -721,24 +733,26 @@ The static rule-based audit results above are 100% active and running locally.`)
   }, [customTrackerItems]);
 
   const trackerTotalCount = allTrackerItems.length;
-  let trackerCompletedCount = 0;
-  let trackerPracticedCount = 0;
-  let trackerPlannedCount = 0;
+  let trackerPractisedCount = 0;
+  let trackerIntroducedCount = 0;
+  let trackerPartialCount = 0;
 
   allTrackerItems.forEach(item => {
-    const s = trackerStatusMap[item.id] || item.status;
-    if (s === 'Completed') trackerCompletedCount++;
-    else if (s === 'Introduced/Practiced') trackerPracticedCount++;
-    else trackerPlannedCount++;
+    const raw = trackerStatusMap[item.id] || item.status;
+    const s = normalizeStatus(raw);
+    if (s === 'Practised') trackerPractisedCount++;
+    else if (s === 'Introduced') trackerIntroducedCount++;
+    else trackerPartialCount++;
   });
 
   const trackerCompletionPct = trackerTotalCount > 0 
-    ? Math.round((trackerCompletedCount / trackerTotalCount) * 100) 
+    ? Math.round((trackerPractisedCount / trackerTotalCount) * 100) 
     : 0;
 
   // Learning Tracker Filtered List
   const filteredTrackerItems = allTrackerItems.filter(item => {
-    const s = trackerStatusMap[item.id] || item.status;
+    const raw = trackerStatusMap[item.id] || item.status;
+    const s = normalizeStatus(raw);
     if (trackerCategoryFilter !== 'ALL' && item.category !== trackerCategoryFilter) return false;
     if (trackerStatusFilter !== 'ALL' && s !== trackerStatusFilter) return false;
 
@@ -798,8 +812,8 @@ The static rule-based audit results above are 100% active and running locally.`)
     }
 
     if (trackerSortBy === 'status-done') {
-      const rank: Record<string, number> = { 'Completed': 3, 'Introduced/Practiced': 2, 'Planned': 1 };
-      const diff = (rank[statusB] || 0) - (rank[statusA] || 0);
+      const rank: Record<string, number> = { 'Practised': 3, 'Introduced': 2, 'Partial / parked': 1 };
+      const diff = (rank[normalizeStatus(statusB)] || 0) - (rank[normalizeStatus(statusA)] || 0);
       if (diff !== 0) return diff;
       const f = a.functionName.localeCompare(b.functionName);
       if (f !== 0) return f;
@@ -807,8 +821,8 @@ The static rule-based audit results above are 100% active and running locally.`)
     }
 
     if (trackerSortBy === 'status-plan') {
-      const rank: Record<string, number> = { 'Planned': 3, 'Introduced/Practiced': 2, 'Completed': 1 };
-      const diff = (rank[statusB] || 0) - (rank[statusA] || 0);
+      const rank: Record<string, number> = { 'Partial / parked': 3, 'Introduced': 2, 'Practised': 1 };
+      const diff = (rank[normalizeStatus(statusB)] || 0) - (rank[normalizeStatus(statusA)] || 0);
       if (diff !== 0) return diff;
       const f = a.functionName.localeCompare(b.functionName);
       if (f !== 0) return f;
@@ -1418,21 +1432,27 @@ Make it punchy, practical, and senior-level.`;
         <div className="dax-header-stats">
           <div className="dax-stat-box">
             <div className="dax-stat-value" style={{ color: '#10b981' }}>
-              {trackerCompletedCount}
+              {trackerPractisedCount}
             </div>
-            <div className="dax-stat-label">Mastered</div>
+            <div className="dax-stat-label">Practised</div>
           </div>
           <div className="dax-stat-box">
             <div className="dax-stat-value" style={{ color: '#f59e0b' }}>
-              {trackerPracticedCount}
+              {trackerIntroducedCount}
             </div>
-            <div className="dax-stat-label">Practiced</div>
+            <div className="dax-stat-label">Introduced</div>
+          </div>
+          <div className="dax-stat-box">
+            <div className="dax-stat-value" style={{ color: '#f97316' }}>
+              {trackerPartialCount}
+            </div>
+            <div className="dax-stat-label">Partial / Parked</div>
           </div>
           <div className="dax-stat-box">
             <div className="dax-stat-value" style={{ color: 'var(--accent-primary)' }}>
               {trackerCompletionPct}%
             </div>
-            <div className="dax-stat-label">Mastery Rate</div>
+            <div className="dax-stat-label">Practised Rate</div>
           </div>
         </div>
       </div>
@@ -1442,7 +1462,7 @@ Make it punchy, practical, and senior-level.`;
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
           <span>Curriculum Progress</span>
           <span>
-            {trackerCompletedCount} of {trackerTotalCount} Parameters & Syntax Items Mastered ({trackerCompletionPct}%)
+            {trackerPractisedCount} of {trackerTotalCount} Topics & Functions Practised ({trackerCompletionPct}%)
           </span>
         </div>
         <div className="dax-progress-bar-bg">
@@ -1541,9 +1561,9 @@ Make it punchy, practical, and senior-level.`;
                 title="Filter by Status"
               >
                 <option value="ALL">All Statuses ({trackerTotalCount})</option>
-                <option value="Completed">🟢 Completed ({trackerCompletedCount})</option>
-                <option value="Introduced/Practiced">🟡 Practiced ({trackerPracticedCount})</option>
-                <option value="Planned">⚪ Planned ({trackerPlannedCount})</option>
+                <option value="Practised">🟢 Practised ({trackerPractisedCount})</option>
+                <option value="Introduced">🟡 Introduced ({trackerIntroducedCount})</option>
+                <option value="Partial / parked">🟠 Partial / Parked ({trackerPartialCount})</option>
               </select>
 
               {/* Theme-Matching Sort Select */}
@@ -1557,8 +1577,8 @@ Make it punchy, practical, and senior-level.`;
                 <option value="func-asc">🔤 Function (A → Z)</option>
                 <option value="func-desc">🔤 Function (Z → A)</option>
                 <option value="cat-asc">📁 Category (A → Z)</option>
-                <option value="status-done">🟢 Status (Done First)</option>
-                <option value="status-plan">⚪ Status (Planned First)</option>
+                <option value="status-done">🟢 Status (Practised First)</option>
+                <option value="status-plan">🟠 Status (Parked First)</option>
                 <option value="default">📋 Default Matrix Order</option>
               </select>
 
@@ -1633,7 +1653,7 @@ Make it punchy, practical, and senior-level.`;
                     whatItDoes: '',
                     syntax: '',
                     example: '',
-                    status: 'Planned'
+                    status: 'Practised'
                   });
                   setFormError(null);
                   setIsAddModalOpen(true);
@@ -1781,7 +1801,7 @@ Make it punchy, practical, and senior-level.`;
                           return (
                             <tr 
                               key={item.id} 
-                              className={`dax-tracker-row dax-clickable-row ${s === 'Completed' ? 'row-done' : s === 'Introduced/Practiced' ? 'row-learning' : ''}`}
+                              className={`dax-tracker-row dax-clickable-row ${normalizeStatus(s) === 'Practised' ? 'row-done' : normalizeStatus(s) === 'Introduced' ? 'row-learning' : 'row-parked'}`}
                               onClick={() => handleOpenMeasureDetail(item)}
                               title="Click to view detailed measure specifications and mechanics in modal"
                               style={{ 
@@ -1902,36 +1922,36 @@ Make it punchy, practical, and senior-level.`;
                                 <div className="status-pill-group">
                                   <button
                                     type="button"
-                                    className={`status-pill-btn ${s === 'Completed' ? 'active-done' : ''}`}
+                                    className={`status-pill-btn ${normalizeStatus(s) === 'Practised' ? 'active-done' : ''}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setTrackerStatus(item.id, 'Completed');
+                                      setTrackerStatus(item.id, 'Practised');
                                     }}
-                                    title="Mark as Completed"
+                                    title="Mark as Practised"
                                   >
-                                    🟢 Done
+                                    🟢 Practised
                                   </button>
                                   <button
                                     type="button"
-                                    className={`status-pill-btn ${s === 'Introduced/Practiced' ? 'active-practiced' : ''}`}
+                                    className={`status-pill-btn ${normalizeStatus(s) === 'Introduced' ? 'active-practiced' : ''}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setTrackerStatus(item.id, 'Introduced/Practiced');
+                                      setTrackerStatus(item.id, 'Introduced');
                                     }}
-                                    title="Mark as Introduced/Practiced"
+                                    title="Mark as Introduced"
                                   >
-                                    🟡 Practiced
+                                    🟡 Introduced
                                   </button>
                                   <button
                                     type="button"
-                                    className={`status-pill-btn ${s === 'Planned' ? 'active-planned' : ''}`}
+                                    className={`status-pill-btn ${normalizeStatus(s) === 'Partial / parked' ? 'active-planned' : ''}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setTrackerStatus(item.id, 'Planned');
+                                      setTrackerStatus(item.id, 'Partial / parked');
                                     }}
-                                    title="Mark as Planned"
+                                    title="Mark as Partial / parked"
                                   >
-                                    ⚪ Plan
+                                    🟠 Parked
                                   </button>
                                 </div>
                               </td>
@@ -2080,33 +2100,33 @@ Make it punchy, practical, and senior-level.`;
                                   <div className="status-pill-group">
                                     <button
                                       type="button"
-                                      className={`status-pill-btn ${s === 'Completed' ? 'active-done' : ''}`}
+                                      className={`status-pill-btn ${normalizeStatus(s) === 'Practised' ? 'active-done' : ''}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setTrackerStatus(paramItem.id, 'Completed');
+                                        setTrackerStatus(paramItem.id, 'Practised');
                                       }}
                                     >
-                                      Done
+                                      Practised
                                     </button>
                                     <button
                                       type="button"
-                                      className={`status-pill-btn ${s === 'Introduced/Practiced' ? 'active-practiced' : ''}`}
+                                      className={`status-pill-btn ${normalizeStatus(s) === 'Introduced' ? 'active-practiced' : ''}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setTrackerStatus(paramItem.id, 'Introduced/Practiced');
+                                        setTrackerStatus(paramItem.id, 'Introduced');
                                       }}
                                     >
-                                      Practiced
+                                      Introduced
                                     </button>
                                     <button
                                       type="button"
-                                      className={`status-pill-btn ${s === 'Planned' ? 'active-planned' : ''}`}
+                                      className={`status-pill-btn ${normalizeStatus(s) === 'Partial / parked' ? 'active-planned' : ''}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setTrackerStatus(paramItem.id, 'Planned');
+                                        setTrackerStatus(paramItem.id, 'Partial / parked');
                                       }}
                                     >
-                                      Plan
+                                      Parked
                                     </button>
                                   </div>
                                 </td>
@@ -2228,34 +2248,34 @@ Make it punchy, practical, and senior-level.`;
 
                 {/* Status for current item */}
                 <div className="dax-detail-section">
-                  <div className="dax-detail-label">Current Parameter Status</div>
+                  <div className="dax-detail-label">Current Status</div>
                   <div className="status-pill-group" style={{ width: 'fit-content' }}>
                     <button
                       type="button"
-                      className={`status-pill-btn ${(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Completed' ? 'active-done' : ''}`}
+                      className={`status-pill-btn ${normalizeStatus(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Practised' ? 'active-done' : ''}`}
                       onClick={() => {
-                        setTrackerStatus(selectedMeasureDetail.item.id, 'Completed');
+                        setTrackerStatus(selectedMeasureDetail.item.id, 'Practised');
                       }}
                     >
-                      🟢 Completed
+                      🟢 Practised
                     </button>
                     <button
                       type="button"
-                      className={`status-pill-btn ${(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Introduced/Practiced' ? 'active-practiced' : ''}`}
+                      className={`status-pill-btn ${normalizeStatus(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Introduced' ? 'active-practiced' : ''}`}
                       onClick={() => {
-                        setTrackerStatus(selectedMeasureDetail.item.id, 'Introduced/Practiced');
+                        setTrackerStatus(selectedMeasureDetail.item.id, 'Introduced');
                       }}
                     >
-                      🟡 Introduced / Practiced
+                      🟡 Introduced
                     </button>
                     <button
                       type="button"
-                      className={`status-pill-btn ${(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Planned' ? 'active-planned' : ''}`}
+                      className={`status-pill-btn ${normalizeStatus(trackerStatusMap[selectedMeasureDetail.item.id] || selectedMeasureDetail.item.status) === 'Partial / parked' ? 'active-planned' : ''}`}
                       onClick={() => {
-                        setTrackerStatus(selectedMeasureDetail.item.id, 'Planned');
+                        setTrackerStatus(selectedMeasureDetail.item.id, 'Partial / parked');
                       }}
                     >
-                      ⚪ Planned
+                      🟠 Partial / parked
                     </button>
                   </div>
                 </div>
@@ -2271,6 +2291,7 @@ Make it punchy, practical, and senior-level.`;
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
                       {selectedMeasureDetail.allParams.map((p, idx) => {
                         const isSelected = p.id === selectedMeasureDetail.item.id;
+                        const paramStatus = normalizeStatus(trackerStatusMap[p.id] || p.status);
                         return (
                           <button
                             key={p.id}
@@ -2294,8 +2315,14 @@ Make it punchy, practical, and senior-level.`;
                             }}
                           >
                             <span>{p.parameter}</span>
-                            {(trackerStatusMap[p.id] || p.status) === 'Completed' && (
+                            {paramStatus === 'Practised' && (
                               <span style={{ fontSize: '0.6rem' }}>🟢</span>
+                            )}
+                            {paramStatus === 'Introduced' && (
+                              <span style={{ fontSize: '0.6rem' }}>🟡</span>
+                            )}
+                            {paramStatus === 'Partial / parked' && (
+                              <span style={{ fontSize: '0.6rem' }}>🟠</span>
                             )}
                           </button>
                         );
@@ -2517,9 +2544,9 @@ Make it punchy, practical, and senior-level.`;
                       value={newItemForm.status}
                       onChange={(e) => setNewItemForm(prev => ({ ...prev, status: e.target.value as any }))}
                     >
-                      <option value="Planned">⚪ Planned</option>
-                      <option value="Introduced/Practiced">🟡 Introduced / Practiced</option>
-                      <option value="Completed">🟢 Completed (Mastered)</option>
+                      <option value="Practised">🟢 Practised</option>
+                      <option value="Introduced">🟡 Introduced</option>
+                      <option value="Partial / parked">🟠 Partial / parked</option>
                     </select>
                   </div>
                 </div>
@@ -3487,7 +3514,7 @@ Make it punchy, practical, and senior-level.`;
               whatItDoes: '',
               syntax: '',
               example: '',
-              status: 'Planned'
+              status: 'Practised'
             });
             setFormError(null);
             setIsAddModalOpen(true);

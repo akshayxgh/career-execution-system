@@ -38,6 +38,7 @@ process.env.SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 
 import contextHandler from '../api/agent/context.js';
 import actionsHandler from '../api/agent/actions.js';
+import { createSessionCookie } from '../api/_auth.js';
 
 function createMockRes() {
   const res = {
@@ -167,7 +168,9 @@ async function runTests() {
     const req = {
       method: 'PATCH',
       url: '/api/agent/actions',
-      headers: {}, // Local dev bypass authenticates as human
+      headers: {
+        cookie: createSessionCookie(),
+      },
       body: {
         id: createdActionId,
         content: 'Refined DAX pattern: Using SUMMARIZECOLUMNS instead of ADDCOLUMNS/SUMMARIZE.',
@@ -195,7 +198,9 @@ async function runTests() {
     const req = {
       method: 'PATCH',
       url: '/api/agent/actions',
-      headers: {}, // Local dev bypass authenticates as human
+      headers: {
+        cookie: createSessionCookie(),
+      },
       body: {
         id: createdActionId,
         status: 'APPROVED',

@@ -43,6 +43,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ isCheckingActive });
     return false;
   }
+
+  if (request.action === "BUMP_NAUKRI_PROFILE") {
+    handleNaukriHeadlineBump()
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true; // Keep message channel open for async response
+  }
 });
 
 // Helper: wait for tab to complete loading
@@ -268,5 +275,239 @@ function inspectNaukriJobPage() {
     };
   } catch (e) {
     return { isApplied: false, isCareerPage: false, status: "ERROR" };
+  }
+}
+
+// ==========================================
+// NAUKRI PROFILE ACTIVITY BUMPER (PING-PONG)
+// ==========================================
+
+async function handleNaukriHeadlineBump() {
+  const DEFAULT_TITLE_A = "Power BI Developer | DAX | SQL | Power Query | MIS & Analytics";
+  const DEFAULT_TITLE_B = "Power BI Developer | SQL | DAX | Power Query | Business Intelligence";
+
+  // 1. Get stored custom titles or defaults
+  const storage = await chrome.storage.local.get([
+    'naukriHeadlineA',
+    'naukriHeadlineB',
+    'naukriLastVariant'
+  ]);
+
+  const variantA = (storage.naukriHeadlineA && storage.naukriHeadlineA.trim()) || DEFAULT_TITLE_A;
+  const variantB = (storage.naukriHeadlineB && storage.naukriHeadlineB.trim()) || DEFAULT_TITLE_B;
+
+  // 2. Check if a Naukri profile tab is already open
+  const tabs = await chrome.tabs.query({ url: "*://*.naukri.com/mnjuser/profile*" });
+  let tabId = null;
+  let createdBackgroundTab = false;
+
+  if (tabs && tabs.length > 0) {
+    tabId = tabs[0].id;
+  } else {
+    // Open profile in background without stealing active focus
+    const newTab = await chrome.tabs.create({
+      url: "https://www.naukri.com/mnjuser/profile",
+      active: false
+    });
+    tabId = newTab.id;
+    createdBackgroundTab = true;
+
+    const loaded = await waitForTabLoad(tabId, 25000);
+    if (!loaded) {
+      if (createdBackgroundTab) {
+        try { await chrome.tabs.remove(tabId); } catch (e) {}
+      }
+      throw new Error("Timed out while loading Naukri profile page.");
+    }
+
+    // Wait 2.5s for client-side hydration
+    await delay(2500);
+  }
+
+  try {
+    // 3. Inject and run the bumper script inside the page
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: inPageBumpNaukriHeadline,
+      args: [variantA, variantB]
+    });
+
+    const res = results && results[0] && results[0].result;
+    if (!res) {
+      throw new Error("No response from Naukri page automation script.");
+    }
+
+    if (!res.success) {
+      throw new Error(res.error || "Failed to update Naukri headline.");
+    }
+
+    // 4. Update storage with bump record
+    await chrome.storage.local.set({
+      naukriLastUpdated: new Date().toISOString(),
+      naukriLastVariant: res.updatedTo,
+      naukriCurrentHeadline: res.newHeadline
+    });
+
+    return res;
+  } finally {
+    // Clean up created background tab after a brief pause
+    if (createdBackgroundTab && tabId) {
+      try {
+        await delay(1200);
+        await chrome.tabs.remove(tabId);
+      } catch (e) {}
+    }
+  }
+}
+
+// Injected into Naukri profile DOM
+async function inPageBumpNaukriHeadline(variantA, variantB) {
+  try {
+    const currentUrl = (window.location.href || "").toLowerCase();
+    if (currentUrl.includes("/nlogin/login") || currentUrl.includes("/login")) {
+      return { success: false, error: "Not logged in to Naukri. Please log in on naukri.com first." };
+    }
+
+    // 1. Find the Resume Headline section container
+    let container = document.querySelector(".resumeHeadline") ||
+                    document.querySelector("#lazyResumeHead") ||
+                    document.querySelector('[data-section="resumeHeadline"]');
+
+    if (!container) {
+      const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4, .widgetHead, .heading, div.title, span.title"));
+      for (const h of headings) {
+        if (h.textContent && h.textContent.trim().toLowerCase().includes("resume headline")) {
+          container = h.closest(".card, .widget, section, div.row") || h.parentElement;
+          break;
+        }
+      }
+    }
+
+    // 2. Read current headline text if present
+    let currentHeadline = "";
+    if (container) {
+      const msgEl = container.querySelector(".msgWrapper") ||
+                    container.querySelector(".content") ||
+                    container.querySelector(".text") ||
+                    container.querySelector("p");
+      if (msgEl) {
+        currentHeadline = (msgEl.textContent || "").trim();
+      }
+    }
+
+    // 3. Determine target variant
+    let targetVariant = "A";
+    let targetHeadline = variantA;
+
+    const normCurrent = currentHeadline.toLowerCase().replace(/\s+/g, " ");
+    const normA = variantA.toLowerCase().replace(/\s+/g, " ");
+    const normB = variantB.toLowerCase().replace(/\s+/g, " ");
+
+    if (normCurrent.includes("mis & analytics") || normCurrent.includes("dax | sql") || normCurrent === normA) {
+      targetVariant = "B";
+      targetHeadline = variantB;
+    } else if (normCurrent.includes("business intelligence") || normCurrent.includes("sql | dax") || normCurrent === normB) {
+      targetVariant = "A";
+      targetHeadline = variantA;
+    } else {
+      // Default to variant A
+      targetVariant = "A";
+      targetHeadline = variantA;
+    }
+
+    // 4. Locate and click the Edit button for Resume Headline
+    let editBtn = null;
+    if (container) {
+      editBtn = container.querySelector(".edit") ||
+                container.querySelector("span.edit") ||
+                container.querySelector('[data-qa="resume-headline-edit"]') ||
+                container.querySelector(".icon-edit") ||
+                Array.from(container.querySelectorAll("span, a, button, i")).find(el => {
+                  const t = (el.textContent || "").trim().toLowerCase();
+                  return t === "edit" || t.includes("edit");
+                });
+    }
+
+    if (!editBtn) {
+      editBtn = document.querySelector(".resumeHeadline .edit, #lazyResumeHead .edit, [data-qa='resume-headline-edit']");
+    }
+
+    if (!editBtn) {
+      return { success: false, error: "Could not find 'Edit' button in Naukri's Resume Headline section." };
+    }
+
+    editBtn.click();
+
+    // 5. Wait for the textarea to appear (modal or inline)
+    const startWait = Date.now();
+    let textarea = null;
+    while (Date.now() - startWait < 4000) {
+      textarea = document.querySelector("#resumeHeadlineTxt") ||
+                 document.querySelector("textarea.resumeHeadlineTxt") ||
+                 document.querySelector(".resumeHeadline textarea") ||
+                 document.querySelector("textarea[name='resumeHeadline']") ||
+                 document.querySelector(".lightbox textarea, .drawer textarea, .modal textarea") ||
+                 document.querySelector("textarea");
+
+      if (textarea && textarea.offsetParent !== null) {
+        break;
+      }
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    if (!textarea) {
+      return { success: false, error: "Resume headline textarea did not appear after clicking Edit." };
+    }
+
+    // 6. Set new value with React / native event dispatch
+    textarea.focus();
+    const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+    if (nativeSetter) {
+      nativeSetter.call(textarea, targetHeadline);
+    } else {
+      textarea.value = targetHeadline;
+    }
+
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    textarea.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: ' ' }));
+
+    await new Promise(r => setTimeout(r, 200));
+
+    // 7. Locate Save button
+    const searchScope = textarea.closest("form, .lightbox, .drawer, .modal, .action, .widget, .resumeHeadline") || document;
+    const buttons = Array.from(searchScope.querySelectorAll("button, input[type='submit'], .saveBtn, .btn-dark-ot"));
+    
+    let saveBtn = buttons.find(b => {
+      const t = (b.textContent || b.value || "").trim().toLowerCase();
+      return t === "save" || t.includes("save");
+    }) || searchScope.querySelector("button[type='submit']") || searchScope.querySelector(".btn-dark-ot");
+
+    if (!saveBtn) {
+      // Global fallback search for visible save button
+      const allButtons = Array.from(document.querySelectorAll("button, .btn-dark-ot"));
+      saveBtn = allButtons.find(b => {
+        const t = (b.textContent || "").trim().toLowerCase();
+        return (t === "save" || t.includes("save")) && b.offsetParent !== null;
+      });
+    }
+
+    if (!saveBtn) {
+      return { success: false, error: "Headline was typed, but the 'Save' button could not be found." };
+    }
+
+    saveBtn.click();
+
+    // 8. Wait for save request to register
+    await new Promise(r => setTimeout(r, 2200));
+
+    return {
+      success: true,
+      updatedTo: targetVariant,
+      newHeadline: targetHeadline,
+      oldHeadline: currentHeadline
+    };
+  } catch (err) {
+    return { success: false, error: err.message || "An unexpected error occurred in the page script." };
   }
 }
