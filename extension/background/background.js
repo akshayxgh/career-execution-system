@@ -338,7 +338,46 @@ function inspectJobStatusPage() {
     }
 
     // -----------------------------------------------------------
-    // 4. NAUKRI INSPECTION
+    // 4. INDEED JOB INSPECTION
+    // -----------------------------------------------------------
+    if (currentHref.includes("indeed.com") || bodyText.includes("indeed")) {
+      const isIndeedClosed = (
+        bodyText.includes("this job has expired on indeed") ||
+        bodyText.includes("this job has expired") ||
+        bodyText.includes("job has expired on indeed") ||
+        bodyText.includes("job has expired") ||
+        bodyText.includes("the employer is not accepting applications") ||
+        bodyText.includes("this job is no longer available") ||
+        bodyText.includes("job is no longer available") ||
+        !!document.querySelector('[class*="jobsearch-JobInfoHeader-expiredHeader"]') ||
+        !!document.querySelector('.jobsearch-JobComponent-expired') ||
+        !!document.querySelector('.fastpath-expired-job-alert') ||
+        !!document.querySelector('[data-testid="job-expired-banner"]') ||
+        !!document.querySelector('[aria-label*="expired" i]')
+      );
+
+      if (isIndeedClosed) {
+        return { isExpired: true, isApplied: false, status: "EXPIRED" };
+      }
+
+      const isIndeedApplied = (
+        bodyText.includes("you have applied to this job") ||
+        bodyText.includes("you applied to this job") ||
+        bodyText.includes("application submitted") ||
+        bodyText.includes("applied on ") ||
+        !!document.querySelector('.jobsearch-JobComponent-appliedStatus') ||
+        !!document.querySelector('[data-testid="applied-status-banner"]')
+      );
+
+      if (isIndeedApplied) {
+        return { isApplied: true, isExpired: false, status: "APPLIED" };
+      }
+
+      return { isApplied: false, isExpired: false, status: "NOT_APPLIED" };
+    }
+
+    // -----------------------------------------------------------
+    // 5. NAUKRI INSPECTION
     // -----------------------------------------------------------
     const isNaukriExpiredRedirect = currentHref.includes("expjd=true");
     const isNaukriExpiredText = (

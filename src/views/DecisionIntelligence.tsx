@@ -149,6 +149,7 @@ export default function DecisionIntelligence() {
       return (
         u.includes("naukri.com") ||
         u.includes("linkedin.com") ||
+        u.includes("indeed.com") ||
         u.includes("ibm.com") ||
         u.includes("brassring.com") ||
         u.includes("ey.com") ||
@@ -158,10 +159,12 @@ export default function DecisionIntelligence() {
         c.includes("ernst") ||
         s.includes("naukri") ||
         s.includes("linkedin") ||
+        s.includes("indeed") ||
         s.includes("ibm") ||
         s.includes("ey") ||
         ext.includes("linkedin") ||
-        ext.includes("naukri")
+        ext.includes("naukri") ||
+        ext.includes("indeed")
       );
     }).length;
   }, [jobs]);

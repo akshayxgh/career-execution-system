@@ -55,10 +55,10 @@ export default function DecisionHeader({
             type="button"
             className="naukri-check-trigger-btn"
             onClick={onOpenNaukriCheck}
-            title="Check already applied & closed/expired jobs on Naukri, LinkedIn, IBM & EY using browser companion"
+            title="Check already applied & closed/expired jobs on Naukri, LinkedIn, Indeed, IBM & EY using browser companion"
           >
             <Sparkles size={15} style={{ color: "#38bdf8" }} />
-            <span>Check Naukri & LinkedIn</span>
+            <span>Check Naukri, LinkedIn & Indeed</span>
             {naukriCount > 0 && (
               <span className="naukri-check-badge">{naukriCount}</span>
             )}
