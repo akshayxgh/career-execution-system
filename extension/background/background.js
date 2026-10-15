@@ -114,15 +114,16 @@ async function runNaukriCheckLoop(jobs, senderTabId) {
         // Wait for page load
         await waitForTabLoad(backgroundTabId, 25000);
 
-        // Wait an additional 1.5s for dynamic client hydration
-        await delay(1500);
+        // Dynamic client hydration wait (extra for LinkedIn and heavy SPAs)
+        const isLinkedIn = (jobUrl || "").toLowerCase().includes("linkedin.com");
+        await delay(isLinkedIn ? 2600 : 1800);
 
         if (shouldCancelCheck) break;
 
         // Inspect the DOM of the job page
         const results = await chrome.scripting.executeScript({
           target: { tabId: backgroundTabId },
-          func: inspectNaukriJobPage,
+          func: inspectJobStatusPage,
         });
 
         const inspection = (results && results[0] && results[0].result) || {
@@ -212,31 +213,150 @@ async function runNaukriCheckLoop(jobs, senderTabId) {
   }
 }
 
-// Function injected into Naukri page to inspect application status
-function inspectNaukriJobPage() {
+// Function injected into job page to inspect application status (LinkedIn, Naukri, IBM, EY)
+function inspectJobStatusPage() {
   try {
-    // 0. Check if Job is Expired (e.g. redirect to ?expJD=true or banner text)
     const currentHref = (window.location.href || "").toLowerCase();
-    const isExpiredRedirect = currentHref.includes("expjd=true");
     const bodyText = document.body ? document.body.innerText.toLowerCase() : "";
-    const isExpiredText = (
+
+    // -----------------------------------------------------------
+    // 1. IBM CAREERS / BRASSRING INSPECTION
+    // -----------------------------------------------------------
+    if (currentHref.includes("ibm.com") || currentHref.includes("brassring.com") || bodyText.includes("ibm careers")) {
+      const isIbmClosed = (
+        bodyText.includes("sorry, this job is closed and we are no longer accepting applications") ||
+        bodyText.includes("this job is closed and we are no longer accepting applications") ||
+        bodyText.includes("no longer accepting applications") ||
+        bodyText.includes("job is closed") ||
+        bodyText.includes("sorry, this job is no longer available") ||
+        bodyText.includes("stay connected by joining our talent network") ||
+        bodyText.includes("job has been filled or closed")
+      );
+
+      if (isIbmClosed) {
+        return { isExpired: true, isApplied: false, status: "EXPIRED" };
+      }
+
+      const isIbmApplied = (
+        bodyText.includes("you have already submitted an application") ||
+        bodyText.includes("application status: submitted") ||
+        bodyText.includes("already applied to this job") ||
+        bodyText.includes("you have already applied")
+      );
+
+      if (isIbmApplied) {
+        return { isApplied: true, isExpired: false, status: "APPLIED" };
+      }
+
+      return { isApplied: false, isExpired: false, status: "NOT_APPLIED" };
+    }
+
+    // -----------------------------------------------------------
+    // 2. EY CAREERS / SUCCESSFACTORS INSPECTION
+    // -----------------------------------------------------------
+    if (currentHref.includes("careers.ey.com") || currentHref.includes("ey.com") || bodyText.includes("careers at ey")) {
+      const isEyClosed = (
+        bodyText.includes("the job is no longer available.") ||
+        bodyText.includes("the job is no longer available") ||
+        bodyText.includes("this job is no longer available") ||
+        bodyText.includes("this requisition is no longer available") ||
+        bodyText.includes("job is no longer available") ||
+        bodyText.includes("sorry, this job is no longer available")
+      );
+
+      if (isEyClosed) {
+        return { isExpired: true, isApplied: false, status: "EXPIRED" };
+      }
+
+      const isEyApplied = (
+        bodyText.includes("you have already applied for this job") ||
+        bodyText.includes("already applied to this job") ||
+        bodyText.includes("already applied") ||
+        bodyText.includes("application status:")
+      );
+
+      if (isEyApplied) {
+        return { isApplied: true, isExpired: false, status: "APPLIED" };
+      }
+
+      return { isApplied: false, isExpired: false, status: "NOT_APPLIED" };
+    }
+
+    // -----------------------------------------------------------
+    // 3. LINKEDIN JOB INSPECTION
+    // -----------------------------------------------------------
+    if (currentHref.includes("linkedin.com") || bodyText.includes("linkedin")) {
+      const topCard = (
+        document.querySelector(".jobs-details__top-card") ||
+        document.querySelector(".job-details-jobs-unified-top-card__container--two-pane") ||
+        document.querySelector(".jobs-box__html-content") ||
+        document.querySelector(".job-view-layout") ||
+        document.body
+      );
+      const topCardText = topCard ? topCard.innerText.toLowerCase() : "";
+
+      // Check for closed / expired job banner or text
+      const isLinkedInClosed = (
+        bodyText.includes("no longer accepting applications") ||
+        topCardText.includes("no longer accepting applications") ||
+        bodyText.includes("this job is no longer accepting applications") ||
+        topCardText.includes("this job is no longer accepting applications") ||
+        bodyText.includes("applications are no longer being accepted") ||
+        bodyText.includes("this job is closed") ||
+        topCardText.includes("this job is closed") ||
+        bodyText.includes("job is closed") ||
+        bodyText.includes("sorry, this job is no longer available") ||
+        bodyText.includes("this position has been closed") ||
+        bodyText.includes("this job has expired") ||
+        !!document.querySelector(".artdeco-inline-feedback--error") ||
+        !!document.querySelector(".jobs-details__closed-badge") ||
+        !!document.querySelector(".job-details-jobs-unified-top-card__closed-badge")
+      );
+
+      if (isLinkedInClosed) {
+        return { isExpired: true, isApplied: false, status: "EXPIRED" };
+      }
+
+      // Check if user already applied on LinkedIn
+      const isLinkedInApplied = (
+        topCardText.includes("you applied on") ||
+        topCardText.includes("applied on") ||
+        topCardText.includes("you have already applied") ||
+        bodyText.includes("you have already applied for this job") ||
+        !!document.querySelector(".jobs-s-apply__applied-date") ||
+        Array.from(document.querySelectorAll("button, span.artdeco-inline-feedback")).some((el) => {
+          const t = (el.textContent || "").trim().toLowerCase();
+          return t === "applied" || t.startsWith("applied ");
+        })
+      );
+
+      if (isLinkedInApplied) {
+        return { isApplied: true, isExpired: false, status: "APPLIED" };
+      }
+
+      return { isApplied: false, isExpired: false, status: "NOT_APPLIED" };
+    }
+
+    // -----------------------------------------------------------
+    // 4. NAUKRI INSPECTION
+    // -----------------------------------------------------------
+    const isNaukriExpiredRedirect = currentHref.includes("expjd=true");
+    const isNaukriExpiredText = (
       bodyText.includes("job you are looking for is expired") ||
       bodyText.includes("job is expired") ||
       !!document.querySelector(".expired-msg")
     );
 
-    if (isExpiredRedirect || isExpiredText) {
+    if (isNaukriExpiredRedirect || isNaukriExpiredText) {
       return { isExpired: true, isApplied: false, isCareerPage: false, status: "EXPIRED" };
     }
 
-    // 1. Check for standard already applied elements
     const alreadyAppliedEl = (
       document.querySelector("section#job_header #already-applied") ||
       document.querySelector("#already-applied") ||
       document.querySelector(".already-applied")
     );
 
-    // 2. Check text in header or body
     const headerEl = document.querySelector("section#job_header");
     const headerText = headerEl ? headerEl.innerText.toLowerCase() : "";
 
@@ -252,7 +372,6 @@ function inspectNaukriJobPage() {
       return { isApplied: true, isCareerPage: false, isExpired: false, status: "APPLIED" };
     }
 
-    // 3. Check for external company site button
     const companySiteEl = (
       document.querySelector("section#job_header #company-site-button") ||
       document.querySelector("#company-site-button")
@@ -261,7 +380,6 @@ function inspectNaukriJobPage() {
       return { isApplied: false, isCareerPage: true, isExpired: false, status: "CAREER_PAGE" };
     }
 
-    // 4. Check for standard apply button
     const applyButton = (
       document.querySelector("section#job_header #apply-button") ||
       document.querySelector("#apply-button") ||

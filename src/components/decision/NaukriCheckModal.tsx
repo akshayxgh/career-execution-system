@@ -37,13 +37,15 @@ export default function NaukriCheckModal({
   const [isFinished, setIsFinished] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Target jobs: Naukri, IBM Careers, and EY Careers
+  // Target jobs: Naukri, LinkedIn, IBM Careers, and EY Careers
   const targetJobs = jobs.filter((j) => {
     const url = (j.url || "").toLowerCase();
     const source = (j.source || "").toLowerCase();
     const company = (j.company_name || "").toLowerCase();
+    const ext = (j.external_id || "").toLowerCase();
     return (
       url.includes("naukri.com") ||
+      url.includes("linkedin.com") ||
       url.includes("ibm.com") ||
       url.includes("brassring.com") ||
       url.includes("ey.com") ||
@@ -52,10 +54,36 @@ export default function NaukriCheckModal({
       company.includes("ey") ||
       company.includes("ernst") ||
       source.includes("naukri") ||
+      source.includes("linkedin") ||
       source.includes("ibm") ||
-      source.includes("ey")
+      source.includes("ey") ||
+      ext.includes("linkedin") ||
+      ext.includes("naukri")
     );
   });
+
+  const platformBreakdown = {
+    naukri: targetJobs.filter((j) => {
+      const u = (j.url || "").toLowerCase();
+      const s = (j.source || "").toLowerCase();
+      const ext = (j.external_id || "").toLowerCase();
+      return u.includes("naukri.com") || s.includes("naukri") || ext.includes("naukri");
+    }).length,
+    linkedin: targetJobs.filter((j) => {
+      const u = (j.url || "").toLowerCase();
+      const s = (j.source || "").toLowerCase();
+      const ext = (j.external_id || "").toLowerCase();
+      return u.includes("linkedin.com") || s.includes("linkedin") || ext.includes("linkedin");
+    }).length,
+    other: targetJobs.filter((j) => {
+      const u = (j.url || "").toLowerCase();
+      const s = (j.source || "").toLowerCase();
+      const ext = (j.external_id || "").toLowerCase();
+      const isNaukri = u.includes("naukri.com") || s.includes("naukri") || ext.includes("naukri");
+      const isLinkedIn = u.includes("linkedin.com") || s.includes("linkedin") || ext.includes("linkedin");
+      return !isNaukri && !isLinkedIn;
+    }).length,
+  };
 
   const pingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -146,7 +174,7 @@ export default function NaukriCheckModal({
 
   const handleStartCheck = () => {
     if (targetJobs.length === 0) {
-      setErrorMessage("No active Naukri, IBM, or EY jobs found in current view.");
+      setErrorMessage("No active Naukri, LinkedIn, IBM, or EY jobs found in current view.");
       return;
     }
 
@@ -201,7 +229,7 @@ export default function NaukriCheckModal({
         <div className="naukri-modal-header">
           <div className="naukri-modal-title">
             <Sparkles size={20} className="naukri-modal-icon" />
-            <h3>Check Status (Naukri, IBM, EY)</h3>
+            <h3>Check Status (Naukri, LinkedIn, IBM, EY)</h3>
           </div>
           <button className="naukri-modal-close" onClick={onClose}>
             <X size={18} />
@@ -218,7 +246,7 @@ export default function NaukriCheckModal({
                 <div>
                   <h4>Browser Companion Extension Required</h4>
                   <p>
-                    To check applied and expired/closed status directly on Naukri, IBM, & EY using your authenticated browser session, make sure Job Autofill Pro is loaded:
+                    To check applied and expired/closed status directly on Naukri, LinkedIn, IBM, & EY using your authenticated browser session, make sure Job Autofill Pro is loaded:
                   </p>
                 </div>
               </div>
@@ -262,14 +290,29 @@ export default function NaukriCheckModal({
               {!isChecking && !isFinished && (
                 <div className="naukri-ready-state">
                   <p className="naukri-ready-desc">
-                    Found <strong>{targetJobs.length} checkable jobs</strong> (Naukri, IBM & EY) in your Decision Intelligence view.
+                    Found <strong>{targetJobs.length} checkable jobs</strong> (Naukri, LinkedIn, IBM & EY) in your Decision Intelligence view.
                     The companion extension will inspect each in the background using your active session, marking already applied jobs as <strong>APPLIED</strong> and closed/expired jobs as <strong>HIDDEN</strong> in Supabase.
                   </p>
 
-                  <div className="naukri-summary-pills">
+                  <div className="naukri-summary-pills" style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
                     <span className="naukri-pill total">
-                      Total Checkable Jobs: <strong>{targetJobs.length}</strong>
+                      Total Checkable: <strong>{targetJobs.length}</strong>
                     </span>
+                    {platformBreakdown.naukri > 0 && (
+                      <span className="naukri-pill" style={{ background: "rgba(14, 165, 233, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                        Naukri: <strong>{platformBreakdown.naukri}</strong>
+                      </span>
+                    )}
+                    {platformBreakdown.linkedin > 0 && (
+                      <span className="naukri-pill" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8", border: "1px solid rgba(129, 140, 248, 0.3)" }}>
+                        LinkedIn: <strong>{platformBreakdown.linkedin}</strong>
+                      </span>
+                    )}
+                    {platformBreakdown.other > 0 && (
+                      <span className="naukri-pill" style={{ background: "rgba(148, 163, 184, 0.15)", color: "#cbd5e1", border: "1px solid rgba(203, 213, 225, 0.3)" }}>
+                        IBM / EY: <strong>{platformBreakdown.other}</strong>
+                      </span>
+                    )}
                   </div>
 
                   {errorMessage && (

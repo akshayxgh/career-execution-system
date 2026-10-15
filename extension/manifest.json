@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job Autofill Pro",
-  "version": "1.2",
+  "version": "1.5",
   "description": "Automatically fill job application forms across known ATS portals (PwC, IBM, Workday, SuccessFactors, Greenhouse, Lever, Google) and generic career sites.",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": ["<all_urls>"],

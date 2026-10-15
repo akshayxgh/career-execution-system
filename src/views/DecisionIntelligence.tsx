@@ -145,8 +145,10 @@ export default function DecisionIntelligence() {
       const u = (j.url || "").toLowerCase();
       const s = (j.source || "").toLowerCase();
       const c = (j.company_name || "").toLowerCase();
+      const ext = (j.external_id || "").toLowerCase();
       return (
         u.includes("naukri.com") ||
+        u.includes("linkedin.com") ||
         u.includes("ibm.com") ||
         u.includes("brassring.com") ||
         u.includes("ey.com") ||
@@ -155,8 +157,11 @@ export default function DecisionIntelligence() {
         c.includes("ey") ||
         c.includes("ernst") ||
         s.includes("naukri") ||
+        s.includes("linkedin") ||
         s.includes("ibm") ||
-        s.includes("ey")
+        s.includes("ey") ||
+        ext.includes("linkedin") ||
+        ext.includes("naukri")
       );
     }).length;
   }, [jobs]);
