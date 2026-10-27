@@ -83,8 +83,56 @@ const initialTracks: LearningTrack[] = [
       { id: 'py-7', name: 'API Integration', status: 'Not Started' },
       { id: 'py-8', name: 'Data Transformation', status: 'Not Started' },
     ]
+  },
+  {
+    id: 'ai-course',
+    name: 'AI Course',
+    modules: [
+      { id: 'ai-1', name: 'Claude 101', status: 'Not Started' },
+      { id: 'ai-2', name: 'AI Fluency: Framework and foundations', status: 'Not Started' },
+      { id: 'ai-3', name: 'AI capabilities and limitations', status: 'Not Started' },
+      { id: 'ai-4', name: 'Claude Code 101', status: 'Not Started' },
+      { id: 'ai-5', name: 'Building with the Claude API', status: 'Not Started' },
+    ]
   }
 ];
+
+function mergeLearningTracks(savedTracks?: LearningTrack[]): LearningTrack[] {
+  if (!savedTracks || savedTracks.length === 0) return initialTracks;
+  const trackMap = new Map<string, LearningTrack>();
+  initialTracks.forEach(track => {
+    trackMap.set(track.id, {
+      ...track,
+      modules: track.modules.map(m => ({ ...m }))
+    });
+  });
+  savedTracks.forEach(savedTrack => {
+    const existing = trackMap.get(savedTrack.id) ||
+      Array.from(trackMap.values()).find(t => t.name.toLowerCase() === savedTrack.name.toLowerCase());
+    if (!existing) {
+      trackMap.set(savedTrack.id, savedTrack);
+    } else {
+      const moduleMap = new Map(existing.modules.map(m => [m.id, m]));
+      const moduleByName = new Map(existing.modules.map(m => [m.name.toLowerCase(), m.id]));
+      savedTrack.modules.forEach(sm => {
+        const targetId = moduleMap.has(sm.id) ? sm.id : moduleByName.get(sm.name.toLowerCase());
+        if (targetId && moduleMap.has(targetId)) {
+          const mod = moduleMap.get(targetId)!;
+          moduleMap.set(targetId, { ...mod, ...sm, id: targetId });
+        } else {
+          moduleMap.set(sm.id, sm);
+        }
+      });
+      trackMap.set(existing.id, {
+        ...existing,
+        ...savedTrack,
+        id: existing.id,
+        modules: Array.from(moduleMap.values())
+      });
+    }
+  });
+  return Array.from(trackMap.values());
+}
 
 const defaultState: StoreState = {
   applications: [],
@@ -134,9 +182,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const mergedDaxItems = mergeDaxItems(cloudState.daxCustomTrackerItems || [], localDaxItems);
         const mergedDaxStatuses = { ...localDaxStatuses, ...(cloudState.daxTrackerStatuses || {}) };
 
+        const mergedLearningTracks = mergeLearningTracks(cloudState.learningTracks);
         const merged: StoreState = { 
           ...defaultState, 
           ...cloudState, 
+          learningTracks: mergedLearningTracks, 
           questionBank: cloudState.questionBank || [],
           daxCustomTrackerItems: mergedDaxItems,
           daxTrackerStatuses: mergedDaxStatuses
@@ -157,7 +207,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         localStorage.setItem(TRACKER_STATUS_STORAGE_KEY, JSON.stringify(mergedDaxStatuses));
 
         // If local storage had items that were not yet in cloud, save back to cloud
-        if (localDaxItems.length > (cloudState.daxCustomTrackerItems?.length || 0)) {
+        if (localDaxItems.length > (cloudState.daxCustomTrackerItems?.length || 0) || (cloudState.learningTracks?.length || 0) < mergedLearningTracks.length) {
           await saveState(merged);
         }
 
@@ -183,9 +233,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const mergedDaxItems = mergeDaxItems(cloudState.daxCustomTrackerItems || [], localDaxItems);
         const mergedDaxStatuses = { ...localDaxStatuses, ...(cloudState.daxTrackerStatuses || {}) };
 
+        const mergedLearningTracks = mergeLearningTracks(cloudState.learningTracks);
         const merged: StoreState = { 
           ...defaultState, 
           ...cloudState, 
+          learningTracks: mergedLearningTracks, 
           questionBank: cloudState.questionBank || [],
           daxCustomTrackerItems: mergedDaxItems,
           daxTrackerStatuses: mergedDaxStatuses
@@ -221,9 +273,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const mergedDaxItems = mergeDaxItems(parsed.daxCustomTrackerItems || [], localDaxItems);
             const mergedDaxStatuses = { ...localDaxStatuses, ...(parsed.daxTrackerStatuses || {}) };
 
+            const mergedLearningTracks = mergeLearningTracks(parsed.learningTracks);
             const merged: StoreState = { 
               ...defaultState, 
               ...parsed, 
+              learningTracks: mergedLearningTracks, 
               questionBank: parsed.questionBank || [],
               daxCustomTrackerItems: mergedDaxItems,
               daxTrackerStatuses: mergedDaxStatuses

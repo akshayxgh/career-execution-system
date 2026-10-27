@@ -87,6 +87,9 @@ export const LearningTracks = () => {
       if (norm.includes('python')) {
         return tool.includes('python') || topic.includes('python') || topic.includes('pandas');
       }
+      if (norm.includes('ai') || norm.includes('claude')) {
+        return tool.includes('ai') || topic.includes('ai') || tool.includes('claude') || topic.includes('claude');
+      }
       return tool.includes(norm) || topic.includes(norm);
     }).length;
   };
