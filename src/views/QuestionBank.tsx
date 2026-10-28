@@ -28,7 +28,14 @@ import {
   GitMerge,
   ShieldCheck,
   Calendar,
+  Download,
 } from 'lucide-react';
+import { loadState } from '../services/cloudStorage';
+import {
+  copyTextToClipboard,
+  exportQuestionBankForChatGPT,
+  CHATGPT_INTERVIEW_PROMPT,
+} from '../services/questionBankExport';
 import {
   copilotService,
   sanitizeQuestionText,
@@ -226,6 +233,57 @@ export const QuestionBank: React.FC = () => {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Export for ChatGPT State & Handler
+  const [isExporting, setIsExporting] = useState(false);
+  const [showPromptFallback, setShowPromptFallback] = useState(false);
+
+  const getAuthoritativeQuestions = async (): Promise<QuestionBankItem[]> => {
+    if (questions && questions.length > 0) {
+      return questions;
+    }
+    try {
+      const cloud = await loadState();
+      if (cloud?.questionBank && cloud.questionBank.length > 0) {
+        return cloud.questionBank;
+      }
+    } catch (err) {
+      console.error('Failed to load cloud state for export:', err);
+    }
+    return questions || [];
+  };
+
+  const handleExportForChatGPT = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
+      const allQuestions = await getAuthoritativeQuestions();
+      if (!allQuestions || allQuestions.length === 0) {
+        showToast('Question bank is empty. Ingest questions first before exporting.');
+        return;
+      }
+
+      const result = await exportQuestionBankForChatGPT(allQuestions);
+
+      if (result.downloaded && result.promptCopied) {
+        showToast(`Downloaded question bank (${result.totalExported} Qs) and copied ChatGPT prompt to clipboard!`);
+      } else if (result.downloaded && !result.promptCopied) {
+        setShowPromptFallback(true);
+        showToast(`Downloaded ${result.filename} (${result.totalExported} Qs), but clipboard copy failed.`);
+      } else if (!result.downloaded && result.promptCopied) {
+        showToast('Copied ChatGPT prompt to clipboard, but file download failed. Please check browser permissions.');
+      } else {
+        showToast('Export failed. Please check browser permissions for downloads and clipboard.');
+      }
+    } catch (err: unknown) {
+      console.error('Export error:', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      showToast(`Export failed: ${msg}`);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Toggle Auto Agent
@@ -1027,6 +1085,18 @@ export const QuestionBank: React.FC = () => {
           >
             {isAuditingBank ? <Loader2 size={15} className="animate-spin" /> : <GitMerge size={15} />}
             Audit Duplicates
+          </button>
+
+          {/* Export for ChatGPT Button */}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleExportForChatGPT}
+            disabled={isExporting}
+            title="Download complete question bank as Markdown and copy the ChatGPT interview practice prompt to clipboard"
+          >
+            {isExporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+            Export for ChatGPT
           </button>
 
           <button
@@ -2570,6 +2640,75 @@ export const QuestionBank: React.FC = () => {
                   disabled={selectedDupIds.size === 0}
                 >
                   <GitMerge size={16} /> Apply Merges ({selectedDupIds.size})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ChatGPT Prompt Manual Copy Fallback Modal */}
+      {showPromptFallback && (
+        <div className="qb-modal-overlay" onClick={() => setShowPromptFallback(false)}>
+          <div className="qb-modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="qb-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Sparkles size={20} color="var(--accent-primary)" />
+                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>ChatGPT Interview Prompt</h3>
+              </div>
+              <button
+                type="button"
+                className="btn-icon"
+                onClick={() => setShowPromptFallback(false)}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="qb-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Your question bank file was successfully downloaded, but your browser blocked automatic clipboard copying.
+                Copy the prompt below to use in ChatGPT alongside your uploaded file:
+              </p>
+
+              <textarea
+                readOnly
+                rows={12}
+                className="input"
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.8rem',
+                  lineHeight: '1.45',
+                  padding: '0.75rem',
+                  resize: 'vertical',
+                  background: 'var(--bg-dark)',
+                }}
+                value={CHATGPT_INTERVIEW_PROMPT}
+                onFocus={(e) => e.target.select()}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowPromptFallback(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={async () => {
+                    const copied = await copyTextToClipboard(CHATGPT_INTERVIEW_PROMPT);
+                    if (copied) {
+                      showToast('Copied ChatGPT prompt to clipboard!');
+                      setShowPromptFallback(false);
+                    } else {
+                      showToast('Please select all text in the box and press Ctrl+C / Cmd+C.');
+                    }
+                  }}
+                >
+                  <Copy size={15} /> Copy Prompt
                 </button>
               </div>
             </div>
