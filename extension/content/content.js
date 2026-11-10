@@ -93,5 +93,32 @@ window.addEventListener("message", (event) => {
     });
     return;
   }
+
+  if (type === "MYCES_DISPATCH_MESSAGE") {
+    chrome.runtime.sendMessage({
+      action: "DISPATCH_LINKEDIN_MESSAGE",
+      actionId: event.data.actionId,
+      recipientUrl: event.data.recipientUrl,
+      content: event.data.content,
+      recipientName: event.data.recipientName,
+    }, (response) => {
+      window.postMessage({
+        source: "myces-companion",
+        type: "MYCES_DISPATCH_RESULT",
+        ...response,
+      }, "*");
+    });
+    return;
+  }
 });
+
+// Auto-initialize adapter features on page load (e.g. LinkedIn / Naukri assistant widgets)
+try {
+  const activeAdapter = new window.SiteDetector().getAdapter();
+  if (activeAdapter && typeof activeAdapter.init === "function") {
+    activeAdapter.init();
+  }
+} catch (err) {
+  console.warn("[Job Autofill] Adapter auto-init failed:", err);
+}
 

@@ -7,10 +7,14 @@
 </head>
 <body>
   <div class="header">
-    <h2>Job Autofill Pro</h2>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <img src="../icons/icon48.png" width="22" height="22" alt="Logo" style="border-radius: 4px;">
+      <h2>Job Autofill Pro</h2>
+    </div>
     <div class="header-actions">
-      <button id="btn-naukri-bump" class="naukri-icon-btn" title="1-Click Bump Naukri Title">🔄</button>
-      <span class="version-tag">v1.6</span>
+      <!-- Minimal Naukri Bump Icon Button only to save space -->
+      <button id="btn-naukri-bump" class="naukri-icon-btn" title="1-Click Bump Naukri Profile Timestamp">🔄</button>
+      <span class="version-tag">v2.0.0</span>
     </div>
   </div>
 
@@ -18,6 +22,58 @@
   <div class="site-badge-container">
     <div class="badge-label">Active Site Engine:</div>
     <div id="site-badge" class="site-badge detecting">Detecting...</div>
+  </div>
+
+  <!-- Unified Daily Routine: LinkedIn 1-Click Growth -->
+  <div class="section daily-routine-card">
+    <div class="section-header-row">
+      <h3>⚡ Daily Routine (LinkedIn)</h3>
+      <span id="routine-status-pill" class="pill-active">Live MYCES</span>
+    </div>
+
+    <div class="routine-row">
+      <div class="routine-info">
+        <span class="routine-icon">🔗</span>
+        <div>
+          <div class="routine-title">1-Click Auto-Routine</div>
+          <div class="routine-sub" id="linkedin-routine-sub">5 Peers + 2 Recruiters</div>
+        </div>
+      </div>
+      <button id="btn-open-linkedin-grow" class="btn btn-sm btn-routine" title="Open LinkedIn Network Grow">
+        Launch ⚡
+      </button>
+    </div>
+
+    <!-- 1-Click Voyager API Sync Button -->
+    <div style="margin-top: 8px;">
+      <button id="btn-sync-voyager" class="btn btn-sm" title="Instantly sync newly accepted LinkedIn connections with MYCES via Voyager API" style="font-size: 11px; padding: 5px 8px; width: 100%; border: 1px solid #0369a1; background: #0f172a; color: #38bdf8; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600;">
+        <span>🔄</span> <span id="sync-voyager-text">Sync Accepted Invites</span>
+      </button>
+    </div>
+
+    <!-- Approved Outreach Dispatch Section -->
+    <div id="approved-outreach-section" style="display: none; margin-top: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11.5px; font-weight: 700; color: #0284c7; display: flex; align-items: center; gap: 5px;">
+          <span>⚡</span> Approved Messages (<span id="approved-msg-count">0</span>)
+        </span>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button id="btn-dispatch-all" style="display: none; background: #0284c7; border: none; color: #ffffff; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700; cursor: pointer;">🚀 Send All</button>
+          <button id="btn-refresh-approved" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 11px; padding: 0 2px;" title="Refresh approved list">🔄</button>
+        </div>
+      </div>
+      <div id="approved-msg-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto;">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+
+    <!-- Live MYCES Link -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11px;">
+      <span style="color: #64748b;">Cloud: <strong style="color: #0284c7;">myces.vercel.app</strong></span>
+      <a href="https://myces.vercel.app/linkedin-agent" target="_blank" style="color: #0284c7; text-decoration: none; font-weight: 600;">
+        Track in MYCES →
+      </a>
+    </div>
   </div>
 
   <div class="section">

@@ -49,12 +49,23 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   const [newStatus, setNewStatus] = useState<ConnectionStatus>('NOT_CONNECTED');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const checkIsIntroSent = (p: LinkedInPerson) => {
+    return Boolean(
+      (p.tags && p.tags.includes('Intro Sent')) ||
+      (p.interaction_notes && p.interaction_notes.toLowerCase().includes('intro')) ||
+      (p.connection_status === 'CONNECTED' && p.last_interaction_at)
+    );
+  };
+
   const filteredPeople = people.filter((p) => {
+    const isIntro = checkIsIntroSent(p);
     const matchesStatus =
-      statusFilter === 'ALL' || p.connection_status === statusFilter;
+      statusFilter === 'ALL' ||
+      (statusFilter === 'INTRO_SENT' ? isIntro : p.connection_status === statusFilter);
     const matchesSearch =
       !searchQuery.trim() ||
       p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.headline && p.headline.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (p.company && p.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (p.role && p.role.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesStatus && matchesSearch;
@@ -335,6 +346,7 @@ Focus on:
             }}
           >
             <option value="ALL">All Statuses ({people.length})</option>
+            <option value="INTRO_SENT">💬 Intro Sent</option>
             <option value="NOT_CONNECTED">Not Connected</option>
             <option value="PENDING_OUTREACH">Pending Outreach</option>
             <option value="INVITATION_SENT">Invitation Sent</option>
@@ -473,20 +485,42 @@ Focus on:
                 )}
 
                 {/* Status & Timing */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span
-                    style={{
-                      fontSize: '0.675rem',
-                      fontWeight: 700,
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '999px',
-                      background: badge.bg,
-                      color: badge.color,
-                      border: `1px solid ${badge.border}`,
-                    }}
-                  >
-                    {badge.label}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontSize: '0.675rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '999px',
+                        background: badge.bg,
+                        color: badge.color,
+                        border: `1px solid ${badge.border}`,
+                      }}
+                    >
+                      {badge.label}
+                    </span>
+
+                    {checkIsIntroSent(person) && (
+                      <span
+                        style={{
+                          fontSize: '0.675rem',
+                          fontWeight: 700,
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '999px',
+                          background: 'rgba(2, 132, 199, 0.15)',
+                          color: '#38bdf8',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                        title="Outreach message dispatched via 1-Click routine"
+                      >
+                        <span>💬</span> Intro Sent
+                      </span>
+                    )}
+                  </div>
 
                   <a
                     href={person.profile_url}
@@ -551,7 +585,7 @@ Focus on:
                     }}
                   >
                     <MessageSquare size={12} color="#0284c7" />
-                    <span>{isProcessing ? 'Drafting...' : 'Direct Outreach'}</span>
+                    <span>{isProcessing ? 'Drafting...' : checkIsIntroSent(person) ? 'Follow-up' : 'Direct Outreach'}</span>
                   </button>
                 </div>
               </div>

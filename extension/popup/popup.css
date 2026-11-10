@@ -203,3 +203,162 @@ h3 {
   background-color: #eff6ff;
 }
 
+
+/* Daily Routine Command Center Styles */
+.daily-routine-card {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.section-header-row h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.pill-active {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 9999px;
+}
+
+.routine-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.routine-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.routine-icon {
+  font-size: 16px;
+}
+
+.routine-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.routine-sub {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.btn-routine {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-routine:hover {
+  background: #0369a1;
+}
+
+/* ==========================================
+   APPROVED OUTREACH MESSAGES (POLISHED LIGHT UI)
+   ========================================== */
+.approved-msg-card {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  padding: 8px 10px !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+
+.approved-msg-card:hover {
+  border-color: #0284c7 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.12) !important;
+}
+
+.approved-msg-info {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.approved-msg-name {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.approved-msg-role {
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.myces-send-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 62px !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border: none !important;
+  border-radius: 5px !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+  transition: transform 0.1s ease, background 0.15s ease !important;
+}
+
+.myces-send-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
+  transform: scale(1.02);
+}
+
+.myces-send-btn:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}

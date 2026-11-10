@@ -5,6 +5,8 @@ class SiteDetector {
   constructor() {
     // Priority order: Specific ATS / Custom portals first, then Generic fallback
     this.adapters = [
+      window.LinkedInAdapter ? new window.LinkedInAdapter() : null,
+      window.NaukriAdapter ? new window.NaukriAdapter() : null,
       new window.IBMAdapter(),
       new window.WorkdayAdapter(),
       new window.SuccessFactorsAdapter(),
@@ -12,7 +14,7 @@ class SiteDetector {
       new window.LeverAdapter(),
       new window.GoogleAdapter(),
       new window.GenericAdapter() // Fallback
-    ];
+    ].filter(Boolean);
   }
 
   /**
