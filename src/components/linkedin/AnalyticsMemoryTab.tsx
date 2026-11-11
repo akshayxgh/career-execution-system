@@ -20,7 +20,6 @@ import {
   Clock,
   GraduationCap,
   ExternalLink,
-  ChevronRight,
 } from 'lucide-react';
 import {
   ResponsiveContainer,

@@ -9,9 +9,6 @@ import {
   CheckCircle,
   X,
   Target,
-  Users,
-  ChevronRight,
-  TrendingUp,
 } from 'lucide-react';
 import type { LinkedInPerson } from '../../types/linkedin';
 

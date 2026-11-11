@@ -1226,19 +1226,7 @@ Return ONLY the ready-to-publish post content.`;
                 {filteredActions.map((action) => {
                   const isSelected = action.id === activeAction?.id;
 
-                  // Unique organizations count for primary Company Radar tab pill
-  const uniqueCompaniesCount = useMemo(() => {
-    const set = new Set<string>();
-    people.forEach((p) => {
-      if (p.company) set.add(p.company.trim());
-      (p.tags || []).forEach((t) => {
-        if (t.startsWith('Alumni:')) set.add(t.replace('Alumni:', '').trim());
-      });
-    });
-    return set.size;
-  }, [people]);
-
-  return (
+                  return (
                     <div
                       key={action.id}
                       onClick={() => {
