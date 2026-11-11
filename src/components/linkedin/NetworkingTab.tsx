@@ -50,11 +50,7 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const checkIsIntroSent = (p: LinkedInPerson) => {
-    return Boolean(
-      (p.tags && p.tags.includes('Intro Sent')) ||
-      (p.interaction_notes && p.interaction_notes.toLowerCase().includes('intro')) ||
-      (p.connection_status === 'CONNECTED' && p.last_interaction_at)
-    );
+    return Boolean(Array.isArray(p.tags) && p.tags.includes('Intro Sent'));
   };
 
   const filteredPeople = people.filter((p) => {
