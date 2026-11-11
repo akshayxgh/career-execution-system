@@ -461,7 +461,43 @@ class LinkedInAdapter extends BaseAdapter {
   }
 
   /**
+   * Aggressively forces scrolling across all possible LinkedIn scrolling containers
+   * to trigger Ember's finite-scroll and IntersectionObserver lazy loading.
+   */
+  async forceScrollLinkedIn(distance = 1400) {
+    // 1. Scroll window
+    window.scrollBy({ top: distance, behavior: 'instant' });
+
+    // 2. Scroll document scrolling elements
+    if (document.scrollingElement) {
+      document.scrollingElement.scrollTop += distance;
+    }
+    if (document.body) {
+      document.body.scrollTop += distance;
+    }
+    if (document.documentElement) {
+      document.documentElement.scrollTop += distance;
+    }
+
+    // 3. Scroll all internal LinkedIn scaffold containers
+    const containers = Array.from(document.querySelectorAll(
+      'main, .scaffold-layout__main, .scaffold-finite-scroll, [data-view-name*="finite-scroll"], div[tabindex="-1"]'
+    ));
+    containers.forEach((c) => {
+      c.scrollTop += distance;
+    });
+
+    // 4. Dispatch scroll events so Ember and IntersectionObservers react
+    window.dispatchEvent(new Event('scroll', { bubbles: true }));
+    document.dispatchEvent(new Event('scroll', { bubbles: true }));
+
+    // 5. Short pause to allow DOM rendering
+    await this.delay(600);
+  }
+
+  /**
    * Main 1-Click Fully Automatic Routine
+   * Continuously connects, auto-scrolls when cards run low, and guarantees 7 sent invites.
    */
   async runFullyAutomatedRoutine() {
     if (this.isRunningRoutine) return;
@@ -471,91 +507,86 @@ class LinkedInAdapter extends BaseAdapter {
     const icon = document.getElementById('myces-routine-icon');
     const statusArea = document.getElementById('myces-pill-status-area');
 
-    btnRun.disabled = true;
-    icon.classList.add('myces-spin');
-    statusArea.innerHTML = '<span style="color: #38bdf8;">Scanning cards...</span>';
+    if (btnRun) btnRun.disabled = true;
+    if (icon) icon.classList.add('myces-spin');
+    if (statusArea) statusArea.innerHTML = '<span style="color: #38bdf8;">Scanning network cards...</span>';
 
     try {
-      // 1. Proactive Progressive Scroll to load candidate pool
-      statusArea.innerHTML = '<span style="color: #38bdf8;">Scanning network cards...</span>';
-      let scrollAttempts = 0;
-      let candidates = this.extractCandidateCards();
+      const TARGET_TOTAL = 7;
+      let sentCount = 0;
+      const contactedUrls = new Set();
+      let scrollCycles = 0;
 
-      while (scrollAttempts < 5) {
-        const pCount = candidates.filter(c => c.category === 'PEER').length;
-        const rCount = candidates.filter(c => c.category === 'RECRUITER').length;
+      while (sentCount < TARGET_TOTAL && scrollCycles < 14) {
+        scrollCycles++;
 
-        // If we have at least 5 peers and 2 recruiters, or 12+ qualified candidates, we have enough!
-        if ((pCount >= 5 && rCount >= 2) || candidates.length >= 12) break;
+        // 1. Extract candidate cards not yet contacted in this session
+        let candidates = this.extractCandidateCards().filter(c => !contactedUrls.has(c.profileUrl));
 
-        window.scrollBy({ top: 800, behavior: 'smooth' });
-        await this.delay(1200);
-        candidates = this.extractCandidateCards();
-        scrollAttempts++;
+        // If no candidates visible in current viewport, auto-scroll down to trigger lazy loading
+        if (candidates.length === 0) {
+          if (statusArea) statusArea.innerHTML = `<span style="color: #38bdf8;">Auto-scrolling for candidates (${sentCount}/${TARGET_TOTAL})...</span>`;
+          await this.forceScrollLinkedIn(1400);
+          await this.delay(1600);
+          continue;
+        }
+
+        // 2. Prioritize recruiters if under 2 recruiters sent, otherwise Data/BI peers
+        const recruiter = candidates.find(c => c.category === 'RECRUITER');
+        const peer = candidates.find(c => c.category === 'PEER');
+
+        const candidateToConnect = (recruiter && sentCount < 2) ? recruiter : (peer || recruiter || candidates[0]);
+        if (!candidateToConnect) {
+          await this.forceScrollLinkedIn(1400);
+          await this.delay(1600);
+          continue;
+        }
+
+        contactedUrls.add(candidateToConnect.profileUrl);
+
+        if (statusArea) {
+          statusArea.innerHTML = `<span style="color: #38bdf8;">(${sentCount + 1}/${TARGET_TOTAL}) ${candidateToConnect.firstName}...</span>`;
+        }
+
+        try {
+          const success = await this.executeSingleConnect(candidateToConnect);
+          if (success) {
+            sentCount++;
+            // Record tracking data through Background Service Worker (100% Reliable Supabase Persistence)
+            this.trackInMyces(candidateToConnect);
+            if (statusArea) {
+              statusArea.innerHTML = `<span style="color: #10b981; font-weight: 700;">✓ Connected (${sentCount}/${TARGET_TOTAL})</span>`;
+            }
+          }
+        } catch (err) {
+          console.warn(`[LinkedIn Routine] Error connecting to ${candidateToConnect.name}:`, err);
+        }
+
+        // Natural human-like pause between connections (2.5 seconds)
+        await this.delay(2500);
+
+        // If candidate pool is running low, proactively auto-scroll ahead
+        if (candidates.length <= 2 && sentCount < TARGET_TOTAL) {
+          if (statusArea) statusArea.innerHTML = `<span style="color: #38bdf8;">Auto-scrolling for next batch...</span>`;
+          await this.forceScrollLinkedIn(1400);
+          await this.delay(1500);
+        }
       }
 
-      if (candidates.length === 0) {
+      if (sentCount === 0) {
         alert('No new candidates found on this page. Scroll down or refresh LinkedIn.');
         this.resetButton(btnRun, icon, statusArea);
         return;
       }
 
-      // 2. Guaranteed Target Selection: 7 total (5 Peers + 2 Recruiters, with dynamic backfill)
-      const allPeers = candidates.filter(c => c.category === 'PEER');
-      const allRecruiters = candidates.filter(c => c.category === 'RECRUITER');
-
-      // Take up to 2 recruiters first
-      const selectedRecruiters = allRecruiters.slice(0, 2);
-      // Backfill with peers to guarantee 7 targets (e.g. 5 peers if 2 recruiters, 6 if 1, 7 if 0)
-      const peersNeeded = Math.max(5, 7 - selectedRecruiters.length);
-      const selectedPeers = allPeers.slice(0, peersNeeded);
-
-      const targets = [...selectedPeers, ...selectedRecruiters].slice(0, 7);
-
-      // If still under 7 and more candidates exist, fill up to 7
-      if (targets.length < 7) {
-        const remaining = candidates.filter(c => !targets.some(t => t.profileUrl === c.profileUrl));
-        while (targets.length < 7 && remaining.length > 0) {
-          targets.push(remaining.shift());
-        }
-      }
-
-      if (targets.length === 0) {
-        alert('No matching Data/BI peers or recruiters found (excluding Crystal Group).');
-        this.resetButton(btnRun, icon, statusArea);
-        return;
-      }
-
-      statusArea.innerHTML = `<span style="color: #38bdf8;">AI selected ${targets.length} targets...</span>`;
-      await this.delay(800);
-
-      // 3. Sequential 1-Click Execution with Human Cadence
-      let sentCount = 0;
-      for (let i = 0; i < targets.length; i++) {
-        const cand = targets[i];
-        statusArea.innerHTML = `<span style="color: #38bdf8;">(${i + 1}/${targets.length}) ${cand.firstName}...</span>`;
-
-        try {
-          const success = await this.executeSingleConnect(cand);
-          if (success) {
-            sentCount++;
-            // Record tracking data through Background Service Worker (100% Reliable Supabase Persistence)
-            this.trackInMyces(cand);
-          }
-        } catch (err) {
-          console.warn(`[LinkedIn Routine] Error connecting to ${cand.name}:`, err);
-        }
-
-        // Natural human-like pause between connections (2.5 seconds)
-        if (i < targets.length - 1) {
-          await this.delay(2500);
-        }
-      }
-
       // 4. Finished!
-      icon.classList.remove('myces-spin');
-      icon.textContent = '✅';
-      statusArea.innerHTML = `<span style="color: #10b981; font-weight: 700;">Sent ${sentCount} Invites ✓</span>`;
+      if (icon) {
+        icon.classList.remove('myces-spin');
+        icon.textContent = '✅';
+      }
+      if (statusArea) {
+        statusArea.innerHTML = `<span style="color: #10b981; font-weight: 700;">Sent ${sentCount} Invites ✓</span>`;
+      }
 
       this.showToast(`Saved ${sentCount} people directly to your MYCES Strategic Directory!`, true);
 
@@ -588,17 +619,29 @@ class LinkedInAdapter extends BaseAdapter {
    */
   extractCandidateCards() {
     const results = [];
-    const seenNames = new Set();
+    const seenUrls = new Set();
 
-    const cards = Array.from(document.querySelectorAll(
-      'li.discover-entity-type-card, div.discover-entity-type-card, div[data-view-name*="profile-card"], [class*="discover-person-card"]'
+    // 1. Gather all potential card containers across all modern LinkedIn variations
+    const cardCandidates = Array.from(document.querySelectorAll(
+      'li.discover-entity-type-card, div.discover-entity-type-card, div[data-view-name*="profile-card"], [class*="discover-person-card"], .scaffold-layout__list-container li, .artdeco-card'
     ));
 
-    const searchCards = cards.length > 0 ? cards : Array.from(document.querySelectorAll('div, li')).filter(el => {
-      return el.querySelector('button[aria-label*="Invite"], button[aria-label*="Connect"]') && el.querySelector('a[href*="/in/"]');
+    // 2. Also find any container that directly holds a Connect button and profile link
+    const fallbackButtons = Array.from(document.querySelectorAll('button')).filter((b) => {
+      const aria = (b.getAttribute('aria-label') || '').toLowerCase();
+      const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
+      return (aria.includes('invite') || aria.includes('connect') || txt === 'connect') && !aria.includes('withdraw') && !aria.includes('message');
     });
 
-    for (const card of searchCards) {
+    const buttonCards = fallbackButtons
+      .map((b) => b.closest('li, div.discover-entity-type-card, [data-view-name*="profile-card"], [class*="discover-person-card"], .artdeco-card') || b.parentElement?.parentElement)
+      .filter(Boolean);
+
+    // Merge and deduplicate card elements
+    const allCards = Array.from(new Set([...cardCandidates, ...buttonCards]));
+
+    for (const card of allCards) {
+      if (!card) continue;
       const text = card.innerText || card.textContent || '';
       const lower = text.toLowerCase();
 
@@ -608,28 +651,29 @@ class LinkedInAdapter extends BaseAdapter {
       }
 
       // Must have a visible Connect button
-      const connectBtn = card.querySelector('button[aria-label*="Invite"], button[aria-label*="Connect"]') ||
-                         Array.from(card.querySelectorAll('button')).find(b => (b.innerText || '').trim() === 'Connect');
-      if (!connectBtn) continue;
+      const connectBtn = card.querySelector('button[aria-label*="Invite" i], button[aria-label*="Connect" i]') ||
+                         Array.from(card.querySelectorAll('button')).find(b => (b.innerText || '').trim().toLowerCase() === 'connect');
+      if (!connectBtn || connectBtn.disabled) continue;
 
       // Extract Name & Link
       const linkEl = card.querySelector('a[href*="/in/"]');
       if (!linkEl) continue;
-      const profileUrl = linkEl.href.split('?')[0];
+      const profileUrl = (linkEl.href || '').split('?')[0].replace(/\/+$/, '');
+      if (!profileUrl || seenUrls.has(profileUrl.toLowerCase())) continue;
+      seenUrls.add(profileUrl.toLowerCase());
 
       let name = '';
-      const nameEl = card.querySelector('.discover-person-card__name, [class*="title"], span[aria-hidden="true"]');
+      const nameEl = card.querySelector('.discover-person-card__name, [class*="title"], [class*="actor__name"], span[aria-hidden="true"]');
       if (nameEl) name = nameEl.innerText.trim();
       if (!name || name.length < 2) {
         name = linkEl.innerText.trim().split('\n')[0];
       }
       name = this.cleanLinkedInName(name);
-      if (!name || seenNames.has(name.toLowerCase())) continue;
-      seenNames.add(name.toLowerCase());
+      if (!name) continue;
 
       // Extract Headline
       let headline = '';
-      const occupationEl = card.querySelector('.discover-person-card__occupation, [class*="occupation"], [class*="headline"]');
+      const occupationEl = card.querySelector('.discover-person-card__occupation, [class*="occupation"], [class*="headline"], [class*="sub-title"]');
       if (occupationEl) headline = occupationEl.innerText.trim();
       if (!headline) headline = text.replace(name, '').trim().split('\n')[0] || 'Technical Specialist';
 
