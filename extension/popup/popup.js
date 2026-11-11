@@ -192,12 +192,38 @@ document.addEventListener('DOMContentLoaded', async () => {
           .catch(() => {});
       });
 
-    if (btnOpenLinkedIn) {
-      btnOpenLinkedIn.addEventListener('click', () => {
-        btnOpenLinkedIn.disabled = true;
-        btnOpenLinkedIn.textContent = '⏳ Checking...';
+    // ==========================================
+    // UNIFIED 2-BUTTON SYSTEM:
+    // 1. Send Requests (Daily Routine + Approved Notes + Sent Sync)
+    // 2. Sync The Rest (Accepted Invites + All Connections + Career History)
+    // ==========================================
+    const btnSendRequests = document.getElementById('btn-send-requests');
+    const sendRequestsText = document.getElementById('send-requests-text');
+    const sendRequestsBadge = document.getElementById('send-requests-badge');
 
-        // 1. First check and dispatch all approved outreach messages
+    const btnSyncTheRest = document.getElementById('btn-sync-the-rest');
+    const syncTheRestText = document.getElementById('sync-the-rest-text');
+    const syncTheRestBadge = document.getElementById('sync-the-rest-badge');
+
+    const toggleAdvanced = document.getElementById('toggle-advanced-sync');
+    const advancedPanel = document.getElementById('advanced-sync-panel');
+
+    if (toggleAdvanced && advancedPanel) {
+      toggleAdvanced.addEventListener('click', () => {
+        const isHidden = advancedPanel.style.display === 'none' || !advancedPanel.style.display;
+        advancedPanel.style.display = isHidden ? 'grid' : 'none';
+        toggleAdvanced.textContent = isHidden ? 'Hide individual controls ▴' : 'Individual sync controls ▾';
+      });
+    }
+
+    // BUTTON 1: SEND REQUESTS (Routine + Dispatches Approved Notes + Sent Sync)
+    if (btnSendRequests) {
+      btnSendRequests.addEventListener('click', () => {
+        btnSendRequests.disabled = true;
+        if (sendRequestsText) sendRequestsText.textContent = 'Checking MYCES...';
+        if (sendRequestsBadge) sendRequestsBadge.textContent = 'Active';
+
+        // 1. Check and dispatch all approved outreach messages
         chrome.runtime.sendMessage({ action: 'GET_APPROVED_MESSAGES' }, async (res) => {
           const actions = (res && res.actions) || [];
 
@@ -209,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               c = c.replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, '').trim();
               const n = (act.payload && act.payload.recipient_name) || 'Connection';
 
-              btnOpenLinkedIn.textContent = `⚡ Sending (${i + 1}/${actions.length})...`;
+              if (sendRequestsText) sendRequestsText.textContent = `Sending (${i + 1}/${actions.length})...`;
 
               await new Promise((resolve) => {
                 chrome.runtime.sendMessage({
@@ -224,16 +250,76 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
             }
 
-            btnOpenLinkedIn.textContent = `✅ All ${actions.length} Sent!`;
+            if (sendRequestsText) sendRequestsText.textContent = `All ${actions.length} Sent!`;
             if (typeof loadApprovedMessages === 'function') loadApprovedMessages();
-            await new Promise((r) => setTimeout(r, 1500));
+            await new Promise((r) => setTimeout(r, 1200));
           }
 
-          // 2. Open LinkedIn Grow network to continue routine
+          // 2. Auto-sync sent requests in background to reconcile pending invites
+          chrome.runtime.sendMessage({ action: 'SYNC_SENT_REQUESTS' });
+
+          // 3. Open LinkedIn Grow network to continue sending connection requests
+          if (sendRequestsText) sendRequestsText.textContent = 'Opening LinkedIn...';
           chrome.tabs.create({ url: 'https://www.linkedin.com/mynetwork/grow/' });
-          btnOpenLinkedIn.disabled = false;
-          btnOpenLinkedIn.textContent = 'Launch ⚡';
+
+          setTimeout(() => {
+            btnSendRequests.disabled = false;
+            if (sendRequestsText) sendRequestsText.textContent = 'Send Requests';
+            if (sendRequestsBadge) sendRequestsBadge.textContent = 'Launch Routine';
+          }, 3000);
         });
+      });
+    }
+
+    // BUTTON 2: SYNC THE REST (Accepted Invites -> All Connections -> Career History)
+    if (btnSyncTheRest) {
+      btnSyncTheRest.addEventListener('click', async () => {
+        btnSyncTheRest.disabled = true;
+
+        try {
+          // Phase 1/3: Accepted Invites
+          if (syncTheRestText) syncTheRestText.textContent = '1/3: Accepted Invites...';
+          if (syncTheRestBadge) syncTheRestBadge.textContent = 'Step 1 of 3';
+          await new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'SYNC_ACCEPTED_CONNECTIONS' }, (res) => {
+              console.log('[Sync All] Phase 1 Accepted:', res);
+              resolve(res);
+            });
+          });
+
+          // Phase 2/3: All 1st-Degree Connections
+          if (syncTheRestText) syncTheRestText.textContent = '2/3: All Connections...';
+          if (syncTheRestBadge) syncTheRestBadge.textContent = 'Step 2 of 3';
+          await new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'SYNC_ALL_CONNECTIONS' }, (res) => {
+              console.log('[Sync All] Phase 2 Connections:', res);
+              resolve(res);
+            });
+          });
+
+          // Phase 3/3: Career / Employment History for Company Radar
+          if (syncTheRestText) syncTheRestText.textContent = '3/3: Career History...';
+          if (syncTheRestBadge) syncTheRestBadge.textContent = 'Step 3 of 3';
+          await new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'PULL_ALL_EMPLOYMENT_HISTORY' }, (res) => {
+              console.log('[Sync All] Phase 3 History:', res);
+              resolve(res);
+            });
+          });
+
+          // Complete!
+          if (syncTheRestText) syncTheRestText.textContent = '✓ All Synced!';
+          if (syncTheRestBadge) syncTheRestBadge.textContent = 'Up to Date';
+        } catch (err) {
+          console.error('[Sync All] Error:', err);
+          if (syncTheRestText) syncTheRestText.textContent = 'Sync Finished';
+        } finally {
+          setTimeout(() => {
+            btnSyncTheRest.disabled = false;
+            if (syncTheRestText) syncTheRestText.textContent = 'Sync All (The Rest)';
+            if (syncTheRestBadge) syncTheRestBadge.textContent = 'Accepted • Conn • Radar';
+          }, 3500);
+        }
       });
     }
 

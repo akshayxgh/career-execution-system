@@ -31,32 +31,50 @@
       <span id="routine-status-pill" class="pill-active">Live MYCES</span>
     </div>
 
-    <div class="routine-row">
-      <div class="routine-info">
-        <span class="routine-icon">🔗</span>
-        <div>
-          <div class="routine-title">1-Click Auto-Routine</div>
-          <div class="routine-sub" id="linkedin-routine-sub">5 Peers + 2 Recruiters</div>
+    <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; font-weight: 500;" id="linkedin-routine-sub">
+      Target: 5 Data/BI Peers + 2 Recruiters Daily Routine
+    </div>
+
+    <!-- 2 Unified Action Buttons: 1 for Sending Request, 1 for The Rest -->
+    <div style="display: flex; flex-direction: column; gap: 7px;">
+      <!-- Button 1: Send Requests -->
+      <button id="btn-send-requests" class="btn" title="Dispatch approved notes & open LinkedIn network to send connection requests" style="margin-top: 0; padding: 8px 10px; border: 1px solid #0284c7; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 700; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25); text-align: left;">
+        <div style="display: flex; align-items: center; gap: 7px; font-size: 12px;">
+          <span style="font-size: 14px;">🚀</span>
+          <span id="send-requests-text">Send Requests</span>
         </div>
-      </div>
-      <button id="btn-open-linkedin-grow" class="btn btn-sm btn-routine" title="Open LinkedIn Network Grow">
-        Launch ⚡
+        <span id="send-requests-badge" style="font-size: 9.5px; font-weight: 600; opacity: 0.95; background: rgba(255,255,255,0.22); padding: 2px 6px; border-radius: 4px;">Launch Routine</span>
+      </button>
+
+      <!-- Button 2: Sync The Rest -->
+      <button id="btn-sync-the-rest" class="btn" title="1-Click sync accepted invites, 1st-deg connections, and past employers for Company Radar" style="margin-top: 0; padding: 8px 10px; border: 1px solid #4f46e5; background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); color: #ffffff; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 700; box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25); text-align: left;">
+        <div style="display: flex; align-items: center; gap: 7px; font-size: 12px;">
+          <span style="font-size: 14px;">🔄</span>
+          <span id="sync-the-rest-text">Sync All (The Rest)</span>
+        </div>
+        <span id="sync-the-rest-badge" style="font-size: 9.5px; font-weight: 600; opacity: 0.95; background: rgba(255,255,255,0.22); padding: 2px 6px; border-radius: 4px;">Accepted • Conn • Radar</span>
       </button>
     </div>
 
-    <!-- 1-Click LinkedIn Sync Command Center (2x2 Grid) -->
-    <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-      <button id="btn-sync-voyager" class="btn btn-sm" title="Check accepted invites & auto-draft recruiter greetings" style="font-size: 11px; padding: 6px 4px; border: 1px solid #0369a1; background: #0f172a; color: #38bdf8; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
-        <span>🔄</span> <span id="sync-voyager-text">Accepted Invites</span>
+    <!-- Hidden Individual Controls (Available on demand) -->
+    <div style="margin-top: 6px; text-align: center;">
+      <span id="toggle-advanced-sync" style="font-size: 10px; color: #64748b; cursor: pointer; text-decoration: underline;">
+        Individual sync controls ▾
+      </span>
+    </div>
+
+    <div id="advanced-sync-panel" style="display: none; margin-top: 6px; grid-template-columns: 1fr 1fr; gap: 5px;">
+      <button id="btn-sync-voyager" class="btn btn-sm" title="Check accepted invites & auto-draft recruiter greetings" style="font-size: 10.5px; padding: 5px 3px; border: 1px solid #0369a1; background: #0f172a; color: #38bdf8; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px; font-weight: 600;">
+        <span>🔄</span> <span id="sync-voyager-text">Accepted</span>
       </button>
-      <button id="btn-sync-sent" class="btn btn-sm" title="Sync all pending sent requests from LinkedIn into MYCES" style="font-size: 11px; padding: 6px 4px; border: 1px solid #0d9488; background: #042f2e; color: #2dd4bf; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
-        <span>📤</span> <span id="sync-sent-text">Sent Requests</span>
+      <button id="btn-sync-sent" class="btn btn-sm" title="Sync all pending sent requests from LinkedIn into MYCES" style="font-size: 10.5px; padding: 5px 3px; border: 1px solid #0d9488; background: #042f2e; color: #2dd4bf; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px; font-weight: 600;">
+        <span>📤</span> <span id="sync-sent-text">Sent</span>
       </button>
-      <button id="btn-sync-all-connections" class="btn btn-sm" title="Import all 1st-degree connections from LinkedIn to MYCES directory" style="font-size: 11px; padding: 6px 4px; border: 1px solid #2563eb; background: #172554; color: #60a5fa; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
-        <span>👥</span> <span id="sync-all-conn-text">All Connections</span>
+      <button id="btn-sync-all-connections" class="btn btn-sm" title="Import all 1st-degree connections from LinkedIn to MYCES directory" style="font-size: 10.5px; padding: 5px 3px; border: 1px solid #2563eb; background: #172554; color: #60a5fa; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px; font-weight: 600;">
+        <span>👥</span> <span id="sync-all-conn-text">Connections</span>
       </button>
-      <button id="btn-pull-employment" class="btn btn-sm" title="Pull past employers & alumni tags for Company Radar" style="font-size: 11px; padding: 6px 4px; border: 1px solid #7c3aed; background: #1e1136; color: #c084fc; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
-        <span>🎓</span> <span id="pull-employment-text">Career History</span>
+      <button id="btn-pull-employment" class="btn btn-sm" title="Pull past employers & alumni tags for Company Radar" style="font-size: 10.5px; padding: 5px 3px; border: 1px solid #7c3aed; background: #1e1136; color: #c084fc; border-radius: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px; font-weight: 600;">
+        <span>🎓</span> <span id="pull-employment-text">History</span>
       </button>
     </div>
 
