@@ -1399,8 +1399,8 @@ async function handleSyncAcceptedConnections(payload = {}) {
             body: JSON.stringify({
               user_id: 'Akshay',
               action_type: 'MESSAGE',
-              status: 'PENDING_APPROVAL',
-              reasoning: `Automated Recruiter Intro: ${person.full_name} accepted your invitation! Send greeting to start conversation.`,
+              status: 'APPROVED',
+              reasoning: `Automated Recruiter Intro: ${person.full_name} accepted your invitation! Auto-approved for 1-Click Auto-Routine.`,
               payload: {
                 recipient_name: person.full_name,
                 recipient_role: person.headline || person.role,

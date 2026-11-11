@@ -194,7 +194,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnOpenLinkedIn) {
       btnOpenLinkedIn.addEventListener('click', () => {
-        chrome.tabs.create({ url: 'https://www.linkedin.com/mynetwork/grow/' });
+        btnOpenLinkedIn.disabled = true;
+        btnOpenLinkedIn.textContent = '⏳ Checking...';
+
+        // 1. First check and dispatch all approved outreach messages
+        chrome.runtime.sendMessage({ action: 'GET_APPROVED_MESSAGES' }, async (res) => {
+          const actions = (res && res.actions) || [];
+
+          if (actions.length > 0) {
+            for (let i = 0; i < actions.length; i++) {
+              const act = actions[i];
+              const pUrl = (act.payload && act.payload.recipient_profile_url) || '';
+              let c = ((act.payload && act.payload.content) || '').trim();
+              c = c.replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, '').trim();
+              const n = (act.payload && act.payload.recipient_name) || 'Connection';
+
+              btnOpenLinkedIn.textContent = `⚡ Sending (${i + 1}/${actions.length})...`;
+
+              await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                  action: 'DISPATCH_LINKEDIN_MESSAGE',
+                  actionId: act.id,
+                  recipientUrl: pUrl,
+                  content: c,
+                  recipientName: n
+                }, () => {
+                  setTimeout(resolve, 3500); // Human-like spacing
+                });
+              });
+            }
+
+            btnOpenLinkedIn.textContent = `✅ All ${actions.length} Sent!`;
+            if (typeof loadApprovedMessages === 'function') loadApprovedMessages();
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+
+          // 2. Open LinkedIn Grow network to continue routine
+          chrome.tabs.create({ url: 'https://www.linkedin.com/mynetwork/grow/' });
+          btnOpenLinkedIn.disabled = false;
+          btnOpenLinkedIn.textContent = 'Launch ⚡';
+        });
       });
     }
 
