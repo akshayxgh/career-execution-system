@@ -461,22 +461,36 @@ class LinkedInAdapter extends BaseAdapter {
   }
 
   /**
-   * Aggressively forces scrolling across all possible LinkedIn scrolling containers
+   * Helper to count total connectable profile cards currently in DOM
+   */
+  countRawCardsOnPage() {
+    const buttons = Array.from(document.querySelectorAll('button')).filter((b) => {
+      const aria = (b.getAttribute('aria-label') || '').toLowerCase();
+      const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
+      return (aria.includes('invite') || aria.includes('connect') || txt === 'connect') && !aria.includes('withdraw') && !aria.includes('message');
+    });
+    return buttons.length;
+  }
+
+  /**
+   * Aggressively forces scrolling to the bottom of all possible LinkedIn scrolling containers
    * to trigger Ember's finite-scroll and IntersectionObserver lazy loading.
    */
-  async forceScrollLinkedIn(distance = 1400) {
-    // 1. Scroll window
-    window.scrollBy({ top: distance, behavior: 'instant' });
+  async forceScrollLinkedIn() {
+    const targetHeight = document.body.scrollHeight || document.documentElement.scrollHeight || 10000;
+
+    // 1. Scroll window directly to bottom
+    window.scrollTo({ top: targetHeight, behavior: 'instant' });
 
     // 2. Scroll document scrolling elements
     if (document.scrollingElement) {
-      document.scrollingElement.scrollTop += distance;
+      document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
     }
     if (document.body) {
-      document.body.scrollTop += distance;
+      document.body.scrollTop = document.body.scrollHeight;
     }
     if (document.documentElement) {
-      document.documentElement.scrollTop += distance;
+      document.documentElement.scrollTop = document.documentElement.scrollHeight;
     }
 
     // 3. Scroll all internal LinkedIn scaffold containers
@@ -484,7 +498,7 @@ class LinkedInAdapter extends BaseAdapter {
       'main, .scaffold-layout__main, .scaffold-finite-scroll, [data-view-name*="finite-scroll"], div[tabindex="-1"]'
     ));
     containers.forEach((c) => {
-      c.scrollTop += distance;
+      c.scrollTop = c.scrollHeight;
     });
 
     // 4. Dispatch scroll events so Ember and IntersectionObservers react
@@ -492,12 +506,12 @@ class LinkedInAdapter extends BaseAdapter {
     document.dispatchEvent(new Event('scroll', { bubbles: true }));
 
     // 5. Short pause to allow DOM rendering
-    await this.delay(600);
+    await this.delay(700);
   }
 
   /**
    * Main 1-Click Fully Automatic Routine
-   * Continuously connects, auto-scrolls when cards run low, and guarantees 7 sent invites.
+   * Pre-scrolls until at least 100 cards are loaded in the DOM, then selects and sends 7 invites.
    */
   async runFullyAutomatedRoutine() {
     if (this.isRunningRoutine) return;
@@ -509,77 +523,115 @@ class LinkedInAdapter extends BaseAdapter {
 
     if (btnRun) btnRun.disabled = true;
     if (icon) icon.classList.add('myces-spin');
-    if (statusArea) statusArea.innerHTML = '<span style="color: #38bdf8;">Scanning network cards...</span>';
 
     try {
-      const TARGET_TOTAL = 7;
-      let sentCount = 0;
-      const contactedUrls = new Set();
+      // ==========================================
+      // PHASE 1: PRE-LOAD UNTIL 100 CARDS ARE MOUNTED
+      // ==========================================
+      const CARD_TARGET = 100;
       let scrollCycles = 0;
+      let rawCount = this.countRawCardsOnPage();
+      let lastCount = 0;
+      let stagnantCount = 0;
 
-      while (sentCount < TARGET_TOTAL && scrollCycles < 14) {
+      while (rawCount < CARD_TARGET && scrollCycles < 30) {
         scrollCycles++;
-
-        // 1. Extract candidate cards not yet contacted in this session
-        let candidates = this.extractCandidateCards().filter(c => !contactedUrls.has(c.profileUrl));
-
-        // If no candidates visible in current viewport, auto-scroll down to trigger lazy loading
-        if (candidates.length === 0) {
-          if (statusArea) statusArea.innerHTML = `<span style="color: #38bdf8;">Auto-scrolling for candidates (${sentCount}/${TARGET_TOTAL})...</span>`;
-          await this.forceScrollLinkedIn(1400);
-          await this.delay(1600);
-          continue;
-        }
-
-        // 2. Prioritize recruiters if under 2 recruiters sent, otherwise Data/BI peers
-        const recruiter = candidates.find(c => c.category === 'RECRUITER');
-        const peer = candidates.find(c => c.category === 'PEER');
-
-        const candidateToConnect = (recruiter && sentCount < 2) ? recruiter : (peer || recruiter || candidates[0]);
-        if (!candidateToConnect) {
-          await this.forceScrollLinkedIn(1400);
-          await this.delay(1600);
-          continue;
-        }
-
-        contactedUrls.add(candidateToConnect.profileUrl);
-
         if (statusArea) {
-          statusArea.innerHTML = `<span style="color: #38bdf8;">(${sentCount + 1}/${TARGET_TOTAL}) ${candidateToConnect.firstName}...</span>`;
+          statusArea.innerHTML = `<span style="color: #38bdf8; font-weight: 600;">📜 Loading: ${rawCount}/${CARD_TARGET} cards...</span>`;
         }
 
-        try {
-          const success = await this.executeSingleConnect(candidateToConnect);
-          if (success) {
-            sentCount++;
-            // Record tracking data through Background Service Worker (100% Reliable Supabase Persistence)
-            this.trackInMyces(candidateToConnect);
-            if (statusArea) {
-              statusArea.innerHTML = `<span style="color: #10b981; font-weight: 700;">✓ Connected (${sentCount}/${TARGET_TOTAL})</span>`;
-            }
+        await this.forceScrollLinkedIn();
+        await this.delay(800);
+
+        rawCount = this.countRawCardsOnPage();
+
+        // Stagnation check (if LinkedIn runs out of recommendations before 100)
+        if (rawCount === lastCount) {
+          stagnantCount++;
+          if (stagnantCount >= 4) {
+            console.log(`[LinkedIn Routine] Stagnant at ${rawCount} cards, proceeding with available pool.`);
+            break;
           }
-        } catch (err) {
-          console.warn(`[LinkedIn Routine] Error connecting to ${candidateToConnect.name}:`, err);
-        }
-
-        // Natural human-like pause between connections (2.5 seconds)
-        await this.delay(2500);
-
-        // If candidate pool is running low, proactively auto-scroll ahead
-        if (candidates.length <= 2 && sentCount < TARGET_TOTAL) {
-          if (statusArea) statusArea.innerHTML = `<span style="color: #38bdf8;">Auto-scrolling for next batch...</span>`;
-          await this.forceScrollLinkedIn(1400);
-          await this.delay(1500);
+        } else {
+          stagnantCount = 0;
+          lastCount = rawCount;
         }
       }
 
-      if (sentCount === 0) {
-        alert('No new candidates found on this page. Scroll down or refresh LinkedIn.');
+      if (statusArea) {
+        statusArea.innerHTML = `<span style="color: #10b981; font-weight: 700;">✓ ${rawCount} cards loaded! Filtering...</span>`;
+      }
+      await this.delay(900);
+
+      // ==========================================
+      // PHASE 2: AI TARGET SELECTION (5 PEERS + 2 RECRUITERS)
+      // ==========================================
+      const candidates = this.extractCandidateCards();
+      const allPeers = candidates.filter(c => c.category === 'PEER');
+      const allRecruiters = candidates.filter(c => c.category === 'RECRUITER');
+
+      console.log(`[LinkedIn Routine] Pool breakdown: ${allPeers.length} Peers, ${allRecruiters.length} Recruiters from ${candidates.length} qualified cards.`);
+
+      // Select 2 recruiters first
+      const selectedRecruiters = allRecruiters.slice(0, 2);
+      // Backfill with peers to guarantee exactly 7 targets
+      const peersNeeded = Math.max(5, 7 - selectedRecruiters.length);
+      const selectedPeers = allPeers.slice(0, peersNeeded);
+
+      const targets = [...selectedPeers, ...selectedRecruiters].slice(0, 7);
+
+      // If still under 7 and more candidates exist, fill up to 7
+      if (targets.length < 7) {
+        const remaining = candidates.filter(c => !targets.some(t => t.profileUrl === c.profileUrl));
+        while (targets.length < 7 && remaining.length > 0) {
+          targets.push(remaining.shift());
+        }
+      }
+
+      if (targets.length === 0) {
+        alert('No matching Data/BI peers or recruiters found (excluding Crystal Group).');
         this.resetButton(btnRun, icon, statusArea);
         return;
       }
 
-      // 4. Finished!
+      if (statusArea) {
+        statusArea.innerHTML = `<span style="color: #38bdf8; font-weight: 700;">AI picked ${targets.length} targets. Connecting...</span>`;
+      }
+      await this.delay(900);
+
+      // ==========================================
+      // PHASE 3: SEQUENTIAL CONNECT & TRACKING
+      // ==========================================
+      let sentCount = 0;
+      for (let i = 0; i < targets.length; i++) {
+        const cand = targets[i];
+        if (statusArea) {
+          statusArea.innerHTML = `<span style="color: #38bdf8;">(${i + 1}/${targets.length}) ${cand.firstName}...</span>`;
+        }
+
+        try {
+          const success = await this.executeSingleConnect(cand);
+          if (success) {
+            sentCount++;
+            // Record tracking data through Background Service Worker (100% Reliable Supabase Persistence)
+            this.trackInMyces(cand);
+            if (statusArea) {
+              statusArea.innerHTML = `<span style="color: #10b981; font-weight: 700;">✓ Connected (${sentCount}/${targets.length})</span>`;
+            }
+          }
+        } catch (err) {
+          console.warn(`[LinkedIn Routine] Error connecting to ${cand.name}:`, err);
+        }
+
+        // Natural human-like pause between connections (2.5 seconds)
+        if (i < targets.length - 1) {
+          await this.delay(2500);
+        }
+      }
+
+      // ==========================================
+      // PHASE 4: FINISHED & CELEBRATION
+      // ==========================================
       if (icon) {
         icon.classList.remove('myces-spin');
         icon.textContent = '✅';
