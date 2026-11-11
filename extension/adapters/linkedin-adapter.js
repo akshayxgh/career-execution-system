@@ -476,14 +476,22 @@ class LinkedInAdapter extends BaseAdapter {
     statusArea.innerHTML = '<span style="color: #38bdf8;">Scanning cards...</span>';
 
     try {
-      // 1. Gather all candidates from DOM
+      // 1. Proactive Progressive Scroll to load candidate pool
+      statusArea.innerHTML = '<span style="color: #38bdf8;">Scanning network cards...</span>';
+      let scrollAttempts = 0;
       let candidates = this.extractCandidateCards();
 
-      // If under 7 candidates found, scroll down gently to let LinkedIn lazy-load
-      if (candidates.length < 7) {
-        window.scrollBy({ top: 600, behavior: 'smooth' });
+      while (scrollAttempts < 5) {
+        const pCount = candidates.filter(c => c.category === 'PEER').length;
+        const rCount = candidates.filter(c => c.category === 'RECRUITER').length;
+
+        // If we have at least 5 peers and 2 recruiters, or 12+ qualified candidates, we have enough!
+        if ((pCount >= 5 && rCount >= 2) || candidates.length >= 12) break;
+
+        window.scrollBy({ top: 800, behavior: 'smooth' });
         await this.delay(1200);
         candidates = this.extractCandidateCards();
+        scrollAttempts++;
       }
 
       if (candidates.length === 0) {
@@ -492,10 +500,25 @@ class LinkedInAdapter extends BaseAdapter {
         return;
       }
 
-      // 2. AI Selection: 5 Peers + 2 Recruiters
-      const peers = candidates.filter(c => c.category === 'PEER').slice(0, 5);
-      const recruiters = candidates.filter(c => c.category === 'RECRUITER').slice(0, 2);
-      const targets = [...peers, ...recruiters];
+      // 2. Guaranteed Target Selection: 7 total (5 Peers + 2 Recruiters, with dynamic backfill)
+      const allPeers = candidates.filter(c => c.category === 'PEER');
+      const allRecruiters = candidates.filter(c => c.category === 'RECRUITER');
+
+      // Take up to 2 recruiters first
+      const selectedRecruiters = allRecruiters.slice(0, 2);
+      // Backfill with peers to guarantee 7 targets (e.g. 5 peers if 2 recruiters, 6 if 1, 7 if 0)
+      const peersNeeded = Math.max(5, 7 - selectedRecruiters.length);
+      const selectedPeers = allPeers.slice(0, peersNeeded);
+
+      const targets = [...selectedPeers, ...selectedRecruiters].slice(0, 7);
+
+      // If still under 7 and more candidates exist, fill up to 7
+      if (targets.length < 7) {
+        const remaining = candidates.filter(c => !targets.some(t => t.profileUrl === c.profileUrl));
+        while (targets.length < 7 && remaining.length > 0) {
+          targets.push(remaining.shift());
+        }
+      }
 
       if (targets.length === 0) {
         alert('No matching Data/BI peers or recruiters found (excluding Crystal Group).');
@@ -503,7 +526,7 @@ class LinkedInAdapter extends BaseAdapter {
         return;
       }
 
-      statusArea.innerHTML = `<span style="color: #38bdf8;">AI picked ${targets.length} targets...</span>`;
+      statusArea.innerHTML = `<span style="color: #38bdf8;">AI selected ${targets.length} targets...</span>`;
       await this.delay(800);
 
       // 3. Sequential 1-Click Execution with Human Cadence
