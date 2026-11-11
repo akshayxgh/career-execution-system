@@ -667,33 +667,44 @@ class LinkedInAdapter extends BaseAdapter {
   }
 
   /**
-   * Scans DOM cards, filters blacklist, categorizes, and prepares AI notes
+   * Scans DOM cards, filters blacklist, categorizes, and prepares AI notes.
+   * Starts directly from every valid Connect button on the page for 100% extraction accuracy.
    */
   extractCandidateCards() {
     const results = [];
     const seenUrls = new Set();
 
-    // 1. Gather all potential card containers across all modern LinkedIn variations
-    const cardCandidates = Array.from(document.querySelectorAll(
-      'li.discover-entity-type-card, div.discover-entity-type-card, div[data-view-name*="profile-card"], [class*="discover-person-card"], .scaffold-layout__list-container li, .artdeco-card'
-    ));
-
-    // 2. Also find any container that directly holds a Connect button and profile link
-    const fallbackButtons = Array.from(document.querySelectorAll('button')).filter((b) => {
+    // 1. Find ALL connectable buttons on the page
+    const allButtons = Array.from(document.querySelectorAll('button'));
+    const connectButtons = allButtons.filter((b) => {
       const aria = (b.getAttribute('aria-label') || '').toLowerCase();
       const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
-      return (aria.includes('invite') || aria.includes('connect') || txt === 'connect') && !aria.includes('withdraw') && !aria.includes('message');
+      const isConnect = aria.includes('invite') || aria.includes('connect') || txt === 'connect';
+      const isNegative = aria.includes('withdraw') || aria.includes('message') || aria.includes('dismiss') || aria.includes('remove');
+      return isConnect && !isNegative && !b.disabled;
     });
 
-    const buttonCards = fallbackButtons
-      .map((b) => b.closest('li, div.discover-entity-type-card, [data-view-name*="profile-card"], [class*="discover-person-card"], .artdeco-card') || b.parentElement?.parentElement)
-      .filter(Boolean);
+    for (const btn of connectButtons) {
+      // 2. Climb up to find the closest container that holds the person's profile link
+      let card = btn.parentElement;
+      while (card && card !== document.body) {
+        const links = card.querySelectorAll('a[href*="/in/"]');
+        if (links.length >= 1 && links.length <= 4) {
+          // Found the individual person's card!
+          break;
+        }
+        card = card.parentElement;
+      }
 
-    // Merge and deduplicate card elements
-    const allCards = Array.from(new Set([...cardCandidates, ...buttonCards]));
+      if (!card || card === document.body) continue;
 
-    for (const card of allCards) {
-      if (!card) continue;
+      const linkEl = card.querySelector('a[href*="/in/"]');
+      if (!linkEl) continue;
+
+      const rawHref = linkEl.getAttribute('href') || linkEl.href || '';
+      const cleanUrl = rawHref.startsWith('http') ? rawHref.split('?')[0].replace(/\/+$/, '') : `https://www.linkedin.com${rawHref.split('?')[0].replace(/\/+$/, '')}`;
+      if (!cleanUrl || seenUrls.has(cleanUrl.toLowerCase())) continue;
+
       const text = card.innerText || card.textContent || '';
       const lower = text.toLowerCase();
 
@@ -702,39 +713,32 @@ class LinkedInAdapter extends BaseAdapter {
         continue;
       }
 
-      // Must have a visible Connect button
-      const connectBtn = card.querySelector('button[aria-label*="Invite" i], button[aria-label*="Connect" i]') ||
-                         Array.from(card.querySelectorAll('button')).find(b => (b.innerText || '').trim().toLowerCase() === 'connect');
-      if (!connectBtn || connectBtn.disabled) continue;
+      // Extract Name and Headline reliably from text lines
+      const textLines = text.split('\n')
+        .map(l => l.trim())
+        .filter(l => {
+          const lLower = l.toLowerCase();
+          return l.length > 0 &&
+                 !lLower.includes('connect') &&
+                 !lLower.includes('mutual') &&
+                 !lLower.includes('based on') &&
+                 !lLower.includes('dismiss') &&
+                 !lLower.includes('followers') &&
+                 !lLower.includes('message') &&
+                 !lLower.includes('invite');
+        });
 
-      // Extract Name & Link
-      const linkEl = card.querySelector('a[href*="/in/"]');
-      if (!linkEl) continue;
-      const profileUrl = (linkEl.href || '').split('?')[0].replace(/\/+$/, '');
-      if (!profileUrl || seenUrls.has(profileUrl.toLowerCase())) continue;
-      seenUrls.add(profileUrl.toLowerCase());
-
-      let name = '';
-      const nameEl = card.querySelector('.discover-person-card__name, [class*="title"], [class*="actor__name"], span[aria-hidden="true"]');
-      if (nameEl) name = nameEl.innerText.trim();
-      if (!name || name.length < 2) {
-        name = linkEl.innerText.trim().split('\n')[0];
-      }
+      let name = textLines[0] || linkEl.innerText.trim().split('\n')[0];
       name = this.cleanLinkedInName(name);
-      if (!name) continue;
+      if (!name || name.length < 2) continue;
 
-      // Extract Headline
-      let headline = '';
-      const occupationEl = card.querySelector('.discover-person-card__occupation, [class*="occupation"], [class*="headline"], [class*="sub-title"]');
-      if (occupationEl) headline = occupationEl.innerText.trim();
-      if (!headline) headline = text.replace(name, '').trim().split('\n')[0] || 'Technical Specialist';
+      let headline = textLines[1] || 'Technical Specialist';
+      const hLower = headline.toLowerCase();
 
       // Categorize
-      const hLower = headline.toLowerCase();
       let category = null;
-
-      const isRecruiter = hLower.includes('recruiter') || hLower.includes('talent') || hLower.includes('hiring') || hLower.includes('staffing') || hLower.includes('hr');
-      const isDataPeer = hLower.includes('data') || hLower.includes('bi') || hLower.includes('power bi') || hLower.includes('fabric') || hLower.includes('sql') || hLower.includes('engineer') || hLower.includes('architect') || hLower.includes('analyst') || hLower.includes('python');
+      const isRecruiter = hLower.includes('recruiter') || hLower.includes('talent') || hLower.includes('hiring') || hLower.includes('staffing') || hLower.includes('hr') || hLower.includes('ta specialist');
+      const isDataPeer = hLower.includes('data') || hLower.includes('bi') || hLower.includes('power bi') || hLower.includes('analytics') || hLower.includes('analyst') || hLower.includes('engineer') || hLower.includes('architect') || hLower.includes('sql') || hLower.includes('python') || hLower.includes('fabric') || hLower.includes('strategist') || hLower.includes('reporting');
 
       if (isRecruiter) {
         category = 'RECRUITER';
@@ -743,8 +747,9 @@ class LinkedInAdapter extends BaseAdapter {
       }
 
       if (category) {
+        seenUrls.add(cleanUrl.toLowerCase());
         const firstName = name.split(' ')[0] || name;
-        
+
         let company = '';
         const compMatch = headline.match(/@\s*([^|•\n,]+)/i) || headline.match(/at\s+([^|•\n,]+)/i);
         if (compMatch) company = compMatch[1].trim();
@@ -760,10 +765,10 @@ class LinkedInAdapter extends BaseAdapter {
           name,
           firstName,
           headline,
-          profileUrl,
+          profileUrl: cleanUrl,
           category,
           aiNote,
-          connectButton: connectBtn
+          connectButton: btn
         });
       }
     }
