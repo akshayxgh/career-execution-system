@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/agent/sync-employment",
+      "destination": "/api/agent/people?action=sync-employment"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

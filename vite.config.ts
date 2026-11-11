@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
               } else if (urlPath === '/api/agent/memory') {
                 handlerModule = await importApiHandler('./api/agent/memory.js');
               } else if (urlPath === '/api/agent/sync-employment') {
-                handlerModule = await importApiHandler('./api/agent/sync-employment.js');
+                handlerModule = await importApiHandler('./api/agent/people.js');
               } else if (urlPath === '/api/agent/maintenance') {
                 handlerModule = await importApiHandler('./api/agent/maintenance.js');
               } else if (urlPath === '/api/session') {
