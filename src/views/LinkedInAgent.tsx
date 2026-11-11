@@ -127,7 +127,14 @@ export const LinkedInAgent: React.FC = () => {
   }, [contentContext]);
 
   const pendingApprovalsCount = useMemo(() => {
-    return actions.filter((a) => a.status === 'PENDING_APPROVAL').length;
+    const pending = actions.filter((a) => a.status === 'PENDING_APPROVAL');
+    const seen = new Set<string>();
+    return pending.filter((a) => {
+      const key = `${a.action_type}-${a.target_id || a.payload?.recipient_name || a.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).length;
   }, [actions]);
 
   // AI Content Post Generator
@@ -264,11 +271,21 @@ Return ONLY the ready-to-publish post content.`;
     await refreshAll();
   };
 
-  // Filter actions by type if set
-  const filteredActions = actions.filter((act) => {
-    if (actionTypeFilter === 'ALL') return true;
-    return act.action_type === actionTypeFilter;
-  });
+  // Filter actions by type and defensively deduplicate by recipient
+  const filteredActions = useMemo(() => {
+    const list = actions.filter((act) => {
+      if (actionTypeFilter === 'ALL') return true;
+      return act.action_type === actionTypeFilter;
+    });
+
+    const seen = new Set<string>();
+    return list.filter((act) => {
+      const key = `${act.action_type}-${act.target_id || act.payload?.recipient_name || act.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [actions, actionTypeFilter]);
 
   return (
     <div className="view-container" style={{ padding: '1.5rem', maxWidth: '1240px', margin: '0 auto' }}>

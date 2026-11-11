@@ -1297,27 +1297,35 @@ async function scanRecruiterOpportunities() {
   }
 }
 
+let isSyncingConnections = false;
+
 async function handleSyncAcceptedConnections(payload = {}) {
-  let recentSlugs = Array.isArray(payload.recentSlugs) ? payload.recentSlugs.map(s => s.toLowerCase().trim()) : [];
-  let recentNames = Array.isArray(payload.recentNames) ? payload.recentNames.map(n => n.toLowerCase().trim()) : [];
-
-  // If no slugs provided by front-end, query LinkedIn Voyager API directly!
-  if (recentSlugs.length === 0) {
-    console.log('[Background Sync] Fetching recent 1st-degree connections via LinkedIn Voyager API...');
-    const voyagerConnections = await fetchRecentConnectionsFromVoyager();
-    console.log(`[Background Sync] Voyager API returned ${voyagerConnections.length} connections.`);
-
-    voyagerConnections.forEach(c => {
-      if (c.slug) recentSlugs.push(c.slug);
-      if (c.name) recentNames.push(c.name.toLowerCase().trim());
-    });
+  if (isSyncingConnections) {
+    console.log('[Voyager Sync] Sync already in progress, skipping concurrent execution.');
+    return { success: true, updated: 0, skipped: true };
   }
-
-  if (recentSlugs.length === 0 && recentNames.length === 0) {
-    return { success: true, updated: 0, newRecruiters: [] };
-  }
+  isSyncingConnections = true;
 
   try {
+    let recentSlugs = Array.isArray(payload.recentSlugs) ? payload.recentSlugs.map(s => s.toLowerCase().trim()) : [];
+    let recentNames = Array.isArray(payload.recentNames) ? payload.recentNames.map(n => n.toLowerCase().trim()) : [];
+
+    // If no slugs provided by front-end, query LinkedIn Voyager API directly!
+    if (recentSlugs.length === 0) {
+      console.log('[Background Sync] Fetching recent 1st-degree connections via LinkedIn Voyager API...');
+      const voyagerConnections = await fetchRecentConnectionsFromVoyager();
+      console.log(`[Background Sync] Voyager API returned ${voyagerConnections.length} connections.`);
+
+      voyagerConnections.forEach(c => {
+        if (c.slug) recentSlugs.push(c.slug);
+        if (c.name) recentNames.push(c.name.toLowerCase().trim());
+      });
+    }
+
+    if (recentSlugs.length === 0 && recentNames.length === 0) {
+      return { success: true, updated: 0, newRecruiters: [] };
+    }
+
     // 1. Fetch people marked INVITATION_SENT
     const res = await fetch(`${SUPABASE_REST_URL}/linkedin_people?connection_status=eq.INVITATION_SENT&select=*`, {
       headers: {
@@ -1365,6 +1373,19 @@ async function handleSyncAcceptedConnections(payload = {}) {
                             (person.headline && (person.headline.toLowerCase().includes('recruiter') || person.headline.toLowerCase().includes('talent')));
 
         if (isRecruiter) {
+          // Idempotency check: strictly skip if an action already exists for this person
+          const checkActRes = await fetch(`${SUPABASE_REST_URL}/linkedin_actions?target_id=eq.${person.id}&action_type=eq.MESSAGE&status=in.(PENDING_APPROVAL,APPROVED,EXECUTED)&select=id`, {
+            headers: {
+              'apikey': SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+            }
+          });
+          const existingActs = checkActRes.ok ? await checkActRes.json() : [];
+          if (existingActs && existingActs.length > 0) {
+            console.log(`[Voyager Sync] Action already exists for ${person.full_name}, skipping duplicate creation.`);
+            continue;
+          }
+
           const firstName = person.full_name.split(' ')[0] || person.full_name;
           const greetingNote = `Hi ${firstName}, thanks for connecting! I noticed your work in recruiting data and technology talent. I bring 7+ years of experience across analytics, BI, and process automation (Power BI, SQL, Excel, and Python). Glad to be connected and look forward to exchanging insights!`;
 
@@ -1424,6 +1445,8 @@ async function handleSyncAcceptedConnections(payload = {}) {
   } catch (err) {
     console.error('[Background] Error syncing connections:', err);
     return { success: false, error: err.message };
+  } finally {
+    isSyncingConnections = false;
   }
 }
 
@@ -1557,10 +1580,12 @@ chrome.runtime.onInstalled.addListener(() => {
   setTimeout(() => handleSyncAcceptedConnections(), 2000);
 });
 
-// 3. When navigating to LinkedIn, quietly trigger sync in background
+// 3. When navigating to LinkedIn, quietly trigger sync in background (debounced)
+let tabSyncDebounceTimer = null;
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab && tab.url && tab.url.includes('linkedin.com')) {
-    setTimeout(() => handleSyncAcceptedConnections(), 2500);
+    if (tabSyncDebounceTimer) clearTimeout(tabSyncDebounceTimer);
+    tabSyncDebounceTimer = setTimeout(() => handleSyncAcceptedConnections(), 5000);
   }
 });
 
