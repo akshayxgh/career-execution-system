@@ -381,8 +381,34 @@ Focus on:
     }
   };
 
+  // 1-Click Toggle for Intro Sent status
+  const handleToggleIntroSent = async (person: LinkedInPerson) => {
+    try {
+      const currentTags = Array.isArray(person.tags) ? [...person.tags] : [];
+      const hasIntro = currentTags.includes('Intro Sent');
+      const updatedTags = hasIntro
+        ? currentTags.filter((t) => t !== 'Intro Sent')
+        : Array.from(new Set([...currentTags, 'Intro Sent']));
+
+      await linkedinAgentService.updatePerson(person.id, {
+        tags: updatedTags,
+        last_interaction_at: hasIntro ? person.last_interaction_at : new Date().toISOString(),
+      });
+
+      showToast(
+        hasIntro
+          ? `Removed Intro Sent tag from ${person.full_name}`
+          : `Marked ${person.full_name} as Intro Sent ✓`
+      );
+      await onRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update tag';
+      showToast(msg);
+    }
+  };
+
   // Render relationship pipeline tracker
-  const renderPipeline = (stage: number) => {
+  const renderPipeline = (stage: number, person?: LinkedInPerson) => {
     const steps = [
       { num: 1, label: 'Invited' },
       { num: 2, label: 'Connected' },
@@ -394,9 +420,15 @@ Focus on:
         {steps.map((st, i) => {
           const isDone = stage >= st.num;
           const isCurrent = stage === st.num;
+          const isIntroStep = st.num === 3;
           return (
             <React.Fragment key={st.label}>
               <div
+                onClick={() => {
+                  if (isIntroStep && person && person.connection_status === 'CONNECTED') {
+                    handleToggleIntroSent(person);
+                  }
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -405,7 +437,15 @@ Focus on:
                   fontWeight: isCurrent ? 700 : 500,
                   color: isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)',
                   opacity: isDone ? 1 : 0.4,
+                  cursor: isIntroStep && person && person.connection_status === 'CONNECTED' ? 'pointer' : 'default',
                 }}
+                title={
+                  isIntroStep && person && person.connection_status === 'CONNECTED'
+                    ? isDone
+                      ? 'Click to remove Intro Sent'
+                      : 'Click to mark as Intro Sent'
+                    : undefined
+                }
               >
                 <span
                   style={{
@@ -982,7 +1022,7 @@ Focus on:
                     </td>
 
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      {renderPipeline(stage)}
+                      {renderPipeline(stage, person)}
                     </td>
 
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
@@ -1213,9 +1253,32 @@ Focus on:
                     borderRadius: '6px',
                     background: 'rgba(6, 10, 18, 0.4)',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                   }}
                 >
-                  {renderPipeline(stage)}
+                  {renderPipeline(stage, person)}
+                  {isConnected && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleIntroSent(person)}
+                      style={{
+                        background: isIntro ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                        border: isIntro ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        color: isIntro ? '#38bdf8' : 'var(--text-muted)',
+                        borderRadius: '4px',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        padding: '2px 6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title={isIntro ? 'Click to remove Intro Sent tag' : 'Click to mark as Intro Sent (if messaged on LinkedIn)'}
+                    >
+                      {isIntro ? '✓ Intro Sent' : '+ Mark Intro'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Contextual Action Buttons */}

@@ -1901,6 +1901,53 @@ async function handleImportSentInvitations(invitations = []) {
     }
   }
 
+  // Reconcile: If full list of invitations was imported, mark any older missing sent invites as NOT_CONNECTED
+  if (invitations.length > 0) {
+    try {
+      const activeSlugs = new Set();
+      const activeNames = new Set();
+      for (const inv of invitations) {
+        const match = (inv.profileUrl || '').match(/\/in\/([^/?#]+)/);
+        if (match) activeSlugs.add(match[1].toLowerCase());
+        if (inv.name) activeNames.add(inv.name.toLowerCase().trim());
+      }
+
+      const checkRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?connection_status=eq.INVITATION_SENT&select=id,full_name,profile_url,interaction_notes`, {
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+        }
+      });
+
+      if (checkRes.ok) {
+        const currentPending = await checkRes.json();
+        for (const p of currentPending) {
+          const slug = (p.profile_url || '').split('/in/')[1]?.replace(/\/+$/, '')?.toLowerCase();
+          const name = (p.full_name || '').toLowerCase().trim();
+          const isActive = (slug && activeSlugs.has(slug)) || activeNames.has(name);
+
+          if (!isActive) {
+            await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${p.id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+              },
+              body: JSON.stringify({
+                connection_status: 'NOT_CONNECTED',
+                interaction_notes: (p.interaction_notes || '') + ' (Expired/Withdrawn on LinkedIn)',
+                updated_at: new Date().toISOString()
+              })
+            });
+          }
+        }
+      }
+    } catch (recErr) {
+      console.warn('[Background Import] Reconciliation warning:', recErr);
+    }
+  }
+
   return { success: true, count: importedCount };
 }
 
