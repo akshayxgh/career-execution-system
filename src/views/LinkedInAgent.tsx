@@ -9,11 +9,19 @@ import {
   AlertCircle,
   Headphones,
   Check,
+  CheckCheck,
   Filter,
   Users,
   Briefcase,
   Layers,
   TrendingUp,
+  Zap,
+  LayoutGrid,
+  List,
+  ExternalLink,
+  Pencil,
+  X,
+  Building2,
 } from 'lucide-react';
 import { linkedinAgentService } from '../services/linkedinAgentService';
 import { copilotService } from '../services/copilotService';
@@ -21,6 +29,7 @@ import { ActionApprovalCard } from '../components/linkedin/ActionApprovalCard';
 import { ActionEditModal } from '../components/linkedin/ActionEditModal';
 import { ManualExecutionModal } from '../components/linkedin/ManualExecutionModal';
 import { NetworkingTab } from '../components/linkedin/NetworkingTab';
+import { CompanyRadarTab } from '../components/linkedin/CompanyRadarTab';
 import { OpportunitiesTab } from '../components/linkedin/OpportunitiesTab';
 import { AnalyticsMemoryTab } from '../components/linkedin/AnalyticsMemoryTab';
 import type {
@@ -36,7 +45,7 @@ import type {
 
 export const LinkedInAgent: React.FC = () => {
   // Navigation tab state
-  const [activeTab, setActiveTab] = useState<'content' | 'networking' | 'opportunities' | 'approvals' | 'analytics'>('content');
+  const [activeTab, setActiveTab] = useState<'content' | 'networking' | 'radar' | 'opportunities' | 'approvals' | 'analytics'>('content');
 
   // Context & Content state
   const [contentContext, setContentContext] = useState<AgentContentContext | null>(null);
@@ -61,6 +70,13 @@ export const LinkedInAgent: React.FC = () => {
   const [actionTypeFilter, setActionTypeFilter] = useState<string>('ALL');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionProcessingId, setActionProcessingId] = useState<string | null>(null);
+
+  // Approvals Redesign State (Split Reviewer & Batch Approval)
+  const [approvalsViewMode, setApprovalsViewMode] = useState<'split' | 'stream'>('split');
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [inspectorDraft, setInspectorDraft] = useState<string>('');
+  const [isSavingInspectorDraft, setIsSavingInspectorDraft] = useState(false);
+  const [isBatchApproving, setIsBatchApproving] = useState(false);
 
   // Modals state
   const [editingAction, setEditingAction] = useState<LinkedInAction | null>(null);
@@ -287,6 +303,101 @@ Return ONLY the ready-to-publish post content.`;
     });
   }, [actions, actionTypeFilter]);
 
+  // Today's Routine Pulse stats (5 Peers + 2 Recruiters target)
+  const routineStats = useMemo(() => {
+    const peerInvitesSent = people.filter((p) => p.connection_status === 'INVITATION_SENT').length;
+    const introsDispatched = people.filter((p) => Array.isArray(p.tags) && p.tags.includes('Intro Sent')).length;
+    const peerTarget = 5;
+    const recruiterTarget = 2;
+    const totalTarget = peerTarget + recruiterTarget;
+    const totalDispatched = Math.min(peerInvitesSent, peerTarget) + Math.min(introsDispatched, recruiterTarget);
+    const percentComplete = Math.min(Math.round((totalDispatched / totalTarget) * 100), 100);
+
+    return {
+      peerInvitesSent,
+      peerTarget,
+      introsDispatched,
+      recruiterTarget,
+      totalDispatched,
+      totalTarget,
+      percentComplete,
+    };
+  }, [people]);
+
+  // Active action for split-pane reviewer
+  const activeAction = useMemo(() => {
+    if (filteredActions.length === 0) return null;
+    return filteredActions.find((a) => a.id === selectedActionId) || filteredActions[0];
+  }, [filteredActions, selectedActionId]);
+
+  useEffect(() => {
+    if (activeAction) {
+      setInspectorDraft(activeAction.payload.content || '');
+      if (selectedActionId !== activeAction.id) {
+        setSelectedActionId(activeAction.id);
+      }
+    }
+  }, [activeAction?.id]);
+
+  const handleSaveInspectorDraft = async () => {
+    if (!activeAction) return;
+    try {
+      setIsSavingInspectorDraft(true);
+      await linkedinAgentService.updateActionContent(activeAction.id, inspectorDraft);
+      await refreshActions();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save edits';
+      alert(msg);
+    } finally {
+      setIsSavingInspectorDraft(false);
+    }
+  };
+
+  const handleApproveAllPending = async () => {
+    const pendingActions = filteredActions.filter((a) => a.status === 'PENDING_APPROVAL');
+    if (pendingActions.length === 0) return;
+    if (!confirm(`Batch-approve all ${pendingActions.length} pending action(s)?`)) return;
+
+    try {
+      setIsBatchApproving(true);
+      await Promise.allSettled(
+        pendingActions.map((action) => linkedinAgentService.approveAction(action.id))
+      );
+      await refreshActions();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to batch approve actions.';
+      setActionError(msg);
+    } finally {
+      setIsBatchApproving(false);
+    }
+  };
+
+  // Keyboard shortcut: Ctrl+Enter to approve active draft
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (activeTab === 'approvals' && activeAction && activeAction.status === 'PENDING_APPROVAL') {
+          e.preventDefault();
+          handleApprove(activeAction.id);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, activeAction]);
+
+  // Unique organizations count for primary Company Radar tab pill
+  const uniqueCompaniesCount = useMemo(() => {
+    const set = new Set<string>();
+    people.forEach((p) => {
+      if (p.company) set.add(p.company.trim());
+      (p.tags || []).forEach((t) => {
+        if (t.startsWith('Alumni:')) set.add(t.replace('Alumni:', '').trim());
+      });
+    });
+    return set.size;
+  }, [people]);
+
   return (
     <div className="view-container" style={{ padding: '1.5rem', maxWidth: '1240px', margin: '0 auto' }}>
       {/* Top Header */}
@@ -297,7 +408,7 @@ Return ONLY the ready-to-publish post content.`;
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '1rem',
-          marginBottom: '1.5rem',
+          marginBottom: '1rem',
         }}
       >
         <div>
@@ -371,6 +482,110 @@ Return ONLY the ready-to-publish post content.`;
         </div>
       </div>
 
+      {/* Today's Routine Pulse Bar */}
+      <div
+        style={{
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '0.75rem',
+          padding: '0.85rem 1.25rem',
+          marginBottom: '1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#10b981',
+            }}
+          >
+            <Zap size={17} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                Today's Networking Routine Pulse
+              </span>
+              <span
+                style={{
+                  fontSize: '0.675rem',
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: '999px',
+                  background: routineStats.percentComplete === 100 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.15)',
+                  color: routineStats.percentComplete === 100 ? '#10b981' : '#38bdf8',
+                  border: routineStats.percentComplete === 100 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(56, 189, 248, 0.3)',
+                  fontWeight: 700,
+                }}
+              >
+                {routineStats.percentComplete}% Complete
+              </span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Target: 5 Data/BI Peers + 2 Recruiters Daily Routine
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Trackers */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+          {/* Peer Invites */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '130px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>🤝 Peer Invites</span>
+              <span style={{ fontWeight: 700, color: '#38bdf8' }}>
+                {routineStats.peerInvitesSent} / {routineStats.peerTarget}
+              </span>
+            </div>
+            <div style={{ width: '100%', height: '5px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${Math.min((routineStats.peerInvitesSent / routineStats.peerTarget) * 100, 100)}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
+                  borderRadius: '999px',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Recruiter Intros */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '130px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>💬 Recruiter Intros</span>
+              <span style={{ fontWeight: 700, color: '#10b981' }}>
+                {routineStats.introsDispatched} / {routineStats.recruiterTarget}
+              </span>
+            </div>
+            <div style={{ width: '100%', height: '5px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${Math.min((routineStats.introsDispatched / routineStats.recruiterTarget) * 100, 100)}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #059669, #10b981)',
+                  borderRadius: '999px',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Primary Tab Navigation */}
       <div
         style={{
@@ -431,6 +646,37 @@ Return ONLY the ready-to-publish post content.`;
             }}
           >
             {people.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('radar')}
+          style={{
+            padding: '0.55rem 1rem',
+            borderRadius: '0.5rem',
+            border: activeTab === 'radar' ? '1px solid #0284c7' : '1px solid transparent',
+            background: activeTab === 'radar' ? 'rgba(2, 132, 199, 0.15)' : 'transparent',
+            color: activeTab === 'radar' ? '#38bdf8' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            cursor: 'pointer',
+          }}
+        >
+          <Building2 size={16} />
+          <span>Company Radar</span>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              padding: '0.1rem 0.4rem',
+              borderRadius: '999px',
+              background: 'rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            {uniqueCompaniesCount}
           </span>
         </button>
 
@@ -737,6 +983,14 @@ Return ONLY the ready-to-publish post content.`;
         />
       )}
 
+      {/* PRIMARY TAB: COMPANY RADAR */}
+      {activeTab === 'radar' && (
+        <CompanyRadarTab
+          people={people}
+          onRefresh={refreshAll}
+        />
+      )}
+
       {/* TAB 3: OPPORTUNITY RADAR */}
       {activeTab === 'opportunities' && (
         <OpportunitiesTab
@@ -754,14 +1008,15 @@ Return ONLY the ready-to-publish post content.`;
       {/* TAB 4: ACTION APPROVALS QUEUE */}
       {activeTab === 'approvals' && (
         <section
-          className="card"
           style={{
             padding: '1.5rem',
-            borderRadius: '10px',
-            border: '1px solid var(--border-color)',
-            backgroundColor: 'var(--bg-card)',
+            borderRadius: '0.75rem',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(16px)',
           }}
         >
+          {/* Header & Controls Bar */}
           <div
             style={{
               display: 'flex',
@@ -770,39 +1025,134 @@ Return ONLY the ready-to-publish post content.`;
               flexWrap: 'wrap',
               gap: '0.75rem',
               marginBottom: '1.25rem',
-              borderBottom: '1px solid var(--border-color)',
-              paddingBottom: '0.75rem',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              paddingBottom: '0.85rem',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <BookOpen size={20} style={{ color: 'var(--accent-primary)' }} />
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-main)' }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: 700 }}>
                 Proposed Actions & Approvals
               </h2>
             </div>
 
-            {/* Filter Toggles */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <Filter size={15} style={{ color: 'var(--text-muted)' }} />
+            {/* Quick Actions & Filter Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              {/* Batch Approve All Button */}
+              {pendingApprovalsCount > 0 && statusFilter === 'PENDING_APPROVAL' && (
+                <button
+                  type="button"
+                  onClick={handleApproveAllPending}
+                  disabled={isBatchApproving}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '0.5rem',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    color: '#10b981',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    cursor: isBatchApproving ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Approve all currently pending outreach drafts"
+                >
+                  <CheckCheck size={15} />
+                  <span>{isBatchApproving ? 'Approving All...' : `Approve All (${pendingApprovalsCount})`}</span>
+                </button>
+              )}
+
+              {/* View Switcher: Split Reviewer vs Stream View */}
+              <div
+                style={{
+                  display: 'flex',
+                  background: 'rgba(6, 10, 18, 0.5)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '0.5rem',
+                  padding: '2px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setApprovalsViewMode('split')}
+                  style={{
+                    padding: '0.35rem 0.6rem',
+                    borderRadius: '0.35rem',
+                    border: 'none',
+                    background: approvalsViewMode === 'split' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    color: approvalsViewMode === 'split' ? '#38bdf8' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                  }}
+                  title="Split-Pane Reviewer"
+                >
+                  <LayoutGrid size={13} />
+                  <span>Split View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApprovalsViewMode('stream')}
+                  style={{
+                    padding: '0.35rem 0.6rem',
+                    borderRadius: '0.35rem',
+                    border: 'none',
+                    background: approvalsViewMode === 'stream' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                    color: approvalsViewMode === 'stream' ? '#38bdf8' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                  }}
+                  title="Stream Cards View"
+                >
+                  <List size={13} />
+                  <span>Cards</span>
+                </button>
+              </div>
+
+              <Filter size={14} style={{ color: 'var(--text-muted)' }} />
 
               <select
                 className="input"
                 value={actionTypeFilter}
                 onChange={(e) => setActionTypeFilter(e.target.value)}
-                style={{ padding: '0.35rem 0.6rem', fontSize: '0.825rem', borderRadius: '6px' }}
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  fontSize: '0.8rem',
+                  borderRadius: '6px',
+                  background: 'rgba(6, 10, 18, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'var(--text-main)',
+                }}
               >
-                <option value="ALL">All Action Types</option>
-                <option value="PUBLISH_POST">Post Publishing</option>
-                <option value="SEND_CONNECTION">Connection Requests</option>
-                <option value="COMMENT">Post Comments</option>
+                <option value="ALL">All Types</option>
                 <option value="MESSAGE">Direct Outreaches</option>
+                <option value="SEND_CONNECTION">Connection Notes</option>
+                <option value="PUBLISH_POST">Post Publishing</option>
+                <option value="COMMENT">Post Comments</option>
               </select>
 
               <select
                 className="input"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as ActionStatus | 'ALL')}
-                style={{ padding: '0.35rem 0.6rem', fontSize: '0.825rem', borderRadius: '6px' }}
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  fontSize: '0.8rem',
+                  borderRadius: '6px',
+                  background: 'rgba(6, 10, 18, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'var(--text-main)',
+                }}
               >
                 <option value="PENDING_APPROVAL">Pending Approval ({pendingApprovalsCount})</option>
                 <option value="APPROVED">Approved</option>
@@ -831,7 +1181,7 @@ Return ONLY the ready-to-publish post content.`;
           )}
 
           {loadingActions ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               Loading action queue...
             </div>
           ) : filteredActions.length === 0 ? (
@@ -839,21 +1189,417 @@ Return ONLY the ready-to-publish post content.`;
               style={{
                 padding: '3rem 1.5rem',
                 textAlign: 'center',
-                backgroundColor: 'var(--bg-dark)',
+                backgroundColor: 'rgba(6, 10, 18, 0.4)',
                 borderRadius: '8px',
-                border: '1px dashed var(--border-color)',
+                border: '1px dashed rgba(255, 255, 255, 0.1)',
               }}
             >
               <CheckCircle2 size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)' }}>
                 No actions currently {statusFilter === 'ALL' ? 'found' : `in ${statusFilter}`}
               </h3>
-              <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Generate posts in Content Copilot, connection notes in Networking, or pitch comments in Opportunities.
+              <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.825rem' }}>
+                Queue new recruiter messages or peer connection notes from the Strategic Networking tab.
               </p>
             </div>
+          ) : approvalsViewMode === 'split' ? (
+            /* SPLIT-PANE REVIEWER */
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(280px, 340px) 1fr',
+                gap: '1.25rem',
+                alignItems: 'start',
+              }}
+            >
+              {/* Left Column: Candidates / Actions List */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.65rem',
+                  maxHeight: '620px',
+                  overflowY: 'auto',
+                  paddingRight: '0.35rem',
+                }}
+              >
+                {filteredActions.map((action) => {
+                  const isSelected = action.id === activeAction?.id;
+
+                  // Unique organizations count for primary Company Radar tab pill
+  const uniqueCompaniesCount = useMemo(() => {
+    const set = new Set<string>();
+    people.forEach((p) => {
+      if (p.company) set.add(p.company.trim());
+      (p.tags || []).forEach((t) => {
+        if (t.startsWith('Alumni:')) set.add(t.replace('Alumni:', '').trim());
+      });
+    });
+    return set.size;
+  }, [people]);
+
+  return (
+                    <div
+                      key={action.id}
+                      onClick={() => {
+                        setSelectedActionId(action.id);
+                        setInspectorDraft(action.payload.content || '');
+                      }}
+                      style={{
+                        padding: '0.85rem',
+                        borderRadius: '0.65rem',
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(16, 185, 129, 0.12)' : 'rgba(15, 23, 42, 0.55)',
+                        border: isSelected ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+                        backdropFilter: 'blur(12px)',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.4rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            fontSize: '0.675rem',
+                            fontWeight: 700,
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: '999px',
+                            background:
+                              action.action_type === 'SEND_CONNECTION'
+                                ? 'rgba(16, 185, 129, 0.15)'
+                                : 'rgba(2, 132, 199, 0.15)',
+                            color: action.action_type === 'SEND_CONNECTION' ? '#10b981' : '#38bdf8',
+                            border:
+                              action.action_type === 'SEND_CONNECTION'
+                                ? '1px solid rgba(16, 185, 129, 0.3)'
+                                : '1px solid rgba(2, 132, 199, 0.3)',
+                          }}
+                        >
+                          {action.action_type === 'SEND_CONNECTION' ? '🤝 Connection Note' : '💬 Direct Message'}
+                        </span>
+
+                        <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+                          {action.created_at
+                            ? new Date(action.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : ''}
+                        </span>
+                      </div>
+
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: isSelected ? '#34d399' : 'var(--text-main)' }}>
+                        {action.payload.recipient_name || action.payload.topic || 'Outreach Target'}
+                      </div>
+
+                      {(action.payload.recipient_role || action.payload.company) && (
+                        <div
+                          style={{
+                            fontSize: '0.725rem',
+                            color: 'var(--text-muted)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {action.payload.recipient_role || ''} {action.payload.company ? `@ ${action.payload.company}` : ''}
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--text-muted)',
+                          lineHeight: 1.35,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          opacity: 0.85,
+                        }}
+                      >
+                        {action.payload.content}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Right Column: Full Draft Inspector & Inline Editor */}
+              {activeAction ? (
+                <div
+                  style={{
+                    borderRadius: '0.75rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.65)',
+                    backdropFilter: 'blur(20px)',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                  }}
+                >
+                  {/* Recipient Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                      gap: '0.75rem',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                      paddingBottom: '0.85rem',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                          {activeAction.payload.recipient_name || activeAction.payload.topic || 'Outreach Target'}
+                        </h3>
+                        <span
+                          style={{
+                            fontSize: '0.675rem',
+                            fontWeight: 700,
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '999px',
+                            background:
+                              activeAction.status === 'APPROVED'
+                                ? 'rgba(16, 185, 129, 0.15)'
+                                : activeAction.status === 'REJECTED'
+                                ? 'rgba(239, 68, 68, 0.15)'
+                                : 'rgba(245, 158, 11, 0.15)',
+                            color:
+                              activeAction.status === 'APPROVED'
+                                ? '#10b981'
+                                : activeAction.status === 'REJECTED'
+                                ? '#ef4444'
+                                : '#f59e0b',
+                            border:
+                              activeAction.status === 'APPROVED'
+                                ? '1px solid rgba(16, 185, 129, 0.3)'
+                                : activeAction.status === 'REJECTED'
+                                ? '1px solid rgba(239, 68, 68, 0.3)'
+                                : '1px solid rgba(245, 158, 11, 0.3)',
+                          }}
+                        >
+                          {activeAction.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.775rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        {activeAction.payload.recipient_role || 'Professional'}
+                        {activeAction.payload.company ? ` • ${activeAction.payload.company}` : ''}
+                      </div>
+                    </div>
+
+                    {activeAction.payload.recipient_profile_url && (
+                      <a
+                        href={activeAction.payload.recipient_profile_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: '0.775rem',
+                          color: '#0a66c2',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          textDecoration: 'none',
+                          padding: '0.3rem 0.6rem',
+                          borderRadius: '0.4rem',
+                          border: '1px solid rgba(10, 102, 194, 0.3)',
+                          background: 'rgba(10, 102, 194, 0.1)',
+                        }}
+                      >
+                        <span>Open LinkedIn</span>
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
+
+                  {/* AI Reasoning Callout */}
+                  {activeAction.reasoning && (
+                    <div
+                      style={{
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                        border: '1px solid rgba(139, 92, 246, 0.2)',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.5rem',
+                        fontSize: '0.8rem',
+                        color: 'var(--text-main)',
+                      }}
+                    >
+                      <Sparkles size={15} style={{ color: '#8b5cf6', flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <span style={{ fontWeight: 600, color: '#c084fc' }}>AI Context: </span>
+                        <span>{activeAction.reasoning}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Draft Inspector & Inline Editor */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        Draft Message (Editable)
+                      </label>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          color:
+                            activeAction.action_type === 'SEND_CONNECTION' && inspectorDraft.length > 280
+                              ? '#ef4444'
+                              : 'var(--text-muted)',
+                        }}
+                      >
+                        {inspectorDraft.length} chars {activeAction.action_type === 'SEND_CONNECTION' ? '/ 280 max' : ''}
+                      </span>
+                    </div>
+
+                    <textarea
+                      value={inspectorDraft}
+                      onChange={(e) => setInspectorDraft(e.target.value)}
+                      disabled={activeAction.status !== 'PENDING_APPROVAL'}
+                      rows={5}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '0.5rem',
+                        background: 'rgba(15, 23, 42, 0.8)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: 'var(--text-main)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5,
+                        resize: 'vertical',
+                      }}
+                    />
+
+                    {inspectorDraft !== activeAction.payload.content && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setInspectorDraft(activeAction.payload.content || '')}
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveInspectorDraft}
+                          disabled={isSavingInspectorDraft}
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem' }}
+                        >
+                          {isSavingInspectorDraft ? 'Saving...' : 'Save Edits'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Inspector Action Buttons */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingTop: '0.75rem',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      💡 Shortcut: <kbd style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>Ctrl + Enter</kbd> to Approve
+                    </div>
+
+                    {activeAction.status === 'PENDING_APPROVAL' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleReject(activeAction.id)}
+                          disabled={actionProcessingId === activeAction.id}
+                          className="btn btn-secondary"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            color: '#ef4444',
+                            fontSize: '0.8rem',
+                            padding: '0.45rem 0.85rem',
+                          }}
+                        >
+                          <X size={14} />
+                          <span>Reject</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingAction(activeAction)}
+                          disabled={actionProcessingId === activeAction.id}
+                          className="btn btn-secondary"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            fontSize: '0.8rem',
+                            padding: '0.45rem 0.85rem',
+                          }}
+                        >
+                          <Pencil size={14} />
+                          <span>Edit Modal</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(activeAction.id)}
+                          disabled={actionProcessingId === activeAction.id}
+                          className="btn btn-primary"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            fontSize: '0.8rem',
+                            padding: '0.45rem 1rem',
+                            background: '#10b981',
+                            borderColor: '#10b981',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                          }}
+                        >
+                          <Check size={15} />
+                          <span>{actionProcessingId === activeAction.id ? 'Approving...' : 'Approve Draft'}</span>
+                        </button>
+                      </div>
+                    ) : (activeAction.status === 'APPROVED' || activeAction.status === 'READY_FOR_MANUAL') ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPublish(activeAction)}
+                        className="btn btn-primary"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          backgroundColor: '#0284c7',
+                          borderColor: '#0284c7',
+                          fontSize: '0.825rem',
+                          padding: '0.45rem 1rem',
+                        }}
+                      >
+                        <Send size={14} />
+                        <span>Dispatch Outreach Now</span>
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Action status: <strong>{activeAction.status}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            /* STREAM CARDS VIEW */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {filteredActions.map((action) => (
                 <ActionApprovalCard
                   key={action.id}
@@ -879,6 +1625,8 @@ Return ONLY the ready-to-publish post content.`;
       {activeTab === 'analytics' && (
         <AnalyticsMemoryTab
           summary={analyticsSummary}
+          people={people}
+          actions={actions}
           onRefresh={refreshAll}
         />
       )}

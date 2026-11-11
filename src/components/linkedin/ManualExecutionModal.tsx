@@ -33,6 +33,8 @@ export const ManualExecutionModal: React.FC<ManualExecutionModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [dispatchSuccess, setDispatchSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen || !action) return null;
@@ -45,6 +47,61 @@ export const ManualExecutionModal: React.FC<ManualExecutionModalProps> = ({
 
   const charCount = (action.payload.content || '').length;
   const isConnectionOverLimit = isConnection && charCount > 300;
+
+  const handleAutoDispatchViaExtension = () => {
+    setIsDispatching(true);
+    setError(null);
+
+    const onResult = async (event: MessageEvent) => {
+      if (
+        event.data &&
+        event.data.source === 'myces-companion' &&
+        event.data.type === 'MYCES_DISPATCH_RESULT'
+      ) {
+        window.removeEventListener('message', onResult);
+        setIsDispatching(false);
+        if (event.data.success) {
+          setDispatchSuccess(true);
+          await onConfirmPublished(action.id, undefined, action.payload.concept_id);
+          setTimeout(() => {
+            onClose();
+          }, 1500);
+        } else {
+          setError(
+            event.data.error ||
+              'Extension could not auto-dispatch. You can still use the manual steps below.'
+          );
+        }
+      }
+    };
+
+    window.addEventListener('message', onResult);
+
+    const rawContent = (action.payload.content || '').trim();
+    const sanitizedContent = rawContent.replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, '').trim();
+
+    window.postMessage(
+      {
+        source: 'myces-web',
+        type: 'MYCES_DISPATCH_MESSAGE',
+        actionId: action.id,
+        recipientUrl: action.payload.recipient_profile_url || action.payload.target_url,
+        content: sanitizedContent,
+        recipientName: action.payload.recipient_name,
+      },
+      '*'
+    );
+
+    setTimeout(() => {
+      setIsDispatching((current) => {
+        if (current) {
+          window.removeEventListener('message', onResult);
+          return false;
+        }
+        return false;
+      });
+    }, 25000);
+  };
 
   const handleCopy = async () => {
     try {
@@ -252,6 +309,66 @@ export const ManualExecutionModal: React.FC<ManualExecutionModalProps> = ({
                   <ExternalLink size={12} />
                 </a>
               )}
+            </div>
+          )}
+
+          {/* Option 1: 1-Click Extension Dispatch */}
+          {isMessage && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%)',
+                border: '1px solid #0284c7',
+                borderRadius: '0.65rem',
+                padding: '0.9rem 1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#38bdf8', fontWeight: 700, fontSize: '0.9rem' }}>
+                  <span>⚡</span>
+                  <span>1-Click Extension Dispatch (Recommended)</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                  Opens {action.payload.recipient_name || 'recipient'}'s profile tab, auto-fills message, and sends without manual typing.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoDispatchViaExtension}
+                disabled={isDispatching || isSubmitting || dispatchSuccess}
+                style={{
+                  background: dispatchSuccess ? '#059669' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  padding: '0.6rem 1.1rem',
+                  fontSize: '0.825rem',
+                  fontWeight: 700,
+                  cursor: isDispatching ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)',
+                }}
+              >
+                {isDispatching ? (
+                  <span>⏳ Dispatching...</span>
+                ) : dispatchSuccess ? (
+                  <>
+                    <Check size={15} />
+                    <span>Sent!</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={15} />
+                    <span>🚀 1-Click Send</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 

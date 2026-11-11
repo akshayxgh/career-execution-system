@@ -88,6 +88,7 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH') {
       const {
         id,
+        full_name,
         connection_status,
         interaction_notes,
         tags,
@@ -103,6 +104,7 @@ export default async function handler(req, res) {
       }
 
       const updates = { updated_at: new Date().toISOString() };
+      if (full_name !== undefined) updates.full_name = full_name.trim();
       if (connection_status !== undefined) updates.connection_status = connection_status;
       if (interaction_notes !== undefined) updates.interaction_notes = interaction_notes;
       if (tags !== undefined) updates.tags = tags;

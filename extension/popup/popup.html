@@ -44,10 +44,19 @@
       </button>
     </div>
 
-    <!-- 1-Click Voyager API Sync Button -->
-    <div style="margin-top: 8px;">
-      <button id="btn-sync-voyager" class="btn btn-sm" title="Instantly sync newly accepted LinkedIn connections with MYCES via Voyager API" style="font-size: 11px; padding: 5px 8px; width: 100%; border: 1px solid #0369a1; background: #0f172a; color: #38bdf8; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600;">
-        <span>🔄</span> <span id="sync-voyager-text">Sync Accepted Invites</span>
+    <!-- 1-Click LinkedIn Sync Command Center (2x2 Grid) -->
+    <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+      <button id="btn-sync-voyager" class="btn btn-sm" title="Check accepted invites & auto-draft recruiter greetings" style="font-size: 11px; padding: 6px 4px; border: 1px solid #0369a1; background: #0f172a; color: #38bdf8; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
+        <span>🔄</span> <span id="sync-voyager-text">Accepted Invites</span>
+      </button>
+      <button id="btn-sync-sent" class="btn btn-sm" title="Sync all pending sent requests from LinkedIn into MYCES" style="font-size: 11px; padding: 6px 4px; border: 1px solid #0d9488; background: #042f2e; color: #2dd4bf; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
+        <span>📤</span> <span id="sync-sent-text">Sent Requests</span>
+      </button>
+      <button id="btn-sync-all-connections" class="btn btn-sm" title="Import all 1st-degree connections from LinkedIn to MYCES directory" style="font-size: 11px; padding: 6px 4px; border: 1px solid #2563eb; background: #172554; color: #60a5fa; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
+        <span>👥</span> <span id="sync-all-conn-text">All Connections</span>
+      </button>
+      <button id="btn-pull-employment" class="btn btn-sm" title="Pull past employers & alumni tags for Company Radar" style="font-size: 11px; padding: 6px 4px; border: 1px solid #7c3aed; background: #1e1136; color: #c084fc; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; text-align: center;">
+        <span>🎓</span> <span id="pull-employment-text">Career History</span>
       </button>
     </div>
 

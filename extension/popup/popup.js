@@ -238,29 +238,111 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // LINKEDIN VOYAGER API 1-CLICK SYNC
+    // LINKEDIN VOYAGER API 1-CLICK SYNC COMMAND CENTER
     // ==========================================
     const btnSyncVoyager = document.getElementById('btn-sync-voyager');
     const syncText = document.getElementById('sync-voyager-text');
+    const btnSyncSent = document.getElementById('btn-sync-sent');
+    const syncSentText = document.getElementById('sync-sent-text');
+    const btnSyncAllConn = document.getElementById('btn-sync-all-connections');
+    const syncAllConnText = document.getElementById('sync-all-conn-text');
+    const btnPullEmployment = document.getElementById('btn-pull-employment');
+    const pullEmploymentText = document.getElementById('pull-employment-text');
 
+    // 1. Sync Accepted Invites
     if (btnSyncVoyager) {
       btnSyncVoyager.addEventListener('click', () => {
         btnSyncVoyager.disabled = true;
-        if (syncText) syncText.textContent = 'Syncing via Voyager API...';
+        if (syncText) syncText.textContent = 'Syncing...';
 
         chrome.runtime.sendMessage({ action: 'SYNC_ACCEPTED_CONNECTIONS' }, (res) => {
           btnSyncVoyager.disabled = false;
           if (chrome.runtime.lastError) {
             if (syncText) syncText.textContent = 'Error syncing';
           } else if (res && res.updated > 0) {
-            if (syncText) syncText.textContent = `✓ Synced ${res.updated} Accepted!`;
+            if (syncText) syncText.textContent = `✓ +${res.updated} Accepted!`;
           } else {
-            if (syncText) syncText.textContent = '✓ Already Up to Date';
+            if (syncText) syncText.textContent = '✓ Up to Date';
           }
 
           setTimeout(() => {
-            if (syncText) syncText.textContent = 'Sync Accepted Invites';
+            if (syncText) syncText.textContent = 'Accepted Invites';
           }, 3500);
+        });
+      });
+    }
+
+    // 2. Sync Sent Requests (Invitations)
+    if (btnSyncSent) {
+      btnSyncSent.addEventListener('click', () => {
+        btnSyncSent.disabled = true;
+        if (syncSentText) syncSentText.textContent = 'Syncing Sent...';
+
+        chrome.runtime.sendMessage({ action: 'SYNC_SENT_REQUESTS' }, (res) => {
+          btnSyncSent.disabled = false;
+          if (chrome.runtime.lastError) {
+            if (syncSentText) syncSentText.textContent = 'Error syncing';
+          } else if (res && res.count > 0) {
+            if (syncSentText) syncSentText.textContent = `✓ Synced ${res.count}!`;
+          } else if (res && res.method === 'TAB_OPENED') {
+            if (syncSentText) syncSentText.textContent = '✓ Scanning Tab...';
+          } else {
+            if (syncSentText) syncSentText.textContent = '✓ Up to Date';
+          }
+
+          setTimeout(() => {
+            if (syncSentText) syncSentText.textContent = 'Sent Requests';
+          }, 3500);
+        });
+      });
+    }
+
+    // 3. Sync All 1st-Degree Connections
+    if (btnSyncAllConn) {
+      btnSyncAllConn.addEventListener('click', () => {
+        btnSyncAllConn.disabled = true;
+        if (syncAllConnText) syncAllConnText.textContent = 'Syncing 1st-deg...';
+
+        chrome.runtime.sendMessage({ action: 'SYNC_ALL_CONNECTIONS' }, (res) => {
+          btnSyncAllConn.disabled = false;
+          if (chrome.runtime.lastError) {
+            if (syncAllConnText) syncAllConnText.textContent = 'Error syncing';
+          } else if (res && (res.newlyAdded > 0 || res.updated > 0)) {
+            const added = res.newlyAdded || 0;
+            const updated = res.updated || 0;
+            if (syncAllConnText) syncAllConnText.textContent = `✓ +${added} Added (${res.total})`;
+          } else if (res && res.total > 0) {
+            if (syncAllConnText) syncAllConnText.textContent = `✓ ${res.total} Checked`;
+          } else {
+            if (syncAllConnText) syncAllConnText.textContent = '✓ Up to Date';
+          }
+
+          setTimeout(() => {
+            if (syncAllConnText) syncAllConnText.textContent = 'All Connections';
+          }, 4000);
+        });
+      });
+    }
+
+    // 4. Pull All Employment History
+    if (btnPullEmployment) {
+      btnPullEmployment.addEventListener('click', () => {
+        btnPullEmployment.disabled = true;
+        if (pullEmploymentText) pullEmploymentText.textContent = 'Pulling...';
+
+        chrome.runtime.sendMessage({ action: 'PULL_ALL_EMPLOYMENT_HISTORY' }, (res) => {
+          btnPullEmployment.disabled = false;
+          if (chrome.runtime.lastError) {
+            if (pullEmploymentText) pullEmploymentText.textContent = 'Error pulling';
+          } else if (res && res.updated > 0) {
+            if (pullEmploymentText) pullEmploymentText.textContent = `✓ Mapped ${res.updated}!`;
+          } else {
+            if (pullEmploymentText) pullEmploymentText.textContent = '✓ Up to Date';
+          }
+
+          setTimeout(() => {
+            if (pullEmploymentText) pullEmploymentText.textContent = 'Career History';
+          }, 4000);
         });
       });
     }

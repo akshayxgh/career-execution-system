@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   UserPlus,
   Search,
@@ -6,11 +6,19 @@ import {
   Sparkles,
   MessageSquare,
   Users,
-  Building2,
   Trash2,
   Plus,
   X,
   CheckCircle,
+  LayoutGrid,
+  List,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  RefreshCw,
+  Wand2,
+  Send,
+  UserCheck,
 } from 'lucide-react';
 import type {
   LinkedInPerson,
@@ -19,6 +27,7 @@ import type {
 } from '../../types/linkedin';
 import { linkedinAgentService } from '../../services/linkedinAgentService';
 import { copilotService } from '../../services/copilotService';
+import { networkHygieneService, type HygieneResult } from '../../services/networkHygieneService';
 
 interface NetworkingTabProps {
   people: LinkedInPerson[];
@@ -27,6 +36,8 @@ interface NetworkingTabProps {
   onActionProposed: () => void;
 }
 
+type FilterPill = 'ALL' | 'RECRUITERS' | 'INTRO_SENT' | 'PENDING_INVITES' | 'CONNECTED';
+
 export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   people,
   context,
@@ -34,10 +45,18 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   onActionProposed,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activePill, setActivePill] = useState<FilterPill>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isGeneratingFor, setIsGeneratingFor] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // AI Hygiene Agent State
+  const [isHygieneRunning, setIsHygieneRunning] = useState(false);
+  const [hygieneProgress, setHygieneProgress] = useState<string | null>(null);
+  const [hygieneResult, setHygieneResult] = useState<HygieneResult | null>(null);
+  const [isHygieneModalOpen, setIsHygieneModalOpen] = useState(false);
 
   // New Contact Form State
   const [newName, setNewName] = useState('');
@@ -49,23 +68,74 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   const [newStatus, setNewStatus] = useState<ConnectionStatus>('NOT_CONNECTED');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const checkIsIntroSent = (p: LinkedInPerson) => {
+  // Verification helper: Intro Sent badge is strictly scoped to tags
+  const checkIsIntroSent = (p: LinkedInPerson): boolean => {
     return Boolean(Array.isArray(p.tags) && p.tags.includes('Intro Sent'));
   };
 
-  const filteredPeople = people.filter((p) => {
-    const isIntro = checkIsIntroSent(p);
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'INTRO_SENT' ? isIntro : p.connection_status === statusFilter);
-    const matchesSearch =
-      !searchQuery.trim() ||
-      p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.headline && p.headline.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.company && p.company.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.role && p.role.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
+  // Recruiter detection helper
+  const checkIsRecruiter = (p: LinkedInPerson): boolean => {
+    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+    return (
+      text.includes('recruiter') ||
+      text.includes('talent acquisition') ||
+      text.includes('hiring') ||
+      text.includes('sourcer') ||
+      text.includes('staffing') ||
+      text.includes('human resources') ||
+      text.includes('hrbp')
+    );
+  };
+
+  // Pipeline stage: 0 = Not Connected, 1 = Invited, 2 = Connected, 3 = Intro Sent
+  const getPipelineStage = (p: LinkedInPerson): number => {
+    if (checkIsIntroSent(p)) return 3;
+    if (p.connection_status === 'CONNECTED') return 2;
+    if (p.connection_status === 'INVITATION_SENT') return 1;
+    return 0;
+  };
+
+  // Live filter counts
+  const counts = useMemo(() => {
+    const all = people.length;
+    const recruiters = people.filter(checkIsRecruiter).length;
+    const introSent = people.filter(checkIsIntroSent).length;
+    const pendingInvites = people.filter((p) => p.connection_status === 'INVITATION_SENT').length;
+    const connected = people.filter((p) => p.connection_status === 'CONNECTED').length;
+    return { all, recruiters, introSent, pendingInvites, connected };
+  }, [people]);
+
+  // Filtered dataset
+  const filteredPeople = useMemo(() => {
+    return people.filter((p) => {
+      const isIntro = checkIsIntroSent(p);
+      const isRec = checkIsRecruiter(p);
+
+      // Pill filter
+      if (activePill === 'RECRUITERS' && !isRec) return false;
+      if (activePill === 'INTRO_SENT' && !isIntro) return false;
+      if (activePill === 'PENDING_INVITES' && p.connection_status !== 'INVITATION_SENT') return false;
+      if (activePill === 'CONNECTED' && p.connection_status !== 'CONNECTED') return false;
+
+      // Dropdown status filter
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'INTRO_SENT' && !isIntro) return false;
+        if (statusFilter !== 'INTRO_SENT' && p.connection_status !== statusFilter) return false;
+      }
+
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = p.full_name.toLowerCase().includes(q);
+        const matchesHeadline = Boolean(p.headline && p.headline.toLowerCase().includes(q));
+        const matchesCompany = Boolean(p.company && p.company.toLowerCase().includes(q));
+        const matchesRole = Boolean(p.role && p.role.toLowerCase().includes(q));
+        if (!matchesName && !matchesHeadline && !matchesCompany && !matchesRole) return false;
+      }
+
+      return true;
+    });
+  }, [people, activePill, statusFilter, searchQuery]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -118,29 +188,128 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     }
   };
 
-  // Generate Personalized Connection Note (Strictly <= 300 chars)
+  const handleRunHygiene = async () => {
+    if (people.length === 0) {
+      showToast('No contacts in directory to clean.');
+      return;
+    }
+
+    try {
+      setIsHygieneRunning(true);
+      setHygieneProgress('Auditing contact names, vanity slugs, and tags...');
+      const res = await networkHygieneService.runNetworkHygiene(people, (msg) => {
+        setHygieneProgress(msg);
+      });
+      setHygieneResult(res);
+      setIsHygieneModalOpen(true);
+      showToast(`Hygiene complete: ${res.namesCleaned} names cleaned, ${res.contactsTagged} contacts tagged.`);
+      await onRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Hygiene run failed';
+      alert(msg);
+    } finally {
+      setIsHygieneRunning(false);
+      setHygieneProgress(null);
+    }
+  };
+
+  // Sync Sent Requests (Dispatches to Companion Extension with automated Sent Manager fallback)
+  const [isSyncingSent, setIsSyncingSent] = useState(false);
+  const [isSyncingConnections, setIsSyncingConnections] = useState(false);
+
+  const handleSyncSentRequestsWeb = () => {
+    setIsSyncingSent(true);
+    showToast('Dispatching Sent Requests Sync to Companion Extension...');
+
+    let handled = false;
+    const listener = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'MYCES_SYNC_SENT_RESULT') {
+        handled = true;
+        window.removeEventListener('message', listener);
+        setIsSyncingSent(false);
+        if (event.data.count > 0) {
+          showToast(`✓ Successfully synced ${event.data.count} sent invitations!`);
+          onRefresh();
+        } else if (event.data.method === 'TAB_OPENED') {
+          showToast('Opened LinkedIn Sent Manager to auto-scan & import invitations.');
+        } else {
+          showToast('Sent requests already up to date.');
+        }
+      }
+    };
+
+    window.addEventListener('message', listener);
+    window.postMessage({ type: 'MYCES_SYNC_SENT_REQUESTS' }, '*');
+
+    // Friendly fallback if extension is not actively bridged
+    setTimeout(() => {
+      if (!handled) {
+        window.removeEventListener('message', listener);
+        setIsSyncingSent(false);
+        window.open('https://www.linkedin.com/mynetwork/invitation-manager/sent/?myces_sync=1', '_blank');
+        showToast('Opened LinkedIn Sent Manager. The Job Autofill Pro extension will scan & import your sent requests.');
+      }
+    }, 2000);
+  };
+
+  const handleSyncAllConnectionsWeb = () => {
+    setIsSyncingConnections(true);
+    showToast('Querying 1st-degree connections via Voyager API...');
+
+    let handled = false;
+    const listener = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'MYCES_SYNC_CONNECTIONS_RESULT') {
+        handled = true;
+        window.removeEventListener('message', listener);
+        setIsSyncingConnections(false);
+        if (event.data.newlyAdded > 0 || event.data.updated > 0) {
+          showToast(`✓ Synced ${event.data.total} connections (+${event.data.newlyAdded} new, ${event.data.updated} updated)!`);
+          onRefresh();
+        } else if (event.data.total > 0) {
+          showToast(`✓ Verified ${event.data.total} connections up to date.`);
+          onRefresh();
+        } else {
+          showToast(event.data.message || 'Make sure you are logged into LinkedIn to sync connections.');
+        }
+      }
+    };
+
+    window.addEventListener('message', listener);
+    window.postMessage({ type: 'MYCES_SYNC_ALL_CONNECTIONS' }, '*');
+
+    setTimeout(() => {
+      if (!handled) {
+        window.removeEventListener('message', listener);
+        setIsSyncingConnections(false);
+        showToast('Please open the Job Autofill Pro extension popup in your browser to run 1-Click Connection Sync.');
+      }
+    }, 3500);
+  };
+
+  // Generate Personalized Connection Note (Strictly Akshay Kumar Sarkar Persona, <= 280 chars, NO quotes)
   const handleGenerateConnectionNote = async (person: LinkedInPerson) => {
     try {
       setIsGeneratingFor(person.id);
       const skillsStr = (context?.skills || []).slice(0, 3).join(', ');
-      const prompt = `You are a Senior Principal Data Engineer connecting with a peer/leader on LinkedIn.
+      const prompt = `You are Akshay Kumar Sarkar, a Business Automation & Analytics Professional with 7+ years of experience in US healthcare insurance operations, analytics, reporting, and process automation (Power BI, SQL, Excel/VBA, Power Automate, Python).
 Target Name: ${person.full_name}
-Target Role: ${person.role || person.headline || 'Engineering Leader'}
-Target Company: ${person.company || 'Top Tech'}
-Candidate Stack: ${skillsStr || 'Power BI, DAX, Fabric, SQL'}
+Target Role: ${person.role || person.headline || 'Professional'}
+Target Company: ${person.company || 'Leading Organization'}
+Primary Tech: ${skillsStr || 'Power BI, SQL, Process Automation, Power Automate'}
 
 TASK:
 Write a personalized, humble, authentic LinkedIn connection request note.
 MANDATORY RULES:
-1. MUST BE STRICTLY UNDER 280 CHARACTERS TOTAL (including spaces). This is a hard limit for LinkedIn.
-2. Mention their work/company or common technical interest.
-3. No cheesy sales pitch, no fluff.
-4. Output ONLY the raw message text.`;
+1. STRICTLY UNDER 280 CHARACTERS TOTAL (including spaces). This is a hard limit for LinkedIn.
+2. DO NOT use any quotation marks anywhere in the message (no ", ', “, ”).
+3. Mention their organization or shared interest in business intelligence, operations analytics, or workflow automation.
+4. No cheesy sales pitch or generic fluff.
+5. Output ONLY the raw message text.`;
 
       const rawNote = await copilotService.generateMultimodalResponse(prompt);
-      let note = rawNote.trim().replace(/^["']|["']$/g, '');
-      if (note.length > 295) {
-        note = note.slice(0, 290) + '...';
+      let note = rawNote.trim().replace(/["'“”]/g, '');
+      if (note.length > 280) {
+        note = note.slice(0, 277) + '...';
       }
 
       await linkedinAgentService.createProposedAction({
@@ -153,7 +322,7 @@ MANDATORY RULES:
           person_id: person.id,
           content: note,
         },
-        reasoning: `Personalized connection invitation crafted for ${person.full_name} (${person.role || 'Leader'} at ${person.company || 'Tech'}). Tailored to under 300 chars.`,
+        reasoning: `Personalized connection invitation crafted for ${person.full_name} (${person.role || 'Leader'} at ${person.company || 'Tech'}). Tailored to under 280 chars.`,
         target_id: person.id,
       });
 
@@ -167,25 +336,26 @@ MANDATORY RULES:
     }
   };
 
-  // Generate Direct Outreach / Follow-up Message
+  // Generate Direct Outreach / Follow-up Message (Akshay Kumar Sarkar Persona, NO quotes)
   const handleGenerateMessage = async (person: LinkedInPerson) => {
     try {
       setIsGeneratingFor(person.id);
-      const project = context?.projects?.[0];
-      const prompt = `You are an expert Data Engineer reaching out to ${person.full_name} (${person.role || 'Leader'} at ${person.company || 'their organization'}).
-Candidate Experience: 4.5+ years building scalable BI & Lakehouse architectures.
-${project ? `Reference Project: ${project.name} (${project.technologiesUsed?.join(', ')})` : ''}
+      const isIntro = checkIsIntroSent(person);
+      const prompt = `You are Akshay Kumar Sarkar, a Business Automation & Analytics Professional with 7+ years of experience in US healthcare insurance operations, analytics, reporting, and process automation (Power BI, SQL, Excel/VBA, Power Automate, Python).
+Reaching out to: ${person.full_name} (${person.role || 'Leader'} at ${person.company || 'their organization'}).
+Message Intent: ${isIntro ? 'Follow-up on previous introduction or conversation' : 'Direct value-driven recruiter or peer intro message'}.
 
 TASK:
-Write a concise, high-value direct message (100-140 words).
+Write a concise, high-value professional message (80-120 words).
 Focus on:
 1. Warm, respectful practitioner tone.
-2. Shared engineering challenges in data analytics or Fabric/BI.
-3. Concrete value without demanding an interview or favor.
-4. Output ONLY the raw message content.`;
+2. Shared challenges in business analytics, operations reporting, Power BI, or workflow automation.
+3. DO NOT use quotation marks around greetings or anywhere in the text (no ", ', “, ”).
+4. Concrete value without demanding an interview or favor.
+5. Output ONLY the raw message content.`;
 
       const rawMsg = await copilotService.generateMultimodalResponse(prompt);
-      const msgContent = rawMsg.trim().replace(/^["']|["']$/g, '');
+      const msgContent = rawMsg.trim().replace(/["'“”]/g, '');
 
       await linkedinAgentService.createProposedAction({
         action_type: 'MESSAGE',
@@ -197,7 +367,7 @@ Focus on:
           person_id: person.id,
           content: msgContent,
         },
-        reasoning: `Direct outreach message proposed for ${person.full_name} focusing on technical alignment and project proof.`,
+        reasoning: `${isIntro ? 'Follow-up' : 'Direct outreach'} message proposed for ${person.full_name} tailored to business analytics & operations leadership.`,
         target_id: person.id,
       });
 
@@ -211,17 +381,51 @@ Focus on:
     }
   };
 
-  const getStatusBadge = (status: ConnectionStatus) => {
-    switch (status) {
-      case 'CONNECTED':
-        return { label: 'Connected', bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
-      case 'INVITATION_SENT':
-        return { label: 'Invitation Sent', bg: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', border: 'rgba(2, 132, 199, 0.3)' };
-      case 'PENDING_OUTREACH':
-        return { label: 'Pending Outreach', bg: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
-      default:
-        return { label: 'Not Connected', bg: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)', border: 'var(--border-color)' };
-    }
+  // Render relationship pipeline tracker
+  const renderPipeline = (stage: number) => {
+    const steps = [
+      { num: 1, label: 'Invited' },
+      { num: 2, label: 'Connected' },
+      { num: 3, label: 'Intro Sent' },
+    ];
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        {steps.map((st, i) => {
+          const isDone = stage >= st.num;
+          const isCurrent = stage === st.num;
+          return (
+            <React.Fragment key={st.label}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.675rem',
+                  fontWeight: isCurrent ? 700 : 500,
+                  color: isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)',
+                  opacity: isDone ? 1 : 0.4,
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)',
+                    boxShadow: isCurrent ? `0 0 6px ${st.num === 3 ? '#38bdf8' : '#10b981'}` : 'none',
+                  }}
+                />
+                <span>{st.label}</span>
+              </div>
+              {i < steps.length - 1 && (
+                <ArrowRight size={10} style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -250,47 +454,127 @@ Focus on:
         </div>
       )}
 
-      {/* Target Companies Quick Radar from MYCES applications */}
-      {context?.targetCompanies && context.targetCompanies.length > 0 && (
-        <div
-          className="card"
+      {/* Filter Pills with Live Counters */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActivePill('ALL')}
           style={{
-            padding: '0.85rem 1.15rem',
+            padding: '0.35rem 0.75rem',
+            borderRadius: '999px',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: activePill === 'ALL' ? '1px solid #0a66c2' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: activePill === 'ALL' ? 'rgba(10, 102, 194, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+            color: activePill === 'ALL' ? '#38bdf8' : 'var(--text-muted)',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.75rem',
-            flexWrap: 'wrap',
-            background: 'rgba(2, 132, 199, 0.04)',
-            border: '1px solid rgba(2, 132, 199, 0.2)',
+            gap: '0.35rem',
+            transition: 'all 0.15s ease',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0284c7' }}>
-            <Building2 size={16} />
-            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>
-              MYCES Active Target Companies:
-            </span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-            {context.targetCompanies.slice(0, 8).map((comp) => (
-              <span
-                key={comp}
-                style={{
-                  fontSize: '0.725rem',
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: '999px',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)',
-                }}
-              >
-                {comp}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+          <span>All</span>
+          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.all})</span>
+        </button>
 
-      {/* Top Action Bar: Search, Filters, Add Button */}
+        <button
+          type="button"
+          onClick={() => setActivePill('RECRUITERS')}
+          style={{
+            padding: '0.35rem 0.75rem',
+            borderRadius: '999px',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: activePill === 'RECRUITERS' ? '1px solid #8b5cf6' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: activePill === 'RECRUITERS' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+            color: activePill === 'RECRUITERS' ? '#c084fc' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>🎯 Recruiters</span>
+          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.recruiters})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActivePill('INTRO_SENT')}
+          style={{
+            padding: '0.35rem 0.75rem',
+            borderRadius: '999px',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: activePill === 'INTRO_SENT' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: activePill === 'INTRO_SENT' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+            color: activePill === 'INTRO_SENT' ? '#38bdf8' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>💬 Intro Sent</span>
+          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.introSent})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActivePill('PENDING_INVITES')}
+          style={{
+            padding: '0.35rem 0.75rem',
+            borderRadius: '999px',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: activePill === 'PENDING_INVITES' ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: activePill === 'PENDING_INVITES' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+            color: activePill === 'PENDING_INVITES' ? '#fbbf24' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>⏳ Pending Invites</span>
+          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.pendingInvites})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActivePill('CONNECTED')}
+          style={{
+            padding: '0.35rem 0.75rem',
+            borderRadius: '999px',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: activePill === 'CONNECTED' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: activePill === 'CONNECTED' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+            color: activePill === 'CONNECTED' ? '#34d399' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>🤝 Connected</span>
+          <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.connected})</span>
+        </button>
+      </div>
+
+      {/* Top Controls: Search Bar, Status Dropdown, View Mode Toggle, Add Button */}
       <div
         style={{
           display: 'flex',
@@ -321,8 +605,8 @@ Focus on:
                 width: '100%',
                 padding: '0.5rem 0.75rem 0.5rem 2.2rem',
                 borderRadius: '0.5rem',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-secondary)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: 'rgba(15, 23, 42, 0.6)',
                 color: 'var(--text-main)',
                 fontSize: '0.85rem',
               }}
@@ -335,51 +619,213 @@ Focus on:
             style={{
               padding: '0.5rem 0.75rem',
               borderRadius: '0.5rem',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-secondary)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'rgba(15, 23, 42, 0.6)',
               color: 'var(--text-main)',
               fontSize: '0.825rem',
             }}
           >
-            <option value="ALL">All Statuses ({people.length})</option>
+            <option value="ALL">All Statuses</option>
             <option value="INTRO_SENT">💬 Intro Sent</option>
-            <option value="NOT_CONNECTED">Not Connected</option>
-            <option value="PENDING_OUTREACH">Pending Outreach</option>
-            <option value="INVITATION_SENT">Invitation Sent</option>
             <option value="CONNECTED">Connected</option>
+            <option value="INVITATION_SENT">Invitation Sent</option>
+            <option value="PENDING_OUTREACH">Pending Outreach</option>
+            <option value="NOT_CONNECTED">Not Connected</option>
           </select>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="btn btn-primary"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.5rem 0.9rem',
-            fontSize: '0.825rem',
-            background: '#0a66c2',
-            borderColor: '#0a66c2',
-          }}
-        >
-          <UserPlus size={15} />
-          <span>Add New Contact</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {/* View Mode Toggle: Grid vs Table */}
+          <div
+            style={{
+              display: 'flex',
+              background: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '0.5rem',
+              padding: '2px',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              style={{
+                padding: '0.4rem 0.65rem',
+                borderRadius: '0.35rem',
+                border: 'none',
+                background: viewMode === 'grid' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                color: viewMode === 'grid' ? '#38bdf8' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                fontSize: '0.775rem',
+                fontWeight: 600,
+              }}
+              title="Grid View"
+            >
+              <LayoutGrid size={14} />
+              <span>Grid</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              style={{
+                padding: '0.4rem 0.65rem',
+                borderRadius: '0.35rem',
+                border: 'none',
+                background: viewMode === 'table' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                color: viewMode === 'table' ? '#38bdf8' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                fontSize: '0.775rem',
+                fontWeight: 600,
+              }}
+              title="Table View"
+            >
+              <List size={14} />
+              <span>Table</span>
+            </button>
+          </div>
+
+          {/* Sync Sent Requests */}
+          <button
+            type="button"
+            onClick={handleSyncSentRequestsWeb}
+            disabled={isSyncingSent}
+            className="btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.5rem 0.8rem',
+              fontSize: '0.825rem',
+              background: 'rgba(13, 148, 136, 0.15)',
+              border: '1px solid rgba(13, 148, 136, 0.45)',
+              color: '#2dd4bf',
+              borderRadius: '0.5rem',
+              cursor: isSyncingSent ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              transition: 'all 0.15s ease',
+            }}
+            title="Sync all pending sent requests from LinkedIn into MYCES directory"
+          >
+            {isSyncingSent ? (
+              <>
+                <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Syncing Sent...</span>
+              </>
+            ) : (
+              <>
+                <Send size={14} />
+                <span>Sync Sent Requests</span>
+              </>
+            )}
+          </button>
+
+          {/* Sync 1st-Degree Connections */}
+          <button
+            type="button"
+            onClick={handleSyncAllConnectionsWeb}
+            disabled={isSyncingConnections}
+            className="btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.5rem 0.8rem',
+              fontSize: '0.825rem',
+              background: 'rgba(37, 99, 235, 0.15)',
+              border: '1px solid rgba(59, 130, 246, 0.45)',
+              color: '#60a5fa',
+              borderRadius: '0.5rem',
+              cursor: isSyncingConnections ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              transition: 'all 0.15s ease',
+            }}
+            title="Import all 1st-degree connections from LinkedIn to MYCES directory via Voyager API"
+          >
+            {isSyncingConnections ? (
+              <>
+                <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Syncing Conn...</span>
+              </>
+            ) : (
+              <>
+                <UserCheck size={14} />
+                <span>Sync Connections</span>
+              </>
+            )}
+          </button>
+
+          {/* AI Network Hygiene Action */}
+          <button
+            type="button"
+            onClick={handleRunHygiene}
+            disabled={isHygieneRunning}
+            className="btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.825rem',
+              background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(59, 130, 246, 0.2))',
+              border: '1px solid rgba(168, 85, 247, 0.45)',
+              color: '#c084fc',
+              borderRadius: '0.5rem',
+              cursor: isHygieneRunning ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              transition: 'all 0.15s ease',
+            }}
+            title="Clean bloated names (strip emojis, pronouns, credential spam), auto-tag domains, deduplicate contacts"
+          >
+            {isHygieneRunning ? (
+              <>
+                <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>{hygieneProgress ? 'Cleaning...' : 'Running...'}</span>
+              </>
+            ) : (
+              <>
+                <Wand2 size={14} />
+                <span>Run AI Hygiene</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="btn btn-primary"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.825rem',
+              background: '#0a66c2',
+              borderColor: '#0a66c2',
+            }}
+          >
+            <UserPlus size={15} />
+            <span>Add Contact</span>
+          </button>
+        </div>
       </div>
 
-      {/* Directory Grid */}
+      {/* Directory Content */}
       {filteredPeople.length === 0 ? (
         <div
-          className="card"
           style={{
             padding: '3rem 1.5rem',
             textAlign: 'center',
-            border: '1px dashed var(--border-color)',
+            border: '1px dashed rgba(255, 255, 255, 0.12)',
+            borderRadius: '0.75rem',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '0.75rem',
+            background: 'rgba(15, 23, 42, 0.4)',
           }}
         >
           <Users size={32} color="var(--text-muted)" />
@@ -387,7 +833,7 @@ Focus on:
             {searchQuery ? 'No contacts match your query.' : 'No Tracked Contacts Yet'}
           </h4>
           <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-muted)', maxWidth: '420px' }}>
-            Add recruiters, hiring managers, and senior engineers from your target companies to propose personalized AI connection requests and follow-ups.
+            Add recruiters, hiring managers, and data analytics peers to dispatch 1-Click connection requests and follow-ups.
           </p>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -397,57 +843,294 @@ Focus on:
             <Plus size={14} style={{ display: 'inline', marginRight: '0.3rem' }} /> Add First Contact
           </button>
         </div>
+      ) : viewMode === 'table' ? (
+        /* TABLE VIEW */
+        <div
+          style={{
+            overflowX: 'auto',
+            borderRadius: '0.75rem',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(6, 10, 18, 0.4)' }}>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Contact</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Company</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Role & Headline</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Relationship Pipeline</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPeople.map((person) => {
+                const stage = getPipelineStage(person);
+                const isProcessing = isGeneratingFor === person.id;
+                const isIntro = checkIsIntroSent(person);
+                const isConnected = person.connection_status === 'CONNECTED';
+
+                return (
+                  <tr
+                    key={person.id}
+                    style={{
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <div
+                          style={{
+                            width: '2rem',
+                            height: '2rem',
+                            borderRadius: '50%',
+                            background: checkIsRecruiter(person)
+                              ? 'linear-gradient(135deg, #8b5cf6, #6366f1)'
+                              : 'linear-gradient(135deg, #0a66c2, #0284c7)',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {person.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{person.full_name}</span>
+                            {checkIsRecruiter(person) && (
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '4px',
+                                  background: 'rgba(139, 92, 246, 0.15)',
+                                  color: '#c084fc',
+                                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Recruiter
+                              </span>
+                            )}
+                          </div>
+                          <a
+                            href={person.profile_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '0.725rem',
+                              color: '#0a66c2',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <span>Profile</span>
+                            <ExternalLink size={10} />
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      {person.company ? (
+                        <span
+                          style={{
+                            fontSize: '0.725rem',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '6px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            color: 'var(--text-main)',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {person.company}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                      )}
+                    </td>
+
+                    <td style={{ padding: '0.75rem 1rem', maxWidth: '260px' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                        {person.role || 'Analytics Peer'}
+                      </div>
+                      {person.headline && (
+                        <div
+                          style={{
+                            fontSize: '0.725rem',
+                            color: 'var(--text-muted)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={person.headline}
+                        >
+                          {person.headline}
+                        </div>
+                      )}
+                    </td>
+
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      {renderPipeline(stage)}
+                    </td>
+
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        {isConnected ? (
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateMessage(person)}
+                            disabled={isProcessing}
+                            className="btn btn-secondary"
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.725rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              border: isIntro ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+                              color: isIntro ? '#38bdf8' : '#10b981',
+                            }}
+                          >
+                            <MessageSquare size={12} />
+                            <span>{isProcessing ? 'Drafting...' : isIntro ? 'Follow-up' : 'Send Intro'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateConnectionNote(person)}
+                            disabled={isProcessing}
+                            className="btn btn-secondary"
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.725rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                            }}
+                          >
+                            <Sparkles size={12} color="#10b981" />
+                            <span>{isProcessing ? 'Generating...' : 'Connect Note'}</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleDelete(person.id, person.full_name)}
+                          className="btn btn-secondary"
+                          title="Delete contact"
+                          style={{ padding: '0.35rem', color: '#ef4444' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
+        /* SLEEK MICRO-CARDS GRID VIEW */
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '1rem',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+            gap: '0.9rem',
           }}
         >
           {filteredPeople.map((person) => {
-            const badge = getStatusBadge(person.connection_status);
             const isProcessing = isGeneratingFor === person.id;
+            const stage = getPipelineStage(person);
+            const isIntro = checkIsIntroSent(person);
+            const isRecruiter = checkIsRecruiter(person);
+            const isConnected = person.connection_status === 'CONNECTED';
 
             return (
               <div
                 key={person.id}
-                className="card"
                 style={{
-                  padding: '1.15rem',
+                  padding: '1rem',
+                  borderRadius: '0.75rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.85rem',
-                  border: '1px solid var(--border-color)',
+                  gap: '0.75rem',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  backdropFilter: 'blur(16px)',
+                  border: isIntro
+                    ? '1px solid rgba(56, 189, 248, 0.25)'
+                    : isRecruiter
+                    ? '1px solid rgba(139, 92, 246, 0.25)'
+                    : '1px solid rgba(255, 255, 255, 0.08)',
                   position: 'relative',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                 }}
               >
                 {/* Person Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', minWidth: 0 }}>
                     <div
                       style={{
-                        width: '2.5rem',
-                        height: '2.5rem',
+                        width: '2.35rem',
+                        height: '2.35rem',
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #0a66c2, #0284c7)',
+                        background: isRecruiter
+                          ? 'linear-gradient(135deg, #8b5cf6, #6366f1)'
+                          : 'linear-gradient(135deg, #0a66c2, #0284c7)',
                         color: '#ffffff',
                         fontWeight: 700,
-                        fontSize: '0.95rem',
+                        fontSize: '0.9rem',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        flexShrink: 0,
                       }}
                     >
                       {person.full_name.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
-                        {person.full_name}
-                      </h4>
-                      <div style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>
-                        {person.role || 'Technology Leader'}
-                        {person.company ? ` • ${person.company}` : ''}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                          {person.full_name}
+                        </h4>
+                        {isRecruiter && (
+                          <span
+                            style={{
+                              fontSize: '0.65rem',
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '4px',
+                              background: 'rgba(139, 92, 246, 0.15)',
+                              color: '#c084fc',
+                              border: '1px solid rgba(139, 92, 246, 0.3)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Recruiter
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          color: 'var(--text-muted)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {person.role || 'Analytics Peer'}
                       </div>
                     </div>
                   </div>
@@ -456,20 +1139,63 @@ Focus on:
                     onClick={() => handleDelete(person.id, person.full_name)}
                     className="btn btn-secondary"
                     title="Delete contact"
-                    style={{ padding: '0.3rem', color: '#ef4444' }}
+                    style={{ padding: '0.25rem', color: '#ef4444', flexShrink: 0 }}
                   >
                     <Trash2 size={13} />
                   </button>
                 </div>
 
-                {/* Headline or Notes */}
+                {/* Company Tag & Profile Link */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                  {person.company ? (
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        color: 'var(--text-main)',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '180px',
+                      }}
+                      title={person.company}
+                    >
+                      🏢 {person.company}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+
+                  <a
+                    href={person.profile_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: '0.725rem',
+                      color: '#0a66c2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.2rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span>LinkedIn</span>
+                    <ExternalLink size={11} />
+                  </a>
+                </div>
+
+                {/* Headline Snippet */}
                 {person.headline && (
                   <p
                     style={{
                       margin: 0,
-                      fontSize: '0.775rem',
+                      fontSize: '0.75rem',
                       color: 'var(--text-muted)',
-                      lineHeight: 1.4,
+                      lineHeight: 1.35,
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
@@ -480,109 +1206,90 @@ Focus on:
                   </p>
                 )}
 
-                {/* Status & Timing */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        fontSize: '0.675rem',
-                        fontWeight: 700,
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '999px',
-                        background: badge.bg,
-                        color: badge.color,
-                        border: `1px solid ${badge.border}`,
-                      }}
-                    >
-                      {badge.label}
-                    </span>
-
-                    {checkIsIntroSent(person) && (
-                      <span
-                        style={{
-                          fontSize: '0.675rem',
-                          fontWeight: 700,
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '999px',
-                          background: 'rgba(2, 132, 199, 0.15)',
-                          color: '#38bdf8',
-                          border: '1px solid rgba(56, 189, 248, 0.3)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                        }}
-                        title="Outreach message dispatched via 1-Click routine"
-                      >
-                        <span>💬</span> Intro Sent
-                      </span>
-                    )}
-                  </div>
-
-                  <a
-                    href={person.profile_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontSize: '0.75rem',
-                      color: '#0a66c2',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <span>LinkedIn Profile</span>
-                    <ExternalLink size={12} />
-                  </a>
+                {/* Relationship Pipeline Stages Indicator */}
+                <div
+                  style={{
+                    padding: '0.45rem 0.65rem',
+                    borderRadius: '6px',
+                    background: 'rgba(6, 10, 18, 0.4)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                  }}
+                >
+                  {renderPipeline(stage)}
                 </div>
 
-                {/* AI Copilot Action Buttons */}
+                {/* Contextual Action Buttons */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '0.5rem',
-                    paddingTop: '0.75rem',
-                    borderTop: '1px solid var(--border-color)',
+                    gridTemplateColumns: isConnected ? '1fr 1fr' : '1fr',
+                    gap: '0.45rem',
+                    paddingTop: '0.45rem',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateConnectionNote(person)}
-                    disabled={isProcessing}
-                    className="btn btn-secondary"
-                    title="Generate 300-char connection invitation"
-                    style={{
-                      padding: '0.35rem 0.5rem',
-                      fontSize: '0.725rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.3rem',
-                    }}
-                  >
-                    <Sparkles size={12} color="#10b981" />
-                    <span>{isProcessing ? 'Generating...' : 'Connection Note'}</span>
-                  </button>
+                  {!isConnected ? (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateConnectionNote(person)}
+                      disabled={isProcessing}
+                      className="btn btn-secondary"
+                      title="Generate personalized 280-char connection invitation"
+                      style={{
+                        padding: '0.35rem 0.5rem',
+                        fontSize: '0.725rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.3rem',
+                      }}
+                    >
+                      <Sparkles size={12} color="#10b981" />
+                      <span>{isProcessing ? 'Generating...' : person.connection_status === 'INVITATION_SENT' ? 'Regenerate Note' : 'Connect Note'}</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateConnectionNote(person)}
+                        disabled={isProcessing}
+                        className="btn btn-secondary"
+                        title="Connection Note"
+                        style={{
+                          padding: '0.35rem 0.5rem',
+                          fontSize: '0.725rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.3rem',
+                        }}
+                      >
+                        <Sparkles size={12} color="#10b981" />
+                        <span>Note</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateMessage(person)}
-                    disabled={isProcessing}
-                    className="btn btn-secondary"
-                    title="Draft direct outreach message"
-                    style={{
-                      padding: '0.35rem 0.5rem',
-                      fontSize: '0.725rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.3rem',
-                    }}
-                  >
-                    <MessageSquare size={12} color="#0284c7" />
-                    <span>{isProcessing ? 'Drafting...' : checkIsIntroSent(person) ? 'Follow-up' : 'Direct Outreach'}</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateMessage(person)}
+                        disabled={isProcessing}
+                        className="btn btn-secondary"
+                        title="Draft direct outreach message"
+                        style={{
+                          padding: '0.35rem 0.5rem',
+                          fontSize: '0.725rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.3rem',
+                          border: isIntro ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+                          color: isIntro ? '#38bdf8' : '#10b981',
+                        }}
+                      >
+                        <MessageSquare size={12} />
+                        <span>{isProcessing ? 'Drafting...' : isIntro ? 'Follow-up' : 'Send Intro'}</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -597,7 +1304,7 @@ Focus on:
             position: 'fixed',
             inset: 0,
             background: 'rgba(0,0,0,0.7)',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -609,18 +1316,21 @@ Focus on:
           }}
         >
           <div
-            className="card"
             style={{
               width: '100%',
-              maxWidth: '520px',
+              maxWidth: '500px',
               padding: '1.5rem',
+              borderRadius: '0.75rem',
               display: 'flex',
               flexDirection: 'column',
               gap: '1rem',
+              background: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
                 Add Tracked Contact
               </h3>
               <button
@@ -647,8 +1357,8 @@ Focus on:
                     width: '100%',
                     padding: '0.5rem 0.75rem',
                     borderRadius: '0.4rem',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
                     color: 'var(--text-main)',
                     fontSize: '0.85rem',
                   }}
@@ -669,8 +1379,8 @@ Focus on:
                     width: '100%',
                     padding: '0.5rem 0.75rem',
                     borderRadius: '0.4rem',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
                     color: 'var(--text-main)',
                     fontSize: '0.85rem',
                   }}
@@ -686,13 +1396,13 @@ Focus on:
                     type="text"
                     value={newCompany}
                     onChange={(e) => setNewCompany(e.target.value)}
-                    placeholder="e.g. Microsoft"
+                    placeholder="e.g. UnitedHealth Group"
                     style={{
                       width: '100%',
                       padding: '0.5rem 0.75rem',
                       borderRadius: '0.4rem',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
                       color: 'var(--text-main)',
                       fontSize: '0.85rem',
                     }}
@@ -707,13 +1417,13 @@ Focus on:
                     type="text"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    placeholder="e.g. Engineering Manager"
+                    placeholder="e.g. Lead Talent Partner"
                     style={{
                       width: '100%',
                       padding: '0.5rem 0.75rem',
                       borderRadius: '0.4rem',
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
                       color: 'var(--text-main)',
                       fontSize: '0.85rem',
                     }}
@@ -729,13 +1439,13 @@ Focus on:
                   type="text"
                   value={newHeadline}
                   onChange={(e) => setNewHeadline(e.target.value)}
-                  placeholder="e.g. Hiring for Data & BI Team in Azure"
+                  placeholder="e.g. Hiring Analytics & Automation Talent"
                   style={{
                     width: '100%',
                     padding: '0.5rem 0.75rem',
                     borderRadius: '0.4rem',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
                     color: 'var(--text-main)',
                     fontSize: '0.85rem',
                   }}
@@ -753,8 +1463,8 @@ Focus on:
                     width: '100%',
                     padding: '0.5rem 0.75rem',
                     borderRadius: '0.4rem',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
                     color: 'var(--text-main)',
                     fontSize: '0.85rem',
                   }}
@@ -785,6 +1495,206 @@ Focus on:
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI Network Hygiene Report Modal */}
+      {isHygieneModalOpen && hygieneResult && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1100,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '640px',
+              background: '#0d131f',
+              border: '1px solid rgba(168, 85, 247, 0.3)',
+              borderRadius: '0.85rem',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'linear-gradient(90deg, rgba(147, 51, 234, 0.12), transparent)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div
+                  style={{
+                    padding: '0.5rem',
+                    borderRadius: '0.5rem',
+                    background: 'rgba(168, 85, 247, 0.15)',
+                    color: '#c084fc',
+                  }}
+                >
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    AI Network Hygiene & Normalization
+                  </h3>
+                  <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Automated directory audit, name sanitization, auto-tagging, and deduplication
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsHygieneModalOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '0.35rem',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Metrics Row */}
+            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.65rem' }}>
+                <div style={{ padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8' }}>
+                    {hygieneResult.totalProcessed}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Audited Profiles
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>
+                    {hygieneResult.namesCleaned}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#6ee7b7', marginTop: '0.2rem' }}>
+                    Names Cleaned
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(168, 85, 247, 0.06)', border: '1px solid rgba(168, 85, 247, 0.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#c084fc' }}>
+                    {hygieneResult.contactsTagged}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#d8b4fe', marginTop: '0.2rem' }}>
+                    Auto-Tagged
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b' }}>
+                    {hygieneResult.duplicatesMerged}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#fde68a', marginTop: '0.2rem' }}>
+                    Merged Dups
+                  </div>
+                </div>
+              </div>
+
+              {/* Explanatory rules badge */}
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.5rem',
+                  background: 'rgba(56, 189, 248, 0.06)',
+                  border: '1px solid rgba(56, 189, 248, 0.15)',
+                  fontSize: '0.775rem',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                }}
+              >
+                <CheckCircle2 size={16} color="#38bdf8" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>
+                  <strong>Normalization Rules Applied:</strong> Emojis, pronouns <em>(he/him)</em>, bracketed tags, and credential suffixes <em>(MBA, PMP, Ph.D, Hiring)</em> stripped from names. Standardized role & domain tags <em>(Healthcare, Consulting, Recruiter, BI)</em> auto-assigned.
+                </span>
+              </div>
+
+              {/* Action Log / Details */}
+              <div>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Audit & Normalization Log ({hygieneResult.details.length} actions)
+                </h4>
+                <div
+                  style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    borderRadius: '0.5rem',
+                    background: 'rgba(6, 10, 18, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    padding: '0.65rem 0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                    fontSize: '0.75rem',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {hygieneResult.details.length > 0 ? (
+                    hygieneResult.details.map((item, idx) => (
+                      <div key={idx} style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{ color: '#10b981' }}>✓</span>
+                        <span>{item}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)' }}>
+                      All contacts already meet pristine hygiene standards. No corrupted names or duplicates detected!
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                padding: '0.85rem 1.5rem',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'rgba(6, 10, 18, 0.4)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setIsHygieneModalOpen(false)}
+                className="btn btn-primary"
+                style={{
+                  background: '#0a66c2',
+                  borderColor: '#0a66c2',
+                  padding: '0.45rem 1.25rem',
+                  fontSize: '0.825rem',
+                }}
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

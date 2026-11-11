@@ -99,6 +99,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === "SYNC_ALL_CONNECTIONS") {
+    handleSyncAllConnections(request, senderTabId)
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === "SYNC_SENT_REQUESTS" || request.action === "SYNC_SENT_INVITATIONS") {
+    handleSyncSentRequests(request)
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
   if (request.action === "IMPORT_SENT_INVITATIONS") {
     handleImportSentInvitations(request.invitations)
       .then((res) => sendResponse(res))
@@ -125,6 +139,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then((res) => sendResponse(res))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
+  }
+
+  if (request.action === "FETCH_PROFILE_EMPLOYMENT_HISTORY") {
+    fetchProfileEmploymentHistory(request.slug)
+      .then((companies) => sendResponse({ success: true, companies }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === "PULL_ALL_EMPLOYMENT_HISTORY") {
+    handlePullAllEmploymentHistory(senderTabId)
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === "CANCEL_EMPLOYMENT_PULL") {
+    cancelEmploymentPull = true;
+    sendResponse({ cancelled: true });
+    return false;
   }
 });
 
@@ -1046,8 +1080,248 @@ async function getLinkedInCsrfToken() {
   });
 }
 
+// Fetch candidate employment history / positionGroups via Voyager API
+async function fetchProfileEmploymentHistory(slug) {
+  if (!slug) return [];
+  const csrfToken = await getLinkedInCsrfToken();
+  if (!csrfToken) return [];
+
+  const headers = {
+    'csrf-token': csrfToken,
+    'x-restli-protocol-version': '2.0.0',
+    'accept': 'application/vnd.linkedin.normalized+json+2.1'
+  };
+
+  const companies = [];
+
+  // 1. Primary: positionGroups endpoint
+  try {
+    const url = `https://www.linkedin.com/voyager/api/identity/profiles/${encodeURIComponent(slug)}/positionGroups`;
+    const res = await fetch(url, { headers, credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+
+      if (Array.isArray(data.elements)) {
+        for (const el of data.elements) {
+          if (el.name && !companies.includes(el.name)) {
+            companies.push(el.name);
+          }
+        }
+      }
+      if (Array.isArray(data.included)) {
+        for (const item of data.included) {
+          if (item.companyName && !companies.includes(item.companyName)) {
+            companies.push(item.companyName);
+          }
+          if (item.$type && item.$type.includes('PositionGroup') && item.name && !companies.includes(item.name)) {
+            companies.push(item.name);
+          }
+          if (item.$type && item.$type.includes('MiniCompany') && item.name && !companies.includes(item.name)) {
+            companies.push(item.name);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[Voyager API] Error fetching positionGroups for ${slug}:`, err);
+  }
+
+  // 2. Secondary fallback: positions endpoint
+  if (companies.length === 0) {
+    try {
+      const url = `https://www.linkedin.com/voyager/api/identity/profiles/${encodeURIComponent(slug)}/positions`;
+      const res = await fetch(url, { headers, credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.elements)) {
+          for (const el of data.elements) {
+            if (el.companyName && !companies.includes(el.companyName)) {
+              companies.push(el.companyName);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[Voyager API] Error fetching positions fallback for ${slug}:`, err);
+    }
+  }
+
+  return companies;
+}
+
+// ---------------------------------------------------------------------------
+// VOYAGER BATCH EMPLOYMENT HISTORY PULL ENGINE
+// ---------------------------------------------------------------------------
+let isPullingEmploymentHistory = false;
+let cancelEmploymentPull = false;
+
+function broadcastEmploymentProgress(data, senderTabId = null) {
+  if (senderTabId) {
+    chrome.tabs.sendMessage(senderTabId, {
+      action: "MYCES_EMPLOYMENT_PROGRESS",
+      ...data
+    }).catch(() => {});
+  }
+  chrome.tabs.query({}, (tabs) => {
+    tabs.forEach(t => {
+      if (t.id && t.url && (t.url.includes('localhost') || t.url.includes('linkedin.com') || t.url.includes('myces'))) {
+        chrome.tabs.sendMessage(t.id, {
+          action: "MYCES_EMPLOYMENT_PROGRESS",
+          ...data
+        }).catch(() => {});
+      }
+    });
+  });
+}
+
+async function handlePullAllEmploymentHistory(senderTabId = null) {
+  if (isPullingEmploymentHistory) {
+    return { success: false, message: "Employment history pull is already running." };
+  }
+  isPullingEmploymentHistory = true;
+  cancelEmploymentPull = false;
+
+  try {
+    const res = await fetch(`${SUPABASE_REST_URL}/linkedin_people?select=id,full_name,profile_url,headline,company,role,tags,interaction_notes&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      }
+    });
+
+    if (!res.ok) throw new Error(`Failed to query database: ${res.status}`);
+    const people = await res.json();
+    const total = people.length;
+
+    let processedCount = 0;
+    let updatedCount = 0;
+    const results = [];
+
+    broadcastEmploymentProgress({
+      status: 'STARTING',
+      total,
+      processed: 0,
+      updated: 0,
+      message: `Auditing ${total} connections via Voyager API...`
+    }, senderTabId);
+
+    for (let i = 0; i < people.length; i++) {
+      if (cancelEmploymentPull) {
+        broadcastEmploymentProgress({
+          status: 'CANCELLED',
+          total,
+          processed: processedCount,
+          updated: updatedCount,
+          message: 'Employment history sync cancelled by user.'
+        }, senderTabId);
+        break;
+      }
+
+      const person = people[i];
+      const slug = extractProfileSlug(person.profile_url);
+
+      if (!slug) {
+        processedCount++;
+        continue;
+      }
+
+      broadcastEmploymentProgress({
+        status: 'IN_PROGRESS',
+        total,
+        processed: processedCount + 1,
+        updated: updatedCount,
+        currentPerson: person.full_name,
+        message: `[${i + 1}/${total}] Fetching employment history for ${person.full_name}...`
+      }, senderTabId);
+
+      try {
+        const companies = await fetchProfileEmploymentHistory(slug);
+
+        if (companies && companies.length > 0) {
+          const existingTags = Array.isArray(person.tags) ? [...person.tags] : [];
+          const tagSet = new Set(existingTags);
+
+          companies.forEach(c => {
+            const cleanC = (c || '').trim();
+            if (cleanC && cleanC.length >= 2) {
+              tagSet.add(`Alumni: ${cleanC}`);
+            }
+          });
+
+          let updatedNotes = person.interaction_notes || '';
+          const summaryText = `Past Employers: ${companies.join(', ')}`;
+          if (!updatedNotes.includes('Past Employers:')) {
+            updatedNotes = updatedNotes ? `${updatedNotes}\n${summaryText}` : summaryText;
+          }
+
+          const patchRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${person.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+            },
+            body: JSON.stringify({
+              tags: Array.from(tagSet),
+              interaction_notes: updatedNotes,
+              updated_at: new Date().toISOString()
+            })
+          });
+
+          if (patchRes.ok) {
+            updatedCount++;
+            results.push({
+              name: person.full_name,
+              companies
+            });
+            broadcastEmploymentProgress({
+              status: 'IN_PROGRESS',
+              total,
+              processed: processedCount + 1,
+              updated: updatedCount,
+              currentPerson: person.full_name,
+              latestResult: { name: person.full_name, companies },
+              message: `✓ ${person.full_name}: Mapped ${companies.length} past employer(s) (${companies.slice(0, 3).join(', ')})`
+            }, senderTabId);
+          }
+        }
+      } catch (e) {
+        console.warn(`[Employment Pull] Warning on ${person.full_name}:`, e);
+      }
+
+      processedCount++;
+
+      // Polite pacing delay between profile calls
+      if (i < people.length - 1) {
+        await delay(1200 + Math.floor(Math.random() * 800));
+      }
+    }
+
+    broadcastEmploymentProgress({
+      status: 'COMPLETED',
+      total,
+      processed: processedCount,
+      updated: updatedCount,
+      results,
+      message: `Completed! Successfully mapped employment histories for ${updatedCount} contacts.`
+    }, senderTabId);
+
+    return { success: true, total, processed: processedCount, updated: updatedCount, results };
+  } catch (err) {
+    console.error('[Employment Pull] Error:', err);
+    broadcastEmploymentProgress({
+      status: 'ERROR',
+      error: err.message,
+      message: `Pull failed: ${err.message}`
+    }, senderTabId);
+    return { success: false, error: err.message };
+  } finally {
+    isPullingEmploymentHistory = false;
+  }
+}
+
 // Fetch 1st-degree connections directly from LinkedIn internal REST API
-async function fetchRecentConnectionsFromVoyager() {
+async function fetchRecentConnectionsFromVoyager(count = 50, start = 0) {
   const csrfToken = await getLinkedInCsrfToken();
   if (!csrfToken) {
     console.log('[Voyager API] No active LinkedIn JSESSIONID found in browser.');
@@ -1062,13 +1336,13 @@ async function fetchRecentConnectionsFromVoyager() {
 
   // 1. Modern Voyager Dash API
   try {
-    const dashUrl = 'https://www.linkedin.com/voyager/api/relationships/dash/connections?decorationId=com.linkedin.voyager.dash.relationships.invitations.WebConnectionCardDecoration&count=50&sortType=RECENTLY_ADDED';
+    const dashUrl = `https://www.linkedin.com/voyager/api/relationships/dash/connections?decorationId=com.linkedin.voyager.dash.relationships.invitations.WebConnectionCardDecoration&count=${count}&start=${start}&sortType=RECENTLY_ADDED`;
     const res = await fetch(dashUrl, { headers, credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       const extracted = parseVoyagerConnectionsResponse(data);
       if (extracted.length > 0) {
-        console.log(`[Voyager API] Dash endpoint successfully returned ${extracted.length} connections.`);
+        console.log(`[Voyager API] Dash endpoint successfully returned ${extracted.length} connections (start=${start}).`);
         return extracted;
       }
     }
@@ -1078,13 +1352,13 @@ async function fetchRecentConnectionsFromVoyager() {
 
   // 2. Classic Voyager Relationships API (Fallback)
   try {
-    const classicUrl = 'https://www.linkedin.com/voyager/api/relationships/connections?count=50&sortType=RECENTLY_ADDED';
+    const classicUrl = `https://www.linkedin.com/voyager/api/relationships/connections?count=${count}&start=${start}&sortType=RECENTLY_ADDED`;
     const res = await fetch(classicUrl, { headers, credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
       const extracted = parseVoyagerConnectionsResponse(data);
       if (extracted.length > 0) {
-        console.log(`[Voyager API] Classic endpoint successfully returned ${extracted.length} connections.`);
+        console.log(`[Voyager API] Classic endpoint successfully returned ${extracted.length} connections (start=${start}).`);
         return extracted;
       }
     }
@@ -1093,6 +1367,79 @@ async function fetchRecentConnectionsFromVoyager() {
   }
 
   return [];
+}
+
+async function fetchAllConnectionsFromVoyager(maxConnections = 500) {
+  const all = [];
+  const seenSlugs = new Set();
+  let start = 0;
+  const pageSize = 50;
+
+  while (start < maxConnections) {
+    const page = await fetchRecentConnectionsFromVoyager(pageSize, start);
+    if (!page || page.length === 0) break;
+
+    let addedFromPage = 0;
+    for (const c of page) {
+      if (!seenSlugs.has(c.slug)) {
+        seenSlugs.add(c.slug);
+        all.push(c);
+        addedFromPage++;
+      }
+    }
+
+    if (addedFromPage === 0 || page.length < pageSize) {
+      break;
+    }
+
+    start += pageSize;
+    await delay(350);
+  }
+
+  return all;
+}
+
+function parseVoyagerSentInvitationsResponse(data) {
+  if (!data) return [];
+  const results = [];
+  const seenSlugs = new Set();
+
+  function addInv(name, headline, slug, sentTime) {
+    if (!slug || slug === 'me' || slug === 'unavailable' || seenSlugs.has(slug)) return;
+    seenSlugs.add(slug);
+    results.push({
+      name: name || slug,
+      headline: headline || '',
+      profileUrl: `https://www.linkedin.com/in/${slug}`,
+      sentTime: sentTime || 'Recent'
+    });
+  }
+
+  if (Array.isArray(data.included)) {
+    for (const entity of data.included) {
+      const isProfile = entity.$type && (entity.$type.includes('Profile') || entity.$type.includes('MiniProfile') || entity.$type.includes('identity'));
+      if (isProfile && (entity.publicIdentifier || entity.entityUrn)) {
+        const slug = (entity.publicIdentifier || entity.entityUrn.split(':').pop() || '').toLowerCase().trim();
+        const fullName = `${entity.firstName || ''} ${entity.lastName || ''}`.trim();
+        const headline = entity.headline || entity.occupation || '';
+        addInv(fullName, headline, slug, 'Pending');
+      }
+    }
+  }
+
+  if (Array.isArray(data.elements)) {
+    for (const el of data.elements) {
+      const to = el.toMember || el.recipient || el;
+      if (to && (to.publicIdentifier || to.entityUrn)) {
+        const slug = (to.publicIdentifier || to.entityUrn.split(':').pop() || '').toLowerCase().trim();
+        const fullName = `${to.firstName || ''} ${to.lastName || ''}`.trim();
+        const headline = to.occupation || to.headline || '';
+        addInv(fullName, headline, slug, el.sentTime || 'Pending');
+      }
+    }
+  }
+
+  return results;
 }
 
 function parseVoyagerConnectionsResponse(data) {
@@ -1555,6 +1902,217 @@ async function handleImportSentInvitations(invitations = []) {
   }
 
   return { success: true, count: importedCount };
+}
+
+// ---------------------------------------------------------------------------
+// FULL 1ST-DEGREE CONNECTIONS SYNC (VOYAGER REST ENGINE)
+// ---------------------------------------------------------------------------
+let isSyncingAllConnections = false;
+
+async function handleSyncAllConnections(payload = {}, senderTabId = null) {
+  if (isSyncingAllConnections) {
+    return { success: true, message: 'Sync already in progress' };
+  }
+  isSyncingAllConnections = true;
+
+  try {
+    console.log('[Voyager Sync] Starting full 1st-degree connections sync...');
+    const connections = await fetchAllConnectionsFromVoyager(payload.maxCount || 500);
+    console.log(`[Voyager Sync] Fetched ${connections.length} total connections from Voyager.`);
+
+    if (connections.length === 0) {
+      return { success: true, count: 0, total: 0, message: 'No connections returned. Ensure you are signed in to LinkedIn.' };
+    }
+
+    // Fetch existing people from Supabase to match
+    const res = await fetch(`${SUPABASE_REST_URL}/linkedin_people?select=id,profile_url,full_name,connection_status,company,tags`, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      }
+    });
+
+    const existingPeople = res.ok ? await res.json() : [];
+    const existingBySlug = new Map();
+    const existingByName = new Map();
+
+    for (const p of existingPeople) {
+      const slug = extractProfileSlug(p.profile_url);
+      if (slug) existingBySlug.set(slug, p);
+      if (p.full_name) existingByName.set(p.full_name.toLowerCase().trim(), p);
+    }
+
+    let newlyAdded = 0;
+    let updatedCount = 0;
+
+    for (const conn of connections) {
+      const slug = conn.slug;
+      const name = conn.name || slug;
+      const headline = conn.headline || '';
+      const profileUrl = conn.profileUrl || `https://www.linkedin.com/in/${slug}`;
+
+      let company = null;
+      const atMatch = headline.match(/(?:at|@)\s+([A-Za-z0-9&.,\- ]+?)(?:\s*\||\s*•|\s*,\s*[A-Z]|$)/i);
+      if (atMatch && atMatch[1]) {
+        company = atMatch[1].trim();
+      }
+
+      const lowerH = headline.toLowerCase();
+      const isRecruiter = lowerH.includes('recruiter') || 
+                          lowerH.includes('recruitment') || 
+                          lowerH.includes('talent') || 
+                          lowerH.includes('hr') || 
+                          lowerH.includes('hrbp') || 
+                          lowerH.includes('hiring') || 
+                          lowerH.includes('staffing') || 
+                          lowerH.includes('sourcer');
+
+      const existing = existingBySlug.get(slug) || existingByName.get(name.toLowerCase().trim());
+
+      if (existing) {
+        const updates = {};
+        if (existing.connection_status !== 'CONNECTED') {
+          updates.connection_status = 'CONNECTED';
+          updates.last_interaction_at = new Date().toISOString();
+        }
+        if (!existing.company && company) {
+          updates.company = company;
+        }
+        if (Object.keys(updates).length > 0) {
+          updates.updated_at = new Date().toISOString();
+          await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${existing.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+            },
+            body: JSON.stringify(updates)
+          });
+          updatedCount++;
+        }
+      } else {
+        const newPerson = {
+          user_id: 'Akshay',
+          full_name: name,
+          profile_url: profileUrl,
+          headline: headline || null,
+          company: company || null,
+          role: isRecruiter ? 'Tech Talent Recruiter' : 'Senior Engineering Peer',
+          connection_status: 'CONNECTED',
+          interaction_notes: 'Imported from LinkedIn 1st-degree connection sync',
+          tags: [isRecruiter ? 'RECRUITER' : 'PEER', '1st-Degree Connection', 'LinkedIn Sync'],
+          last_interaction_at: new Date().toISOString()
+        };
+
+        const insertRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+          },
+          body: JSON.stringify(newPerson)
+        });
+
+        if (insertRes.ok) {
+          newlyAdded++;
+        }
+      }
+    }
+
+    console.log(`[Voyager Sync] Full connection sync complete: ${connections.length} total, ${newlyAdded} new, ${updatedCount} updated.`);
+    return {
+      success: true,
+      total: connections.length,
+      newlyAdded,
+      updated: updatedCount
+    };
+  } catch (err) {
+    console.error('[Voyager Sync] Error syncing all connections:', err);
+    return { success: false, error: err.message };
+  } finally {
+    isSyncingAllConnections = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SENT INVITATIONS SYNC (VOYAGER API + GUIDED TAB FALLBACK)
+// ---------------------------------------------------------------------------
+let isSyncingSent = false;
+
+async function handleSyncSentRequests(payload = {}) {
+  if (isSyncingSent) {
+    return { success: true, message: 'Sent invitations sync already in progress' };
+  }
+  isSyncingSent = true;
+
+  try {
+    console.log('[Voyager Sync] Starting sent invitations sync...');
+    
+    // 1. Try direct Voyager API first
+    const csrfToken = await getLinkedInCsrfToken();
+    let sentInvitations = [];
+
+    if (csrfToken) {
+      const headers = {
+        'csrf-token': csrfToken,
+        'x-restli-protocol-version': '2.0.0',
+        'accept': 'application/vnd.linkedin.normalized+json+2.1'
+      };
+
+      const candidateUrls = [
+        'https://www.linkedin.com/voyager/api/relationships/sentInvitationViewsV2?invitationType=CONNECTION&count=100',
+        'https://www.linkedin.com/voyager/api/relationships/dash/sentInvitations?count=100',
+        'https://www.linkedin.com/voyager/api/relationships/sentInvitations?count=100'
+      ];
+
+      for (const url of candidateUrls) {
+        try {
+          const res = await fetch(url, { headers, credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            const parsed = parseVoyagerSentInvitationsResponse(data);
+            if (parsed.length > 0) {
+              sentInvitations = parsed;
+              console.log(`[Voyager API] Successfully retrieved ${parsed.length} sent invitations via API!`);
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn(`[Voyager API] Error with ${url}:`, e);
+        }
+      }
+    }
+
+    // 2. If Voyager API returned invitations, import them directly
+    if (sentInvitations.length > 0) {
+      const importRes = await handleImportSentInvitations(sentInvitations);
+      return {
+        success: true,
+        count: importRes.count || sentInvitations.length,
+        method: 'API'
+      };
+    }
+
+    // 3. Fallback: Open LinkedIn Sent Manager tab with automated sync trigger
+    const sentTabUrl = 'https://www.linkedin.com/mynetwork/invitation-manager/sent/?myces_sync=1';
+    chrome.tabs.create({ url: sentTabUrl, active: true }, (tab) => {
+      console.log(`[Voyager Sync] Opened Sent Invitations tab ${tab.id} with automated sync trigger.`);
+    });
+
+    return {
+      success: true,
+      count: 0,
+      method: 'TAB_OPENED',
+      message: 'Opening LinkedIn Sent Invitations page to scan and sync all sent requests.'
+    };
+  } catch (err) {
+    console.error('[Voyager Sync] Error in handleSyncSentRequests:', err);
+    return { success: false, error: err.message };
+  } finally {
+    isSyncingSent = false;
+  }
 }
 
 // ---------------------------------------------------------------------------

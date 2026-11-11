@@ -35,6 +35,9 @@ class LinkedInAdapter extends BaseAdapter {
       this.injectedWidget = true;
       this.injectWidgetStyles();
       this.renderSentInvitationsWidget();
+      if (url.includes('myces_sync=1') || url.includes('auto_sync=1')) {
+        setTimeout(() => this.importAllSentInvitations(), 1200);
+      }
       return;
     }
 

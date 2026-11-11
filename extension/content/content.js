@@ -45,7 +45,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   // --- MyCES Web Companion Bridge ---
-  if (request.action === "MYCES_JOB_PROGRESS" || request.action === "MYCES_CHECK_COMPLETED") {
+  if (request.action === "MYCES_JOB_PROGRESS" || request.action === "MYCES_CHECK_COMPLETED" || request.action === "MYCES_EMPLOYMENT_PROGRESS") {
     window.postMessage({
       source: "myces-companion",
       type: request.action,
@@ -105,6 +105,65 @@ window.addEventListener("message", (event) => {
       window.postMessage({
         source: "myces-companion",
         type: "MYCES_DISPATCH_RESULT",
+        ...response,
+      }, "*");
+    });
+    return;
+  }
+
+  if (type === "MYCES_START_EMPLOYMENT_PULL") {
+    chrome.runtime.sendMessage({
+      action: "PULL_ALL_EMPLOYMENT_HISTORY",
+    }, (response) => {
+      window.postMessage({
+        source: "myces-companion",
+        type: "MYCES_EMPLOYMENT_STARTED",
+        ...response,
+      }, "*");
+    });
+    return;
+  }
+
+  if (type === "MYCES_CANCEL_EMPLOYMENT_PULL") {
+    chrome.runtime.sendMessage({
+      action: "CANCEL_EMPLOYMENT_PULL",
+    });
+    return;
+  }
+
+  if (type === "MYCES_SYNC_SENT_REQUESTS") {
+    chrome.runtime.sendMessage({
+      action: "SYNC_SENT_REQUESTS",
+    }, (response) => {
+      window.postMessage({
+        source: "myces-companion",
+        type: "MYCES_SYNC_SENT_RESULT",
+        ...response,
+      }, "*");
+    });
+    return;
+  }
+
+  if (type === "MYCES_SYNC_ALL_CONNECTIONS") {
+    chrome.runtime.sendMessage({
+      action: "SYNC_ALL_CONNECTIONS",
+    }, (response) => {
+      window.postMessage({
+        source: "myces-companion",
+        type: "MYCES_SYNC_CONNECTIONS_RESULT",
+        ...response,
+      }, "*");
+    });
+    return;
+  }
+
+  if (type === "MYCES_SYNC_ACCEPTED_INVITES") {
+    chrome.runtime.sendMessage({
+      action: "SYNC_ACCEPTED_CONNECTIONS",
+    }, (response) => {
+      window.postMessage({
+        source: "myces-companion",
+        type: "MYCES_SYNC_ACCEPTED_RESULT",
         ...response,
       }, "*");
     });
