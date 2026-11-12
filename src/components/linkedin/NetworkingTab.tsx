@@ -19,7 +19,6 @@ import {
   Wand2,
   Send,
   UserCheck,
-  Calendar,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
