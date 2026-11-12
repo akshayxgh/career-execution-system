@@ -1697,6 +1697,12 @@ async function handleSyncAcceptedConnections(payload = {}) {
       const nameMatch = pName && recentNames.some(r => r.includes(pName) || pName.includes(r));
 
       if (slugMatch || nameMatch) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const existingTags = Array.isArray(person.tags) ? [...person.tags] : [];
+        if (!existingTags.some(t => t.startsWith('Connected:'))) {
+          existingTags.push(`Connected: ${todayStr}`);
+        }
+
         // Flip to CONNECTED
         await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${person.id}`, {
           method: 'PATCH',
@@ -1707,10 +1713,37 @@ async function handleSyncAcceptedConnections(payload = {}) {
           },
           body: JSON.stringify({
             connection_status: 'CONNECTED',
+            tags: existingTags,
             last_interaction_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
         });
+
+        // Record CONNECTION_ACCEPTED event in linkedin_actions for daily analytics
+        await fetch(`${SUPABASE_REST_URL}/linkedin_actions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+          },
+          body: JSON.stringify({
+            user_id: 'Akshay',
+            action_type: 'CONNECTION_ACCEPTED',
+            status: 'EXECUTED',
+            reasoning: `${person.full_name} accepted your LinkedIn connection request.`,
+            payload: {
+              recipient_name: person.full_name,
+              recipient_role: person.headline || person.role,
+              recipient_profile_url: person.profile_url,
+              role_category: (person.tags && person.tags.includes('RECRUITER')) ? 'RECRUITER' : 'PEER',
+              connected_at: new Date().toISOString()
+            },
+            target_id: person.id,
+            proposed_by: 'linkedin_agent',
+            executed_at: new Date().toISOString()
+          })
+        }).catch((e) => console.warn('[Voyager Sync] Action log error:', e));
 
         updatedCount++;
 

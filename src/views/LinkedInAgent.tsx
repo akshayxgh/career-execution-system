@@ -303,8 +303,37 @@ Return ONLY the ready-to-publish post content.`;
     });
   }, [actions, actionTypeFilter]);
 
-  // Today's Routine Pulse stats (5 Peers + 2 Recruiters target)
+  const [networkingFilterPill, setNetworkingFilterPill] = useState<'ALL' | 'RECRUITERS' | 'INTRO_SENT' | 'PENDING_INVITES' | 'CONNECTED' | 'CONNECTED_TODAY'>('ALL');
+
+  const checkIsRecruiterPerson = (p: LinkedInPerson): boolean => {
+    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+    return (
+      text.includes('recruiter') ||
+      text.includes('talent acquisition') ||
+      text.includes('hiring') ||
+      text.includes('sourcer') ||
+      text.includes('staffing') ||
+      text.includes('human resources') ||
+      text.includes('hrbp')
+    );
+  };
+
+  // Today's Routine Pulse stats (5 Peers + 2 Recruiters target + Connected Today)
   const routineStats = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const connectedTodayList = people.filter((p) => {
+      if (p.connection_status !== 'CONNECTED') return false;
+      const tag = (p.tags || []).find((t) => t.startsWith('Connected:'));
+      if (tag && tag.includes(todayStr)) return true;
+      if (p.last_interaction_at && p.last_interaction_at.startsWith(todayStr)) return true;
+      return false;
+    });
+
+    const connectedToday = connectedTodayList.length;
+    const connectedRecruitersToday = connectedTodayList.filter(checkIsRecruiterPerson).length;
+    const connectedPeersToday = connectedToday - connectedRecruitersToday;
+
     const peerInvitesSent = people.filter((p) => p.connection_status === 'INVITATION_SENT').length;
     const introsDispatched = people.filter((p) => Array.isArray(p.tags) && p.tags.includes('Intro Sent')).length;
     const peerTarget = 5;
@@ -321,6 +350,9 @@ Return ONLY the ready-to-publish post content.`;
       totalDispatched,
       totalTarget,
       percentComplete,
+      connectedToday,
+      connectedRecruitersToday,
+      connectedPeersToday,
     };
   }, [people]);
 
@@ -540,47 +572,134 @@ Return ONLY the ready-to-publish post content.`;
           </div>
         </div>
 
-        {/* Progress Trackers */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-          {/* Peer Invites */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '130px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>🤝 Peer Invites</span>
-              <span style={{ fontWeight: 700, color: '#38bdf8' }}>
-                {routineStats.peerInvitesSent} / {routineStats.peerTarget}
+        {/* Progress Trackers - Matching Card Containers */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+          {/* Peer Invites Card */}
+          <div
+            onClick={() => {
+              setNetworkingFilterPill('PENDING_INVITES');
+              setActiveTab('networking');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+              minWidth: '145px',
+              padding: '0.45rem 0.75rem',
+              borderRadius: '0.5rem',
+              background: 'rgba(56, 189, 248, 0.08)',
+              border: '1px solid rgba(56, 189, 248, 0.28)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Click to view pending peer invitations"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+              <span style={{ color: '#38bdf8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span>🤝</span>
+                <span>Peer Invites</span>
+              </span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: '#38bdf8',
+                  background: 'rgba(56, 189, 248, 0.22)',
+                  padding: '0.05rem 0.45rem',
+                  borderRadius: '999px',
+                  fontSize: '0.7rem',
+                }}
+              >
+                {routineStats.peerInvitesSent}/{routineStats.peerTarget}
               </span>
             </div>
-            <div style={{ width: '100%', height: '5px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-              <div
-                style={{
-                  width: `${Math.min((routineStats.peerInvitesSent / routineStats.peerTarget) * 100, 100)}%`,
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
-                  borderRadius: '999px',
-                  transition: 'width 0.3s ease',
-                }}
-              />
+            <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+              Target: 5 Data/BI Peers
             </div>
           </div>
 
-          {/* Recruiter Intros */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '130px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>💬 Recruiter Intros</span>
-              <span style={{ fontWeight: 700, color: '#10b981' }}>
-                {routineStats.introsDispatched} / {routineStats.recruiterTarget}
+          {/* Recruiter Intros Card */}
+          <div
+            onClick={() => {
+              setNetworkingFilterPill('RECRUITERS');
+              setActiveTab('networking');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+              minWidth: '145px',
+              padding: '0.45rem 0.75rem',
+              borderRadius: '0.5rem',
+              background: 'rgba(192, 132, 252, 0.08)',
+              border: '1px solid rgba(192, 132, 252, 0.28)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Click to view recruiter intros"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+              <span style={{ color: '#c084fc', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span>💬</span>
+                <span>Recruiter Intros</span>
+              </span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: '#c084fc',
+                  background: 'rgba(192, 132, 252, 0.22)',
+                  padding: '0.05rem 0.45rem',
+                  borderRadius: '999px',
+                  fontSize: '0.7rem',
+                }}
+              >
+                {routineStats.introsDispatched}/{routineStats.recruiterTarget}
               </span>
             </div>
-            <div style={{ width: '100%', height: '5px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-              <div
+            <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+              Target: 2 Recruiters
+            </div>
+          </div>
+
+          {/* Connected Today Card */}
+          <div
+            onClick={() => {
+              setNetworkingFilterPill('CONNECTED_TODAY');
+              setActiveTab('networking');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+              minWidth: '145px',
+              padding: '0.45rem 0.75rem',
+              borderRadius: '0.5rem',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.28)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Click to view contacts who connected today"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+              <span style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span>🤝</span>
+                <span>Connected Today</span>
+              </span>
+              <span
                 style={{
-                  width: `${Math.min((routineStats.introsDispatched / routineStats.recruiterTarget) * 100, 100)}%`,
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #059669, #10b981)',
+                  fontWeight: 800,
+                  color: '#10b981',
+                  background: 'rgba(16, 185, 129, 0.25)',
+                  padding: '0.05rem 0.45rem',
                   borderRadius: '999px',
-                  transition: 'width 0.3s ease',
+                  fontSize: '0.7rem',
                 }}
-              />
+              >
+                +{routineStats.connectedToday}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+              {routineStats.connectedRecruitersToday} Recr • {routineStats.connectedPeersToday} Peers
             </div>
           </div>
         </div>
@@ -980,6 +1099,8 @@ Return ONLY the ready-to-publish post content.`;
             refreshActions();
             setActiveTab('approvals');
           }}
+          initialPill={networkingFilterPill}
+          onPillChange={setNetworkingFilterPill}
         />
       )}
 

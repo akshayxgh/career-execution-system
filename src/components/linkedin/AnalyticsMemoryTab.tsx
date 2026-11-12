@@ -25,6 +25,8 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -409,6 +411,95 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
     };
   }, [people]);
 
+  const checkIsRecruiterContact = (p: { role?: string | null; headline?: string | null; tags?: string[] }): boolean => {
+    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+    return (
+      text.includes('recruiter') ||
+      text.includes('talent acquisition') ||
+      text.includes('hiring') ||
+      text.includes('sourcer') ||
+      text.includes('staffing') ||
+      text.includes('human resources') ||
+      text.includes('hrbp')
+    );
+  };
+
+  // 7-Day Velocity & Granular Daily Activity Data
+  const dailyVelocityData = useMemo(() => {
+    const daysList = [];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const isToday = i === 0;
+      const isYesterday = i === 1;
+      const dayLabel = isToday ? 'Today' : isYesterday ? 'Yesterday' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+      // Sent requests on dateStr:
+      const sentActions = actions.filter((a) => {
+        if (a.action_type !== 'SEND_CONNECTION') return false;
+        const aDate = (a.executed_at || a.created_at || '').split('T')[0];
+        return aDate === dateStr;
+      });
+      const sentPeople = people.filter((p) => {
+        const pDate = (p.created_at || '').split('T')[0];
+        return pDate === dateStr && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status);
+      });
+      const totalSent = Math.max(sentActions.length, sentPeople.length);
+      const sentRecruiters = sentPeople.filter(checkIsRecruiterContact).length;
+      const sentPeers = Math.max(0, totalSent - sentRecruiters);
+
+      // Connected / Accepted on dateStr:
+      const acceptedPeople = people.filter((p) => {
+        if (p.connection_status !== 'CONNECTED') return false;
+        const tag = (p.tags || []).find((t) => t.startsWith('Connected:'));
+        if (tag && tag.includes(dateStr)) return true;
+        if (p.last_interaction_at && p.last_interaction_at.startsWith(dateStr)) return true;
+        return false;
+      });
+      const totalAccepted = acceptedPeople.length;
+      const acceptedRecruiters = acceptedPeople.filter(checkIsRecruiterContact).length;
+      const acceptedPeers = Math.max(0, totalAccepted - acceptedRecruiters);
+
+      // Intros sent on dateStr:
+      const introActions = actions.filter((a) => {
+        if (a.action_type !== 'FOLLOW_UP' && (a.action_type as string) !== 'MESSAGE') return false;
+        if (a.status !== 'EXECUTED') return false;
+        const aDate = (a.executed_at || a.updated_at || a.created_at || '').split('T')[0];
+        return aDate === dateStr;
+      });
+      const introPeople = people.filter((p) => {
+        if (!Array.isArray(p.tags) || !p.tags.includes('Intro Sent')) return false;
+        if (p.last_interaction_at && p.last_interaction_at.startsWith(dateStr)) return true;
+        return false;
+      });
+      const totalIntros = Math.max(introActions.length, introPeople.length);
+
+      // Daily Acceptance Ratio
+      const acceptanceRate = totalSent > 0 ? Math.round((totalAccepted / totalSent) * 100) : totalAccepted > 0 ? 100 : 0;
+
+      daysList.push({
+        dateStr,
+        dayLabel,
+        weekday,
+        isToday,
+        sent: totalSent,
+        sentPeers,
+        sentRecruiters,
+        accepted: totalAccepted,
+        acceptedPeers,
+        acceptedRecruiters,
+        intros: totalIntros,
+        acceptanceRate,
+      });
+    }
+
+    return daysList;
+  }, [people, actions]);
+
   // 7-Day Cadence & Follow-up Velocity
   const routineVelocity = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -420,8 +511,10 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       const isFuture = idx > currentDayIdx;
       const peerGoal = 5;
       const recruiterGoal = 2;
-      const peersDone = isToday ? Math.min(funnelMetrics.invited, peerGoal) : isPast ? 5 : 0;
-      const recruitersDone = isToday ? Math.min(funnelMetrics.introSent, recruiterGoal) : isPast ? 2 : 0;
+
+      const matching = dailyVelocityData.find((d) => d.weekday === day);
+      const peersDone = matching ? matching.sentPeers : isToday ? Math.min(funnelMetrics.invited, peerGoal) : isPast ? 3 : 0;
+      const recruitersDone = matching ? matching.sentRecruiters : isToday ? Math.min(funnelMetrics.introSent, recruiterGoal) : isPast ? 1 : 0;
       const totalDone = peersDone + recruitersDone;
       const status = isFuture ? 'upcoming' : totalDone >= 7 ? 'completed' : totalDone > 0 ? 'partial' : 'rest';
 
@@ -445,7 +538,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       currentStreakDays: 3, // Current consecutive days streak
       pendingFollowups,
     };
-  }, [funnelMetrics, people]);
+  }, [funnelMetrics, people, dailyVelocityData]);
 
   // Default durable memories for Akshay's persona if DB is empty
   const defaultMemories: LinkedInAgentMemory[] = useMemo(
@@ -1484,7 +1577,166 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       {/* SUB-TAB 3: ROUTINE & VELOCITY */}
       {activeSubTab === 'velocity' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* 7-Day Routine Cadence Heatmap */}
+          {/* 1. 7-Day Velocity Trend Chart */}
+          <div
+            style={{
+              padding: '1.25rem',
+              borderRadius: '0.75rem',
+              background: 'rgba(15, 23, 42, 0.65)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(16px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BarChart3 size={18} color="#38bdf8" />
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  7-Day Networking Velocity Trend
+                </h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#38bdf8' }} />
+                  <span style={{ color: 'var(--text-muted)' }}>Sent Invites</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} />
+                  <span style={{ color: 'var(--text-muted)' }}>Accepted (Connected)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#c084fc' }} />
+                  <span style={{ color: 'var(--text-muted)' }}>Intros Sent</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ width: '100%', height: '240px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyVelocityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+                  <XAxis dataKey="dayLabel" stroke="var(--text-muted)" fontSize={11} />
+                  <YAxis stroke="var(--text-muted)" fontSize={11} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.75rem',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    }}
+                    formatter={(value: any, name: any, item: any) => {
+                      const d = item.payload;
+                      if (name === 'Requests Sent') return [`${value} (${d.sentPeers} Peers, ${d.sentRecruiters} Recr)`, name];
+                      if (name === 'Accepted (Connected)') return [`${value} (${d.acceptedPeers} Peers, ${d.acceptedRecruiters} Recr)`, name];
+                      if (name === 'Intros Sent') return [`${value} Dispatched`, name];
+                      return [value, name];
+                    }}
+                  />
+                  <Bar dataKey="sent" name="Requests Sent" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="accepted" name="Accepted (Connected)" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="intros" name="Intros Sent" fill="#c084fc" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 2. Granular Daily Breakdown Table */}
+          <div
+            style={{
+              padding: '1.25rem',
+              borderRadius: '0.75rem',
+              background: 'rgba(15, 23, 42, 0.65)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(16px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Clock size={16} color="#10b981" />
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Daily Activity Breakdown Table
+                </h3>
+              </div>
+              <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                Granular tracking of daily sent, accepted & outreach metrics
+              </span>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>Requests Sent</th>
+                    <th style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>Accepted (Connected)</th>
+                    <th style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>Intros Sent</th>
+                    <th style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>Daily Acceptance %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dailyVelocityData].reverse().map((row) => (
+                    <tr
+                      key={row.dateStr}
+                      style={{
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                        background: row.isToday ? 'rgba(56, 189, 248, 0.04)' : 'transparent',
+                      }}
+                    >
+                      <td style={{ padding: '0.65rem 0.75rem', fontWeight: row.isToday ? 700 : 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ color: row.isToday ? '#38bdf8' : 'var(--text-main)' }}>{row.dayLabel}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({row.dateStr})</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.65rem 0.75rem' }}>
+                        <span style={{ fontWeight: 700, color: row.sent > 0 ? '#38bdf8' : 'var(--text-muted)' }}>
+                          {row.sent}
+                        </span>
+                        {row.sent > 0 && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>
+                            ({row.sentPeers} peers, {row.sentRecruiters} rec)
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.65rem 0.75rem' }}>
+                        <span style={{ fontWeight: 700, color: row.accepted > 0 ? '#10b981' : 'var(--text-muted)' }}>
+                          +{row.accepted}
+                        </span>
+                        {row.accepted > 0 && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>
+                            ({row.acceptedPeers} peers, {row.acceptedRecruiters} rec)
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.65rem 0.75rem' }}>
+                        <span style={{ fontWeight: 700, color: row.intros > 0 ? '#c084fc' : 'var(--text-muted)' }}>
+                          {row.intros}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.65rem 0.75rem' }}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            color: row.acceptanceRate >= 50 ? '#10b981' : row.acceptanceRate > 0 ? '#f59e0b' : 'var(--text-muted)',
+                          }}
+                        >
+                          {row.acceptanceRate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 3. 7-Day Routine Cadence Heatmap */}
           <div
             style={{
               padding: '1.25rem',

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   UserPlus,
   Search,
@@ -19,6 +19,9 @@ import {
   Wand2,
   Send,
   UserCheck,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import type {
   LinkedInPerson,
@@ -34,19 +37,63 @@ interface NetworkingTabProps {
   context: AgentNetworkingContext | null;
   onRefresh: () => Promise<void>;
   onActionProposed: () => void;
+  initialPill?: FilterPill;
+  onPillChange?: (pill: FilterPill) => void;
 }
 
-type FilterPill = 'ALL' | 'RECRUITERS' | 'INTRO_SENT' | 'PENDING_INVITES' | 'CONNECTED';
+type FilterPill = 'ALL' | 'RECRUITERS' | 'INTRO_SENT' | 'PENDING_INVITES' | 'CONNECTED' | 'CONNECTED_TODAY';
 
 export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   people,
   context,
   onRefresh,
   onActionProposed,
+  initialPill,
+  onPillChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activePill, setActivePill] = useState<FilterPill>('ALL');
+  const [activePill, setActivePillState] = useState<FilterPill>(initialPill || 'ALL');
+  const [customDate, setCustomDate] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Modern Date Picker State
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  const [calendarViewDate, setCalendarViewDate] = useState(() => new Date());
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setIsDatePickerOpen(false);
+      }
+    };
+    if (isDatePickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDatePickerOpen]);
+
+  const formatDateDisplay = (isoStr: string) => {
+    if (!isoStr) return '';
+    try {
+      const [y, m, d] = isoStr.split('-');
+      const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      return dt.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  useEffect(() => {
+    if (initialPill) {
+      setActivePillState(initialPill);
+    }
+  }, [initialPill]);
+
+  const setActivePill = (pill: FilterPill) => {
+    setActivePillState(pill);
+    if (onPillChange) onPillChange(pill);
+  };
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isGeneratingFor, setIsGeneratingFor] = useState<string | null>(null);
@@ -95,6 +142,27 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     return 0;
   };
 
+  // Activity dates
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const getContactActivityDate = (p: LinkedInPerson): string | null => {
+    const connTag = (p.tags || []).find((t) => t.startsWith('Connected:'));
+    if (connTag) return connTag.replace('Connected:', '').trim();
+    if (p.connection_status === 'CONNECTED' && p.last_interaction_at) return p.last_interaction_at.split('T')[0];
+    const invTag = (p.tags || []).find((t) => t.startsWith('Invited:'));
+    if (invTag) return invTag.replace('Invited:', '').trim();
+    if (p.created_at) return p.created_at.split('T')[0];
+    return null;
+  };
+
+  const checkIsConnectedToday = (p: LinkedInPerson): boolean => {
+    if (p.connection_status !== 'CONNECTED') return false;
+    const tag = (p.tags || []).find((t) => t.startsWith('Connected:'));
+    if (tag && tag.includes(todayStr)) return true;
+    if (p.last_interaction_at && p.last_interaction_at.startsWith(todayStr)) return true;
+    return false;
+  };
+
   // Live filter counts
   const counts = useMemo(() => {
     const all = people.length;
@@ -102,8 +170,9 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     const introSent = people.filter(checkIsIntroSent).length;
     const pendingInvites = people.filter((p) => p.connection_status === 'INVITATION_SENT').length;
     const connected = people.filter((p) => p.connection_status === 'CONNECTED').length;
-    return { all, recruiters, introSent, pendingInvites, connected };
-  }, [people]);
+    const connectedToday = people.filter(checkIsConnectedToday).length;
+    return { all, recruiters, introSent, pendingInvites, connected, connectedToday };
+  }, [people, todayStr]);
 
   // Filtered dataset
   const filteredPeople = useMemo(() => {
@@ -116,12 +185,17 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
       if (activePill === 'INTRO_SENT' && !isIntro) return false;
       if (activePill === 'PENDING_INVITES' && p.connection_status !== 'INVITATION_SENT') return false;
       if (activePill === 'CONNECTED' && p.connection_status !== 'CONNECTED') return false;
+      if (activePill === 'CONNECTED_TODAY' && !checkIsConnectedToday(p)) return false;
 
       // Dropdown status filter
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'INTRO_SENT' && !isIntro) return false;
         if (statusFilter !== 'INTRO_SENT' && p.connection_status !== statusFilter) return false;
       }
+
+      // Date filter
+      const actDate = getContactActivityDate(p);
+      if (customDate && actDate !== customDate) return false;
 
       // Search query
       if (searchQuery.trim()) {
@@ -135,7 +209,7 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
 
       return true;
     });
-  }, [people, activePill, statusFilter, searchQuery]);
+  }, [people, activePill, statusFilter, customDate, searchQuery, todayStr]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -507,7 +581,9 @@ Focus on:
           type="button"
           onClick={() => setActivePill('ALL')}
           style={{
-            padding: '0.35rem 0.75rem',
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
             borderRadius: '999px',
             fontSize: '0.775rem',
             fontWeight: 600,
@@ -515,7 +591,7 @@ Focus on:
             border: activePill === 'ALL' ? '1px solid #0a66c2' : '1px solid rgba(255, 255, 255, 0.08)',
             background: activePill === 'ALL' ? 'rgba(10, 102, 194, 0.2)' : 'rgba(15, 23, 42, 0.6)',
             color: activePill === 'ALL' ? '#38bdf8' : 'var(--text-muted)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: '0.35rem',
             transition: 'all 0.15s ease',
@@ -529,7 +605,9 @@ Focus on:
           type="button"
           onClick={() => setActivePill('RECRUITERS')}
           style={{
-            padding: '0.35rem 0.75rem',
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
             borderRadius: '999px',
             fontSize: '0.775rem',
             fontWeight: 600,
@@ -537,7 +615,7 @@ Focus on:
             border: activePill === 'RECRUITERS' ? '1px solid #8b5cf6' : '1px solid rgba(255, 255, 255, 0.08)',
             background: activePill === 'RECRUITERS' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(15, 23, 42, 0.6)',
             color: activePill === 'RECRUITERS' ? '#c084fc' : 'var(--text-muted)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: '0.35rem',
             transition: 'all 0.15s ease',
@@ -551,7 +629,9 @@ Focus on:
           type="button"
           onClick={() => setActivePill('INTRO_SENT')}
           style={{
-            padding: '0.35rem 0.75rem',
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
             borderRadius: '999px',
             fontSize: '0.775rem',
             fontWeight: 600,
@@ -559,7 +639,7 @@ Focus on:
             border: activePill === 'INTRO_SENT' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
             background: activePill === 'INTRO_SENT' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(15, 23, 42, 0.6)',
             color: activePill === 'INTRO_SENT' ? '#38bdf8' : 'var(--text-muted)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: '0.35rem',
             transition: 'all 0.15s ease',
@@ -573,7 +653,9 @@ Focus on:
           type="button"
           onClick={() => setActivePill('PENDING_INVITES')}
           style={{
-            padding: '0.35rem 0.75rem',
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
             borderRadius: '999px',
             fontSize: '0.775rem',
             fontWeight: 600,
@@ -581,7 +663,7 @@ Focus on:
             border: activePill === 'PENDING_INVITES' ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.08)',
             background: activePill === 'PENDING_INVITES' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(15, 23, 42, 0.6)',
             color: activePill === 'PENDING_INVITES' ? '#fbbf24' : 'var(--text-muted)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: '0.35rem',
             transition: 'all 0.15s ease',
@@ -595,7 +677,9 @@ Focus on:
           type="button"
           onClick={() => setActivePill('CONNECTED')}
           style={{
-            padding: '0.35rem 0.75rem',
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
             borderRadius: '999px',
             fontSize: '0.775rem',
             fontWeight: 600,
@@ -603,7 +687,7 @@ Focus on:
             border: activePill === 'CONNECTED' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
             background: activePill === 'CONNECTED' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(15, 23, 42, 0.6)',
             color: activePill === 'CONNECTED' ? '#34d399' : 'var(--text-muted)',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: '0.35rem',
             transition: 'all 0.15s ease',
@@ -612,6 +696,308 @@ Focus on:
           <span>🤝 Connected</span>
           <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.connected})</span>
         </button>
+
+        {/* ⚡ Connected Today Pill */}
+        <button
+          type="button"
+          onClick={() => {
+            setActivePill('CONNECTED_TODAY');
+            setCustomDate('');
+          }}
+          style={{
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
+            borderRadius: '999px',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: activePill === 'CONNECTED_TODAY' && !customDate ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: activePill === 'CONNECTED_TODAY' && !customDate ? 'rgba(16, 185, 129, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+            color: activePill === 'CONNECTED_TODAY' && !customDate ? '#34d399' : 'var(--text-muted)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            transition: 'all 0.15s ease',
+            boxShadow: activePill === 'CONNECTED_TODAY' && !customDate ? '0 0 10px rgba(16, 185, 129, 0.25)' : 'none',
+          }}
+          title="Filter contacts who accepted your connection request today"
+        >
+          <span>⚡ Connected Today</span>
+          <span
+            style={{
+              opacity: activePill === 'CONNECTED_TODAY' && !customDate ? 1 : 0.8,
+              fontSize: '0.7rem',
+              color: activePill === 'CONNECTED_TODAY' && !customDate ? '#34d399' : 'inherit',
+              fontWeight: 700,
+            }}
+          >
+            ({counts.connectedToday})
+          </span>
+        </button>
+
+        {/* Modern Date Picker Pill & Popover alongside Connected Today */}
+        <div ref={datePickerRef} style={{ position: 'relative', marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+          {customDate ? (
+            <div
+              style={{
+                height: '32px',
+                boxSizing: 'border-box',
+                display: 'inline-flex',
+                alignItems: 'center',
+                borderRadius: '999px',
+                border: '1px solid #38bdf8',
+                background: 'rgba(56, 189, 248, 0.2)',
+                color: '#38bdf8',
+                padding: '0 0.45rem 0 0.75rem',
+                gap: '0.45rem',
+                fontSize: '0.775rem',
+                fontWeight: 700,
+                boxShadow: '0 0 12px rgba(56, 189, 248, 0.25)',
+              }}
+            >
+              <Calendar size={13} />
+              <span
+                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                style={{ cursor: 'pointer' }}
+                title="Change selected date"
+              >
+                {formatDateDisplay(customDate)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCustomDate('')}
+                style={{
+                  background: 'rgba(56, 189, 248, 0.25)',
+                  border: 'none',
+                  color: '#38bdf8',
+                  borderRadius: '999px',
+                  width: '18px',
+                  height: '18px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  padding: 0,
+                }}
+                title="Clear date filter"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+              style={{
+                height: '32px',
+                boxSizing: 'border-box',
+                padding: '0 0.75rem',
+                borderRadius: '999px',
+                fontSize: '0.775rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: isDatePickerOpen ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                background: isDatePickerOpen ? 'rgba(56, 189, 248, 0.15)' : 'rgba(15, 23, 42, 0.6)',
+                color: isDatePickerOpen ? '#38bdf8' : 'var(--text-muted)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Calendar size={13} color="#38bdf8" />
+              <span>Pick Day ▾</span>
+            </button>
+          )}
+
+          {/* Floating Modern Dark-Glass Calendar Popover */}
+          {isDatePickerOpen && (() => {
+            const calYear = calendarViewDate.getFullYear();
+            const calMonth = calendarViewDate.getMonth();
+            const monthName = calendarViewDate.toLocaleString('default', { month: 'long' });
+            const totalDaysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+            const startDayOfWeek = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Mon = 0
+
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  zIndex: 50,
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '0.75rem',
+                  padding: '0.85rem',
+                  width: '260px',
+                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.65rem',
+                }}
+              >
+                {/* Month & Nav Controls */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCalendarViewDate(new Date(calYear, calMonth - 1, 1))}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: 'var(--text-main)',
+                      borderRadius: '0.35rem',
+                      cursor: 'pointer',
+                      padding: '0.25rem 0.4rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+
+                  <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {monthName} {calYear}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCalendarViewDate(new Date(calYear, calMonth + 1, 1))}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: 'var(--text-main)',
+                      borderRadius: '0.35rem',
+                      cursor: 'pointer',
+                      padding: '0.25rem 0.4rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                {/* Quick Presets */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomDate(todayStr);
+                      setActivePill('ALL');
+                      setIsDatePickerOpen(false);
+                    }}
+                    style={{
+                      padding: '0.3rem',
+                      borderRadius: '0.35rem',
+                      fontSize: '0.725rem',
+                      fontWeight: 600,
+                      background: customDate === todayStr ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                      border: customDate === todayStr ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                      color: customDate === todayStr ? '#38bdf8' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⚡ Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const y = new Date();
+                      y.setDate(y.getDate() - 1);
+                      setCustomDate(y.toISOString().split('T')[0]);
+                      setActivePill('ALL');
+                      setIsDatePickerOpen(false);
+                    }}
+                    style={{
+                      padding: '0.3rem',
+                      borderRadius: '0.35rem',
+                      fontSize: '0.725rem',
+                      fontWeight: 600,
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Yesterday
+                  </button>
+                </div>
+
+                {/* Day of Week Header */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', fontSize: '0.675rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => (
+                    <span key={d}>{d}</span>
+                  ))}
+                </div>
+
+                {/* Days Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+                  {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                    <div key={`empty-${i}`} />
+                  ))}
+                  {Array.from({ length: totalDaysInMonth }).map((_, i) => {
+                    const dayNum = i + 1;
+                    const currentIso = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    const isSelected = customDate === currentIso;
+                    const isToday = todayStr === currentIso;
+
+                    return (
+                      <button
+                        key={currentIso}
+                        type="button"
+                        onClick={() => {
+                          setCustomDate(currentIso);
+                          setActivePill('ALL');
+                          setIsDatePickerOpen(false);
+                        }}
+                        style={{
+                          padding: '0.35rem 0',
+                          borderRadius: '0.35rem',
+                          fontSize: '0.75rem',
+                          fontWeight: isSelected || isToday ? 700 : 500,
+                          background: isSelected ? '#38bdf8' : isToday ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                          border: isSelected ? '1px solid #38bdf8' : isToday ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid transparent',
+                          color: isSelected ? '#0f172a' : isToday ? '#10b981' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          transition: 'all 0.1s ease',
+                        }}
+                      >
+                        {dayNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Footer Clear */}
+                {customDate && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '0.45rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomDate('');
+                        setIsDatePickerOpen(false);
+                      }}
+                      style={{
+                        fontSize: '0.725rem',
+                        color: '#ef4444',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Top Controls: Search Bar, Status Dropdown, View Mode Toggle, Add Button */}
