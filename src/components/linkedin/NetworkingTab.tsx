@@ -190,7 +190,16 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
       // Dropdown status filter
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'INTRO_SENT' && !isIntro) return false;
-        if (statusFilter !== 'INTRO_SENT' && p.connection_status !== statusFilter) return false;
+        if (statusFilter === 'NO_INTRO' && isIntro) return false;
+        if (statusFilter === 'CONNECTED_NO_INTRO' && (p.connection_status !== 'CONNECTED' || isIntro)) return false;
+        if (
+          statusFilter !== 'INTRO_SENT' &&
+          statusFilter !== 'NO_INTRO' &&
+          statusFilter !== 'CONNECTED_NO_INTRO' &&
+          p.connection_status !== statusFilter
+        ) {
+          return false;
+        }
       }
 
       // Date filter
@@ -1045,19 +1054,74 @@ Focus on:
             style={{
               padding: '0.5rem 0.75rem',
               borderRadius: '0.5rem',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: statusFilter !== 'ALL' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
               background: 'rgba(15, 23, 42, 0.6)',
               color: 'var(--text-main)',
               fontSize: '0.825rem',
+              cursor: 'pointer',
             }}
           >
             <option value="ALL">All Statuses</option>
+            <option value="CONNECTED_NO_INTRO">🎯 Connected (Needs Intro)</option>
+            <option value="NO_INTRO">⏳ Without Intro Sent</option>
             <option value="INTRO_SENT">💬 Intro Sent</option>
             <option value="CONNECTED">Connected</option>
             <option value="INVITATION_SENT">Invitation Sent</option>
             <option value="PENDING_OUTREACH">Pending Outreach</option>
             <option value="NOT_CONNECTED">Not Connected</option>
           </select>
+
+          {/* Quick 1-Click Toggle: Needs Intro */}
+          <button
+            type="button"
+            onClick={() => {
+              if (statusFilter === 'CONNECTED_NO_INTRO') {
+                setStatusFilter('ALL');
+              } else {
+                setStatusFilter('CONNECTED_NO_INTRO');
+              }
+            }}
+            className="btn"
+            style={{
+              height: '35px',
+              padding: '0 0.75rem',
+              borderRadius: '0.5rem',
+              fontSize: '0.775rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: statusFilter === 'CONNECTED_NO_INTRO'
+                ? '1px solid #ec4899'
+                : '1px solid rgba(255, 255, 255, 0.1)',
+              background: statusFilter === 'CONNECTED_NO_INTRO'
+                ? 'rgba(236, 72, 153, 0.2)'
+                : 'rgba(15, 23, 42, 0.6)',
+              color: statusFilter === 'CONNECTED_NO_INTRO'
+                ? '#f472b6'
+                : 'var(--text-muted)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+            title="Toggle: Show only connected contacts who haven't received an intro message yet"
+          >
+            <span>🎯</span>
+            <span>Needs Intro</span>
+            <span
+              style={{
+                fontSize: '0.7rem',
+                opacity: 0.85,
+                background: statusFilter === 'CONNECTED_NO_INTRO' ? 'rgba(236, 72, 153, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                padding: '0.1rem 0.35rem',
+                borderRadius: '999px',
+              }}
+            >
+              {activePill === 'RECRUITERS'
+                ? people.filter((p) => checkIsRecruiter(p) && p.connection_status === 'CONNECTED' && !checkIsIntroSent(p)).length
+                : people.filter((p) => p.connection_status === 'CONNECTED' && !checkIsIntroSent(p)).length}
+            </span>
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
