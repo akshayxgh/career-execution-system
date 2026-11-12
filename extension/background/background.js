@@ -149,7 +149,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "PULL_ALL_EMPLOYMENT_HISTORY") {
-    handlePullAllEmploymentHistory(senderTabId)
+    handlePullAllEmploymentHistory(senderTabId, request.forceRefresh || false)
       .then((res) => sendResponse(res))
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
@@ -1164,7 +1164,8 @@ function broadcastEmploymentProgress(data, senderTabId = null) {
   }
   chrome.tabs.query({}, (tabs) => {
     tabs.forEach(t => {
-      if (t.id && t.url && (t.url.includes('localhost') || t.url.includes('linkedin.com') || t.url.includes('myces'))) {
+      // Prevent double-broadcasting to the senderTabId
+      if (t.id && t.id !== senderTabId && t.url && (t.url.includes('localhost') || t.url.includes('linkedin.com') || t.url.includes('myces'))) {
         chrome.tabs.sendMessage(t.id, {
           action: "MYCES_EMPLOYMENT_PROGRESS",
           ...data
@@ -1174,7 +1175,7 @@ function broadcastEmploymentProgress(data, senderTabId = null) {
   });
 }
 
-async function handlePullAllEmploymentHistory(senderTabId = null) {
+async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh = false) {
   if (isPullingEmploymentHistory) {
     return { success: false, message: "Employment history pull is already running." };
   }
@@ -1195,6 +1196,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null) {
 
     let processedCount = 0;
     let updatedCount = 0;
+    let skippedCount = 0;
     const results = [];
 
     broadcastEmploymentProgress({
@@ -1202,7 +1204,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null) {
       total,
       processed: 0,
       updated: 0,
-      message: `Auditing ${total} connections via Voyager API...`
+      message: `Auditing ${total} connections via Voyager API (skipping already pulled)...`
     }, senderTabId);
 
     for (let i = 0; i < people.length; i++) {
@@ -1222,6 +1224,33 @@ async function handlePullAllEmploymentHistory(senderTabId = null) {
 
       if (!slug) {
         processedCount++;
+        continue;
+      }
+
+      // 1. SMART CACHING: Skip contacts whose employment history has already been pulled/audited
+      const hasAlumniTags = Array.isArray(person.tags) && person.tags.some(t => typeof t === 'string' && (t.startsWith('Alumni:') || t === 'Employment: Checked'));
+      const hasPastEmployers = Boolean(person.interaction_notes && (person.interaction_notes.includes('Past Employers:') || person.interaction_notes.includes('Employment Audited')));
+
+      if (!forceRefresh && (hasAlumniTags || hasPastEmployers)) {
+        processedCount++;
+        skippedCount++;
+        if (hasAlumniTags) {
+          updatedCount++;
+        }
+
+        broadcastEmploymentProgress({
+          status: 'IN_PROGRESS',
+          total,
+          processed: processedCount,
+          updated: updatedCount,
+          currentPerson: person.full_name,
+          message: `⚡ ${person.full_name}: Already audited (skipped)`
+        }, senderTabId);
+
+        // Smooth non-blocking UI yield on high volume skips
+        if (skippedCount % 12 === 0) {
+          await delay(20);
+        }
         continue;
       }
 
@@ -1284,6 +1313,34 @@ async function handlePullAllEmploymentHistory(senderTabId = null) {
               message: `✓ ${person.full_name}: Mapped ${companies.length} past employer(s) (${companies.slice(0, 3).join(', ')})`
             }, senderTabId);
           }
+        } else {
+          // If no past employers found, permanently mark as audited so Voyager isn't re-queried next run
+          let updatedNotes = person.interaction_notes || '';
+          if (!updatedNotes.includes('Past Employers:')) {
+            const summaryText = 'Past Employers: None recorded';
+            updatedNotes = updatedNotes ? `${updatedNotes}\n${summaryText}` : summaryText;
+            await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${person.id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+              },
+              body: JSON.stringify({
+                interaction_notes: updatedNotes,
+                updated_at: new Date().toISOString()
+              })
+            }).catch(() => {});
+          }
+
+          broadcastEmploymentProgress({
+            status: 'IN_PROGRESS',
+            total,
+            processed: processedCount + 1,
+            updated: updatedCount,
+            currentPerson: person.full_name,
+            message: `✓ ${person.full_name}: Audited (no past positions found)`
+          }, senderTabId);
         }
       } catch (e) {
         console.warn(`[Employment Pull] Warning on ${person.full_name}:`, e);
@@ -1291,7 +1348,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null) {
 
       processedCount++;
 
-      // Polite pacing delay between profile calls
+      // Polite pacing delay between live profile calls
       if (i < people.length - 1) {
         await delay(1200 + Math.floor(Math.random() * 800));
       }
@@ -1303,7 +1360,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null) {
       processed: processedCount,
       updated: updatedCount,
       results,
-      message: `Completed! Successfully mapped employment histories for ${updatedCount} contacts.`
+      message: `Completed! Processed ${total} contacts (${updatedCount} mapped, ${skippedCount} already cached).`
     }, senderTabId);
 
     return { success: true, total, processed: processedCount, updated: updatedCount, results };

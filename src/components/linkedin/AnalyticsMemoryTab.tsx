@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Brain,
   ShieldCheck,
@@ -87,6 +87,8 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
     logs: [],
   });
 
+  const extensionDrivingRef = useRef(false);
+
   // Listen to Chrome Extension Companion via window postMessage
   useEffect(() => {
     const handleWindowMessage = (event: MessageEvent) => {
@@ -95,14 +97,17 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       }
 
       if (event.data.type === 'MYCES_EMPLOYMENT_PROGRESS') {
+        extensionDrivingRef.current = true;
         const d = event.data;
         setIsPullingHistory(d.status === 'STARTING' || d.status === 'IN_PROGRESS');
         setPullProgress((prev) => {
           const newLogs = [...prev.logs];
-          if (d.latestResult && d.latestResult.name) {
-            newLogs.unshift(`✓ ${d.latestResult.name} ➔ ${d.latestResult.companies.join(', ')}`);
-          } else if (d.message && !newLogs.includes(d.message)) {
-            newLogs.unshift(d.message);
+          const logItem = d.latestResult && d.latestResult.name
+            ? `✓ ${d.latestResult.name} ➔ ${d.latestResult.companies.join(', ')}`
+            : d.message;
+
+          if (logItem && !newLogs.includes(logItem)) {
+            newLogs.unshift(logItem);
           }
           return {
             status: d.status,
@@ -111,7 +116,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
             updated: d.updated || prev.updated,
             currentPerson: d.currentPerson,
             message: d.message,
-            logs: newLogs.slice(0, 35),
+            logs: newLogs.slice(0, 40),
           };
         });
 
@@ -129,6 +134,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
   const handleStartEmploymentPull = async () => {
     setHistoryPullModalOpen(true);
     setIsPullingHistory(true);
+    extensionDrivingRef.current = false;
     setPullProgress({
       status: 'IN_PROGRESS',
       total: people.length,
@@ -147,15 +153,23 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       type: 'MYCES_START_EMPLOYMENT_PULL',
     }, '*');
 
-    // 2. Guaranteed active progressive sync with real-time UI animation
+    // Wait briefly to see if companion extension answers
+    await new Promise((r) => setTimeout(r, 250));
+
+    // If extension is actively handling this via Voyager API, yield completely to the extension stream
+    if (extensionDrivingRef.current) {
+      return;
+    }
+
+    // 2. Fallback progressive sync (if extension is not running or inactive)
     try {
-      // Trigger background sync endpoint simultaneously
       const syncPromise = fetch('/api/agent/sync-employment', { method: 'POST' })
         .then((r) => r.json())
         .catch(() => null);
 
       let currentMapped = 0;
       for (let i = 0; i < people.length; i++) {
+        if (extensionDrivingRef.current) break;
         const p = people[i];
         const comp = p.company || 'Enterprise Partner';
         const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:'));
@@ -179,25 +193,27 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
         await new Promise((r) => setTimeout(r, 45));
       }
 
-      const syncResult = await syncPromise;
-      const finalCount = syncResult?.total || people.length;
+      if (!extensionDrivingRef.current) {
+        const syncResult = await syncPromise;
+        const finalCount = syncResult?.total || people.length;
 
-      setPullProgress((prev) => ({
-        ...prev,
-        status: 'COMPLETED',
-        processed: finalCount,
-        updated: prev.updated || finalCount,
-        message: `Completed! Successfully mapped employment histories for all ${finalCount} contacts.`,
-        logs: [
-          `✓ All ${finalCount} contacts processed & mapped!`,
-          `✓ Company Radar and Alumni Referral Inroads are now live and refreshed.`,
-          ...prev.logs,
-        ],
-      }));
+        setPullProgress((prev) => ({
+          ...prev,
+          status: 'COMPLETED',
+          processed: finalCount,
+          updated: prev.updated || finalCount,
+          message: `Completed! Successfully mapped employment histories for all ${finalCount} contacts.`,
+          logs: [
+            `✓ All ${finalCount} contacts processed & mapped!`,
+            `✓ Company Radar and Alumni Referral Inroads are now live and refreshed.`,
+            ...prev.logs,
+          ],
+        }));
 
-      setIsPullingHistory(false);
-      showToast(`Successfully synced employment histories for ${finalCount} contacts!`);
-      await onRefresh();
+        setIsPullingHistory(false);
+        showToast(`Successfully synced employment histories for ${finalCount} contacts!`);
+        await onRefresh();
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sync completed';
       setPullProgress((prev) => ({
