@@ -98,6 +98,10 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   const [isGeneratingFor, setIsGeneratingFor] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Batch Queueing State
+  const [isBatchQueueing, setIsBatchQueueing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+
   // AI Hygiene Agent State
   const [isHygieneRunning, setIsHygieneRunning] = useState(false);
   const [hygieneProgress, setHygieneProgress] = useState<string | null>(null);
@@ -218,6 +222,13 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
       return true;
     });
   }, [people, activePill, statusFilter, customDate, searchQuery, todayStr]);
+
+  // Contacts needing intro from current filtered view
+  const contactsNeedingIntro = useMemo(() => {
+    return filteredPeople.filter(
+      (p) => p.connection_status === 'CONNECTED' && !checkIsIntroSent(p)
+    );
+  }, [filteredPeople]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -460,6 +471,104 @@ Focus on:
       alert(msg);
     } finally {
       setIsGeneratingFor(null);
+    }
+  };
+
+  // Batch queue all intros for contacts needing intro in view
+  const handleBatchQueueIntros = async () => {
+    if (contactsNeedingIntro.length === 0 || isBatchQueueing) return;
+
+    // Check existing actions to avoid duplicates
+    let pendingOrApprovedIds = new Set<string>();
+    try {
+      const existing = await linkedinAgentService.fetchActions();
+      pendingOrApprovedIds = new Set(
+        existing
+          .filter((a) => a.status === 'PENDING_APPROVAL' || a.status === 'APPROVED')
+          .map((a) => a.target_id || (a.payload as { person_id?: string })?.person_id)
+          .filter((id): id is string => Boolean(id))
+      );
+    } catch {
+      // ignore
+    }
+
+    const targets = contactsNeedingIntro.filter((p) => !pendingOrApprovedIds.has(p.id));
+
+    if (targets.length === 0) {
+      showToast('All contacts in view already have intros drafted or approved!');
+      return;
+    }
+
+    if (!confirm(`Batch-draft and queue personalized intros for ${targets.length} connected contact(s) for approval?`)) {
+      return;
+    }
+
+    setIsBatchQueueing(true);
+    setBatchProgress({ current: 0, total: targets.length });
+
+    let successCount = 0;
+    const chunkSize = 3;
+
+    try {
+      for (let i = 0; i < targets.length; i += chunkSize) {
+        const chunk = targets.slice(i, i + chunkSize);
+        await Promise.allSettled(
+          chunk.map(async (person) => {
+            try {
+              const prompt = `You are Akshay Kumar Sarkar, a Business Automation & Analytics Professional with 7+ years of experience in US healthcare insurance operations, analytics, reporting, and process automation (Power BI, SQL, Excel/VBA, Power Automate, Python).
+Reaching out to: ${person.full_name} (${person.role || 'Leader'} at ${person.company || 'their organization'}).
+Message Intent: Direct value-driven recruiter or peer intro message.
+
+TASK:
+Write a concise, high-value professional message (80-120 words).
+Focus on:
+1. Warm, respectful practitioner tone.
+2. Shared challenges in business analytics, operations reporting, Power BI, or workflow automation.
+3. DO NOT use quotation marks around greetings or anywhere in the text (no ", ', “, ”).
+4. Concrete value without demanding an interview or favor.
+5. Output ONLY the raw message content.`;
+
+              let msgContent = '';
+              try {
+                const rawMsg = await copilotService.generateMultimodalResponse(prompt);
+                msgContent = rawMsg.trim().replace(/["'“”]/g, '');
+              } catch {
+                const firstName = (person.full_name || '').split(' ')[0] || 'there';
+                msgContent = `Hi ${firstName}, thank you for connecting! I have been following work at ${person.company || 'your organization'} and wanted to reach out. With 7+ years in business analytics, operations reporting, and process automation across Power BI, SQL, and Python, I always enjoy connecting with professionals in the space. Would love to stay in touch and exchange insights as opportunities evolve.`;
+              }
+
+              await linkedinAgentService.createProposedAction({
+                action_type: 'MESSAGE',
+                payload: {
+                  recipient_name: person.full_name,
+                  recipient_role: person.role || person.headline || 'Professional',
+                  company: person.company || '',
+                  recipient_profile_url: person.profile_url,
+                  person_id: person.id,
+                  content: msgContent,
+                },
+                reasoning: `Direct outreach intro proposed for ${person.full_name} tailored to business analytics & operations leadership.`,
+                target_id: person.id,
+              });
+
+              successCount++;
+            } catch (pErr) {
+              console.warn(`Failed to queue intro for ${person.full_name}:`, pErr);
+            }
+          })
+        );
+
+        setBatchProgress({ current: Math.min(i + chunkSize, targets.length), total: targets.length });
+      }
+
+      showToast(`✓ Queued ${successCount} intro(s) in Approvals Queue!`);
+      onActionProposed();
+    } catch (batchErr) {
+      console.error('Batch queue error:', batchErr);
+      showToast('Finished batch queue with some warnings.');
+    } finally {
+      setIsBatchQueueing(false);
+      setBatchProgress({ current: 0, total: 0 });
     }
   };
 
@@ -1233,6 +1342,44 @@ Focus on:
               </>
             )}
           </button>
+
+          {/* Queue All Intros for Approval */}
+          {contactsNeedingIntro.length > 0 && (
+            <button
+              type="button"
+              onClick={handleBatchQueueIntros}
+              disabled={isBatchQueueing}
+              className="btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.5rem 0.85rem',
+                fontSize: '0.825rem',
+                background: 'rgba(168, 85, 247, 0.18)',
+                border: '1px solid rgba(168, 85, 247, 0.5)',
+                color: '#c084fc',
+                borderRadius: '0.5rem',
+                cursor: isBatchQueueing ? 'not-allowed' : 'pointer',
+                fontWeight: 700,
+                transition: 'all 0.15s ease',
+                boxShadow: '0 0 10px rgba(168, 85, 247, 0.2)',
+              }}
+              title="Batch-draft personalized AI intro messages for all connected contacts in view and queue them in Approvals"
+            >
+              {isBatchQueueing ? (
+                <>
+                  <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>Queueing ({batchProgress.current}/{batchProgress.total})...</span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare size={14} />
+                  <span>Queue All Intros ({contactsNeedingIntro.length})</span>
+                </>
+              )}
+            </button>
+          )}
 
           <button
             onClick={() => setIsAddModalOpen(true)}
