@@ -595,9 +595,8 @@ Return ONLY the ready-to-publish post content.`;
             title="Click to view pending peer invitations"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-              <span style={{ color: '#38bdf8', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>🤝</span>
-                <span>Peer Invites</span>
+              <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                Peer Invites
               </span>
               <span
                 style={{
@@ -638,9 +637,8 @@ Return ONLY the ready-to-publish post content.`;
             title="Click to view recruiter intros"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-              <span style={{ color: '#c084fc', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>💬</span>
-                <span>Recruiter Intros</span>
+              <span style={{ color: '#c084fc', fontWeight: 700 }}>
+                Recruiter Intros
               </span>
               <span
                 style={{
@@ -681,9 +679,8 @@ Return ONLY the ready-to-publish post content.`;
             title="Click to view contacts who connected today"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-              <span style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>🤝</span>
-                <span>Connected Today</span>
+              <span style={{ color: '#10b981', fontWeight: 700 }}>
+                Connected Today
               </span>
               <span
                 style={{
@@ -1385,7 +1382,7 @@ Return ONLY the ready-to-publish post content.`;
                                 : '1px solid rgba(2, 132, 199, 0.3)',
                           }}
                         >
-                          {action.action_type === 'SEND_CONNECTION' ? '🤝 Connection Note' : '💬 Direct Message'}
+                          {action.action_type === 'SEND_CONNECTION' ? 'Connection Note' : 'Direct Message'}
                         </span>
 
                         <span style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>

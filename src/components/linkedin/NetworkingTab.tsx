@@ -630,7 +630,7 @@ Focus on:
             transition: 'all 0.15s ease',
           }}
         >
-          <span>🎯 Recruiters</span>
+          <span>Recruiters</span>
           <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.recruiters})</span>
         </button>
 
@@ -654,7 +654,7 @@ Focus on:
             transition: 'all 0.15s ease',
           }}
         >
-          <span>💬 Intro Sent</span>
+          <span>Intro Sent</span>
           <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.introSent})</span>
         </button>
 
@@ -678,7 +678,7 @@ Focus on:
             transition: 'all 0.15s ease',
           }}
         >
-          <span>⏳ Pending Invites</span>
+          <span>Pending Invites</span>
           <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.pendingInvites})</span>
         </button>
 
@@ -702,11 +702,11 @@ Focus on:
             transition: 'all 0.15s ease',
           }}
         >
-          <span>🤝 Connected</span>
+          <span>Connected</span>
           <span style={{ opacity: 0.8, fontSize: '0.7rem' }}>({counts.connected})</span>
         </button>
 
-        {/* ⚡ Connected Today Pill */}
+        {/* Connected Today Pill */}
         <button
           type="button"
           onClick={() => {
@@ -732,7 +732,7 @@ Focus on:
           }}
           title="Filter contacts who accepted your connection request today"
         >
-          <span>⚡ Connected Today</span>
+          <span>Connected Today</span>
           <span
             style={{
               opacity: activePill === 'CONNECTED_TODAY' && !customDate ? 1 : 0.8,
@@ -744,6 +744,36 @@ Focus on:
             ({counts.connectedToday})
           </span>
         </button>
+
+        {/* All Statuses Dropdown beside Connected Today */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{
+            height: '32px',
+            boxSizing: 'border-box',
+            padding: '0 0.75rem',
+            borderRadius: '999px',
+            border: statusFilter !== 'ALL' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+            background: statusFilter !== 'ALL' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(15, 23, 42, 0.6)',
+            color: statusFilter !== 'ALL' ? '#38bdf8' : 'var(--text-muted)',
+            fontSize: '0.775rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            outline: 'none',
+            transition: 'all 0.15s ease',
+          }}
+          title="Filter contacts by relationship status"
+        >
+          <option value="ALL" style={{ background: '#0f172a', color: '#f8fafc' }}>All Statuses</option>
+          <option value="CONNECTED_NO_INTRO" style={{ background: '#0f172a', color: '#f8fafc' }}>Connected (Needs Intro)</option>
+          <option value="NO_INTRO" style={{ background: '#0f172a', color: '#f8fafc' }}>Without Intro Sent</option>
+          <option value="INTRO_SENT" style={{ background: '#0f172a', color: '#f8fafc' }}>Intro Sent</option>
+          <option value="CONNECTED" style={{ background: '#0f172a', color: '#f8fafc' }}>Connected</option>
+          <option value="INVITATION_SENT" style={{ background: '#0f172a', color: '#f8fafc' }}>Invitation Sent</option>
+          <option value="PENDING_OUTREACH" style={{ background: '#0f172a', color: '#f8fafc' }}>Pending Outreach</option>
+          <option value="NOT_CONNECTED" style={{ background: '#0f172a', color: '#f8fafc' }}>Not Connected</option>
+        </select>
 
         {/* Modern Date Picker Pill & Popover alongside Connected Today */}
         <div ref={datePickerRef} style={{ position: 'relative', marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -765,7 +795,6 @@ Focus on:
                 boxShadow: '0 0 12px rgba(56, 189, 248, 0.25)',
               }}
             >
-              <Calendar size={13} />
               <span
                 onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
                 style={{ cursor: 'pointer' }}
@@ -817,7 +846,6 @@ Focus on:
                 transition: 'all 0.15s ease',
               }}
             >
-              <Calendar size={13} color="#38bdf8" />
               <span>Pick Day ▾</span>
             </button>
           )}
@@ -910,7 +938,7 @@ Focus on:
                       cursor: 'pointer',
                     }}
                   >
-                    ⚡ Today
+                    Today
                   </button>
                   <button
                     type="button"
@@ -1019,109 +1047,32 @@ Focus on:
           gap: '0.75rem',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search
-              size={15}
-              style={{
-                position: 'absolute',
-                left: '0.75rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-muted)',
-              }}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search contacts by name, company, or role..."
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem 0.5rem 2.2rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(15, 23, 42, 0.6)',
-                color: 'var(--text-main)',
-                fontSize: '0.85rem',
-              }}
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+        <div style={{ position: 'relative', width: '320px' }}>
+          <Search
+            size={15}
             style={{
-              padding: '0.5rem 0.75rem',
+              position: 'absolute',
+              left: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-muted)',
+            }}
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search contacts by name, company, or role..."
+            style={{
+              width: '100%',
+              padding: '0.5rem 0.75rem 0.5rem 2.2rem',
               borderRadius: '0.5rem',
-              border: statusFilter !== 'ALL' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               background: 'rgba(15, 23, 42, 0.6)',
               color: 'var(--text-main)',
-              fontSize: '0.825rem',
-              cursor: 'pointer',
+              fontSize: '0.85rem',
             }}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="CONNECTED_NO_INTRO">🎯 Connected (Needs Intro)</option>
-            <option value="NO_INTRO">⏳ Without Intro Sent</option>
-            <option value="INTRO_SENT">💬 Intro Sent</option>
-            <option value="CONNECTED">Connected</option>
-            <option value="INVITATION_SENT">Invitation Sent</option>
-            <option value="PENDING_OUTREACH">Pending Outreach</option>
-            <option value="NOT_CONNECTED">Not Connected</option>
-          </select>
-
-          {/* Quick 1-Click Toggle: Needs Intro */}
-          <button
-            type="button"
-            onClick={() => {
-              if (statusFilter === 'CONNECTED_NO_INTRO') {
-                setStatusFilter('ALL');
-              } else {
-                setStatusFilter('CONNECTED_NO_INTRO');
-              }
-            }}
-            className="btn"
-            style={{
-              height: '35px',
-              padding: '0 0.75rem',
-              borderRadius: '0.5rem',
-              fontSize: '0.775rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: statusFilter === 'CONNECTED_NO_INTRO'
-                ? '1px solid #ec4899'
-                : '1px solid rgba(255, 255, 255, 0.1)',
-              background: statusFilter === 'CONNECTED_NO_INTRO'
-                ? 'rgba(236, 72, 153, 0.2)'
-                : 'rgba(15, 23, 42, 0.6)',
-              color: statusFilter === 'CONNECTED_NO_INTRO'
-                ? '#f472b6'
-                : 'var(--text-muted)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              transition: 'all 0.15s ease',
-              whiteSpace: 'nowrap',
-            }}
-            title="Toggle: Show only connected contacts who haven't received an intro message yet"
-          >
-            <span>🎯</span>
-            <span>Needs Intro</span>
-            <span
-              style={{
-                fontSize: '0.7rem',
-                opacity: 0.85,
-                background: statusFilter === 'CONNECTED_NO_INTRO' ? 'rgba(236, 72, 153, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                padding: '0.1rem 0.35rem',
-                borderRadius: '999px',
-              }}
-            >
-              {activePill === 'RECRUITERS'
-                ? people.filter((p) => checkIsRecruiter(p) && p.connection_status === 'CONNECTED' && !checkIsIntroSent(p)).length
-                : people.filter((p) => p.connection_status === 'CONNECTED' && !checkIsIntroSent(p)).length}
-            </span>
-          </button>
+          />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
