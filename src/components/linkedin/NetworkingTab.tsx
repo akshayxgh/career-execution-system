@@ -439,10 +439,10 @@ Reaching out to: ${person.full_name} (${person.role || 'Leader'} at ${person.com
 Message Intent: ${isIntro ? 'Follow-up on previous introduction or conversation' : 'Direct value-driven recruiter or peer intro message'}.
 
 TASK:
-Write a concise, high-value professional message (80-120 words).
+Write a SHORT, high-impact professional LinkedIn message (STRICTLY 30-50 WORDS, 2-3 short sentences max).
 Focus on:
-1. Warm, respectful practitioner tone.
-2. Shared challenges in business analytics, operations reporting, Power BI, or workflow automation.
+1. Short & crisp: Quick warm greeting, 1 brief sentence highlighting 7+ yrs in analytics & process automation (Power BI, SQL, Python), and an open friendly closing.
+2. Natural, professional practitioner tone — no fluff, no corporate buzzwords, no walls of text.
 3. DO NOT use quotation marks around greetings or anywhere in the text (no ", ', “, ”).
 4. Concrete value without demanding an interview or favor.
 5. Output ONLY the raw message content.`;
@@ -520,10 +520,10 @@ Reaching out to: ${person.full_name} (${person.role || 'Leader'} at ${person.com
 Message Intent: Direct value-driven recruiter or peer intro message.
 
 TASK:
-Write a concise, high-value professional message (80-120 words).
+Write a SHORT, high-impact professional LinkedIn message (STRICTLY 30-50 WORDS, 2-3 short sentences max).
 Focus on:
-1. Warm, respectful practitioner tone.
-2. Shared challenges in business analytics, operations reporting, Power BI, or workflow automation.
+1. Short & crisp: Quick warm greeting, 1 brief sentence highlighting 7+ yrs in analytics & process automation (Power BI, SQL, Python), and an open friendly closing.
+2. Natural, professional practitioner tone — no fluff, no corporate buzzwords, no walls of text.
 3. DO NOT use quotation marks around greetings or anywhere in the text (no ", ', “, ”).
 4. Concrete value without demanding an interview or favor.
 5. Output ONLY the raw message content.`;
@@ -534,7 +534,10 @@ Focus on:
                 msgContent = rawMsg.trim().replace(/["'“”]/g, '');
               } catch {
                 const firstName = (person.full_name || '').split(' ')[0] || 'there';
-                msgContent = `Hi ${firstName}, thank you for connecting! I have been following work at ${person.company || 'your organization'} and wanted to reach out. With 7+ years in business analytics, operations reporting, and process automation across Power BI, SQL, and Python, I always enjoy connecting with professionals in the space. Would love to stay in touch and exchange insights as opportunities evolve.`;
+                const isRec = checkIsRecruiter(person);
+                msgContent = isRec
+                  ? `Hi ${firstName}, thanks for connecting! I bring 7+ years in business analytics, operations reporting, and process automation across Power BI, SQL, and Python. Glad to connect and look forward to staying in touch!`
+                  : `Hi ${firstName}, thanks for connecting! Great to connect with fellow analytics professionals. With 7+ years in Power BI, SQL, and automation, always happy to exchange insights and stay in touch.`;
               }
 
               await linkedinAgentService.createProposedAction({
