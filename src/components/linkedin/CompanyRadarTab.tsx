@@ -267,6 +267,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
 
   const unmappedCount = useMemo(() => {
     return people.filter((p) => {
+      if (p.connection_status === 'INVITATION_SENT') return false;
       const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:') || t === 'Employment: Checked');
       const hasNotes = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
       return !hasAlumni && !hasNotes;
@@ -275,6 +276,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
 
   const handleStartEmploymentPull = async () => {
     const unmappedPeople = people.filter((p) => {
+      if (p.connection_status === 'INVITATION_SENT') return false;
       const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:') || t === 'Employment: Checked');
       const hasNotes = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
       return !hasAlumni && !hasNotes;

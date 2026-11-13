@@ -1183,7 +1183,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
   cancelEmploymentPull = false;
 
   try {
-    const res = await fetch(`${SUPABASE_REST_URL}/linkedin_people?select=id,full_name,profile_url,headline,company,role,tags,interaction_notes&order=created_at.desc`, {
+    const res = await fetch(`${SUPABASE_REST_URL}/linkedin_people?select=id,full_name,profile_url,headline,company,role,tags,interaction_notes,connection_status&order=created_at.desc`, {
       headers: {
         'apikey': SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
@@ -1193,10 +1193,11 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
     if (!res.ok) throw new Error(`Failed to query database: ${res.status}`);
     const people = await res.json();
 
-    // 1. SMART FILTER: Only audit contacts who haven't had employment history pulled yet
+    // 1. SMART FILTER: Only audit connected contacts who haven't had employment history pulled yet
     const unauditedPeople = forceRefresh
-      ? people
+      ? people.filter(p => p.connection_status !== 'INVITATION_SENT')
       : people.filter(p => {
+          if (p.connection_status === 'INVITATION_SENT') return false;
           const hasAlumniTags = Array.isArray(p.tags) && p.tags.some(t => typeof t === 'string' && (t.startsWith('Alumni:') || t === 'Employment: Checked'));
           const hasPastEmployers = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
           return !hasAlumniTags && !hasPastEmployers;
@@ -1309,23 +1310,28 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
           }
         } else {
           // If no past employers found, permanently mark as audited so Voyager isn't re-queried next run
+          const existingTags = Array.isArray(person.tags) ? [...person.tags] : [];
+          if (!existingTags.includes('Employment: Checked')) {
+            existingTags.push('Employment: Checked');
+          }
           let updatedNotes = person.interaction_notes || '';
           if (!updatedNotes.includes('Past Employers:')) {
             const summaryText = 'Past Employers: None recorded';
             updatedNotes = updatedNotes ? `${updatedNotes}\n${summaryText}` : summaryText;
-            await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${person.id}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_SERVICE_KEY,
-                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
-              },
-              body: JSON.stringify({
-                interaction_notes: updatedNotes,
-                updated_at: new Date().toISOString()
-              })
-            }).catch(() => {});
           }
+          await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${person.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+            },
+            body: JSON.stringify({
+              tags: existingTags,
+              interaction_notes: updatedNotes,
+              updated_at: new Date().toISOString()
+            })
+          }).catch(() => {});
 
           broadcastEmploymentProgress({
             status: 'IN_PROGRESS',
