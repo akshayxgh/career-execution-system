@@ -464,6 +464,26 @@ class LinkedInAgentService {
     }
     return await res.json();
   }
+
+  /**
+   * Fetches metadata (title, author, thumbnail) for a YouTube or Course URL
+   */
+  async fetchVideoMetadata(url: string): Promise<{
+    ok: boolean;
+    provider?: string;
+    title?: string;
+    author?: string;
+    authorUrl?: string;
+    thumbnail?: string;
+    url?: string;
+  }> {
+    const params = new URLSearchParams({ url });
+    const res = await fetch(`${this.baseUri}/video-meta?${params.toString()}`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch video metadata (${res.status})`);
+    }
+    return await res.json();
+  }
 }
 
 export const linkedinAgentService = new LinkedInAgentService();

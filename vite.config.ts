@@ -45,6 +45,8 @@ export default defineConfig(({ mode }) => {
                 handlerModule = await importApiHandler('./api/agent/people.js');
               } else if (urlPath === '/api/agent/maintenance') {
                 handlerModule = await importApiHandler('./api/agent/maintenance.js');
+              } else if (urlPath === '/api/agent/video-meta') {
+                handlerModule = await importApiHandler('./api/agent/video-meta.js');
               } else if (urlPath === '/api/session') {
                 handlerModule = await importApiHandler('./api/session.js');
               } else if (urlPath === '/api/login') {
