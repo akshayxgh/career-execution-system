@@ -77,6 +77,11 @@ export default function ShineApplyModal({
       }
 
       if (msgType === "MYCES_SHINE_STARTED") {
+        if (event.data.started === false) {
+          setIsApplying(false);
+          setErrorMessage(event.data.message || "Failed to start Shine auto-apply batch.");
+          return;
+        }
         setIsApplying(true);
         setIsFinished(false);
       }
@@ -246,6 +251,38 @@ export default function ShineApplyModal({
                     </span>
                   </div>
 
+                  <div style={{
+                    margin: "12px 0 16px 0",
+                    padding: "10px 14px",
+                    backgroundColor: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "10px",
+                    fontSize: "13px",
+                    color: "#166534"
+                  }}>
+                    <span>💡 <strong>Tip:</strong> Make sure you are signed into your Shine.com account in Chrome so the companion can submit 1-click applications.</span>
+                    <a
+                      href="https://www.shine.com/myshine/login/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        color: "#15803d",
+                        fontWeight: 600,
+                        textDecoration: "underline",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      Check Shine Login <ExternalLink size={12} />
+                    </a>
+                  </div>
+
                   {errorMessage && (
                     <div className="naukri-error-banner">{errorMessage}</div>
                   )}
@@ -358,6 +395,46 @@ export default function ShineApplyModal({
                   >
                     Done & Refresh
                   </button>
+                </div>
+              )}
+
+              {/* Login Issue Warning Banner */}
+              {savedJobs.some((j) => (j.message || "").toLowerCase().includes("sign in to shine.com")) && (
+                <div style={{
+                  margin: "14px 0",
+                  padding: "12px 14px",
+                  backgroundColor: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                }}>
+                  <div style={{ fontSize: "13px", color: "#991b1b", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <AlertCircle size={16} style={{ color: "#ef4444", flexShrink: 0 }} />
+                    <span><strong>Not Signed In:</strong> Shine requires you to be logged in to apply. Please sign in, then click Start Auto-Apply again.</span>
+                  </div>
+                  <a
+                    href="https://www.shine.com/myshine/login/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      padding: "6px 12px",
+                      backgroundColor: "#dc2626",
+                      color: "#fff",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    Sign In on Shine <ExternalLink size={12} />
+                  </a>
                 </div>
               )}
 

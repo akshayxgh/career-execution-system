@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Job Autofill Pro",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Unified Career Assistant: Fill job applications across ATS portals (Workday, Greenhouse, Lever, Google, IBM) and run daily LinkedIn & Naukri growth routines.",
   "icons": {
     "16": "icons/icon16.png",
@@ -40,6 +40,7 @@
         "adapters/greenhouse-adapter.js",
         "adapters/lever-adapter.js",
         "adapters/google-adapter.js",
+        "adapters/shine-adapter.js",
         "core/site-detector.js",
         "content/content.js"
       ]

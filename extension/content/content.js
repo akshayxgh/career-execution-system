@@ -45,7 +45,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   // --- MyCES Web Companion Bridge ---
-  if (request.action === "MYCES_JOB_PROGRESS" || request.action === "MYCES_CHECK_COMPLETED" || request.action === "MYCES_EMPLOYMENT_PROGRESS") {
+  if (
+    request.action === "MYCES_JOB_PROGRESS" ||
+    request.action === "MYCES_CHECK_COMPLETED" ||
+    request.action === "MYCES_SHINE_BATCH_COMPLETED" ||
+    request.action === "MYCES_EMPLOYMENT_PROGRESS"
+  ) {
     window.postMessage({
       source: "myces-companion",
       type: request.action,
@@ -90,6 +95,27 @@ window.addEventListener("message", (event) => {
   if (type === "MYCES_CANCEL_NAUKRI_CHECK") {
     chrome.runtime.sendMessage({
       action: "CANCEL_NAUKRI_CHECK",
+    });
+    return;
+  }
+
+  if (type === "MYCES_START_SHINE_APPLY") {
+    chrome.runtime.sendMessage({
+      action: "START_SHINE_BATCH",
+      jobs: jobs || [],
+    }, (response) => {
+      window.postMessage({
+        source: "myces-companion",
+        type: "MYCES_SHINE_STARTED",
+        ...response,
+      }, "*");
+    });
+    return;
+  }
+
+  if (type === "MYCES_CANCEL_SHINE_APPLY") {
+    chrome.runtime.sendMessage({
+      action: "CANCEL_SHINE_BATCH",
     });
     return;
   }

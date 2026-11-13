@@ -284,6 +284,12 @@ async function runShineBatchLoop(jobs, senderTabId) {
           }).catch(() => {});
         }
 
+        // If user is not logged in to Shine, stop loop early to avoid opening more tabs
+        if (summary.message && summary.message.includes("Sign in to Shine.com required")) {
+          console.warn("[MyCES Background] User not signed in to Shine.com. Halting batch auto-apply.");
+          break;
+        }
+
       } catch (err) {
         console.warn(`[MyCES Background] Error processing job ${job.id}:`, err);
         errorCount++;
@@ -364,6 +370,25 @@ async function inPageExecuteShineApply(profile, questionnaire) {
       };
     }
 
+    // 0. Pre-check: Is user redirected to login or is "Login to Apply" shown?
+    const currentUrl = (window.location.href || "").toLowerCase();
+    const isLoginUrl = currentUrl.includes("/myshine/login") || 
+                       currentUrl.includes("/registration/") || 
+                       currentUrl.includes("/login");
+
+    const hasLoginToApply = Array.from(document.querySelectorAll('button, a')).some(b => {
+      const t = (b.innerText || b.textContent || '').trim().toLowerCase();
+      return t === "login to apply" || t === "sign in to apply" || t === "register to apply";
+    });
+
+    if (isLoginUrl || hasLoginToApply) {
+      return {
+        adapterName: 'Shine.com Dedicated Adapter',
+        status: 'SAVED',
+        message: 'Sign in to Shine.com required'
+      };
+    }
+
     // 1. Wait up to 3 seconds for content scripts to mount
     for (let wait = 0; wait < 15; wait++) {
       if (typeof window.ShineAdapter === 'function' || typeof window.SiteDetector === 'function') {
@@ -402,9 +427,12 @@ async function inPageExecuteShineApply(profile, questionnaire) {
       };
     }
 
-    // Attempt direct click on Shine apply button
-    const applyBtn = document.querySelector('button#applyJob, button.btn-apply, button[data-testid*="apply"], button.jobDetail_applyBtn__') ||
-      Array.from(document.querySelectorAll('button')).find(b => (b.innerText || '').toLowerCase().includes('apply'));
+    // Attempt direct click on Shine apply button (strictly excluding login/register)
+    const applyBtn = Array.from(document.querySelectorAll('button#applyJob, button.btn-apply, button[data-testid*="apply"], button.jobDetail_applyBtn__, button, a')).find(b => {
+      const t = (b.innerText || b.textContent || '').trim().toLowerCase();
+      if (t.includes('login') || t.includes('register') || t.includes('sign in')) return false;
+      return t.includes('apply') && !t.includes('applied') && !t.includes('filter');
+    });
 
     if (applyBtn) {
       applyBtn.click();

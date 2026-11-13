@@ -7,6 +7,7 @@ class SiteDetector {
     this.adapters = [
       window.LinkedInAdapter ? new window.LinkedInAdapter() : null,
       window.NaukriAdapter ? new window.NaukriAdapter() : null,
+      window.ShineAdapter ? new window.ShineAdapter() : null,
       new window.IBMAdapter(),
       new window.WorkdayAdapter(),
       new window.SuccessFactorsAdapter(),

@@ -91,9 +91,34 @@ class ShineAdapter extends BaseAdapter {
     let filled = 0;
     let filledQuestionnaire = 0;
 
+    // 0. Check if user is not logged in / redirected to login
+    const currentUrl = (window.location.href || "").toLowerCase();
+    const isLoginPage = currentUrl.includes("/myshine/login") || 
+                        currentUrl.includes("/registration/") || 
+                        currentUrl.includes("/login");
+
+    const hasLoginButton = Array.from(document.querySelectorAll('button, a')).some(btn => {
+      const t = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+      return t === 'login to apply' || t === 'sign in to apply' || t === 'register to apply';
+    });
+
+    if (isLoginPage || hasLoginButton) {
+      console.warn('[Job Autofill - Shine] User is not logged in to Shine.com');
+      return {
+        adapterName: this.name,
+        status: 'SAVED',
+        filled: 0,
+        filledProfile: 0,
+        filledQuestionnaire: 0,
+        skipped: 1,
+        unknown: 0,
+        message: 'Sign in to Shine.com required'
+      };
+    }
+
     // 1. Check if already applied
     const appliedBadges = document.querySelectorAll(
-      '.applied, .already-applied, [data-testid*="applied"], button:disabled'
+      '.applied, .already-applied, [data-testid*="applied"], button.applied, span.applied, div.applied'
     );
     for (const badge of appliedBadges) {
       const badgeText = (badge.innerText || badge.textContent || '').toLowerCase();
@@ -164,6 +189,9 @@ class ShineAdapter extends BaseAdapter {
       const candidates = document.querySelectorAll(sel);
       for (const btn of candidates) {
         const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+        if (text.includes('login') || text.includes('register') || text.includes('sign in')) {
+          continue;
+        }
         if (text.includes('apply') && !text.includes('applied') && !text.includes('apply filter')) {
           applyBtn = btn;
           break;
@@ -218,6 +246,25 @@ class ShineAdapter extends BaseAdapter {
           message: 'Open Questions Present (Marked Saved)'
         };
       }
+    }
+
+    // 5. Post-click check: Did Shine trigger a login modal or redirect?
+    const bodyText = (document.body ? document.body.innerText : '').toLowerCase();
+    if (
+      window.location.href.toLowerCase().includes('/myshine/login') ||
+      document.querySelector('input[type="password"]') ||
+      (document.querySelector('.modal, .popup') && (bodyText.includes('enter your email') || bodyText.includes('sign in to continue')))
+    ) {
+      return {
+        adapterName: this.name,
+        status: 'SAVED',
+        filled: 0,
+        filledProfile: 0,
+        filledQuestionnaire: 0,
+        skipped: 1,
+        unknown: 0,
+        message: 'Sign in to Shine.com required'
+      };
     }
 
     return {
