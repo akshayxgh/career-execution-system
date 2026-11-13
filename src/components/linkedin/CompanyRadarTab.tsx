@@ -22,6 +22,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
   onRefresh,
 }) => {
   const [radarViewMode, setRadarViewMode] = useState<'current' | 'alumni'>('current');
+  const [companyFilter, setCompanyFilter] = useState<'ALL' | 'RECRUITERS'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -187,18 +188,38 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
     };
   }, [people]);
 
-  // Filtered lists based on search
+  const currentRecruiterCompanyCount = useMemo(() => {
+    return companyRadar.topCompanies.filter((c) => c.recruiters > 0).length;
+  }, [companyRadar.topCompanies]);
+
+  const alumniRecruiterCompanyCount = useMemo(() => {
+    return companyRadar.topAlumniCompanies.filter((c) => c.recruiters > 0).length;
+  }, [companyRadar.topAlumniCompanies]);
+
+  // Filtered lists based on search & recruiter quick filter
   const filteredCurrentCompanies = useMemo(() => {
-    if (!searchQuery.trim()) return companyRadar.topCompanies;
-    const q = searchQuery.toLowerCase();
-    return companyRadar.topCompanies.filter((c) => c.name.toLowerCase().includes(q));
-  }, [companyRadar.topCompanies, searchQuery]);
+    let list = companyRadar.topCompanies;
+    if (companyFilter === 'RECRUITERS') {
+      list = list.filter((c) => c.recruiters > 0);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [companyRadar.topCompanies, companyFilter, searchQuery]);
 
   const filteredAlumniCompanies = useMemo(() => {
-    if (!searchQuery.trim()) return companyRadar.topAlumniCompanies;
-    const q = searchQuery.toLowerCase();
-    return companyRadar.topAlumniCompanies.filter((c) => c.name.toLowerCase().includes(q));
-  }, [companyRadar.topAlumniCompanies, searchQuery]);
+    let list = companyRadar.topAlumniCompanies;
+    if (companyFilter === 'RECRUITERS') {
+      list = list.filter((c) => c.recruiters > 0);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [companyRadar.topAlumniCompanies, companyFilter, searchQuery]);
 
   const extensionDrivingRef = useRef(false);
 
@@ -576,19 +597,85 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
           gap: '1rem',
         }}
       >
-        {/* Controls Toolbar: Search + View Switcher */}
+        {/* Controls Toolbar: Title + Quick Filters + Search + View Switcher */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {radarViewMode === 'current' ? (
-              <Building2 size={18} color="#0284c7" />
-            ) : (
-              <GraduationCap size={18} color="#c084fc" />
-            )}
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              {radarViewMode === 'current'
-                ? `Current Organizations (${companyRadar.totalUniqueCurrent})`
-                : `Alumni & Past Tenure (${companyRadar.totalUniqueAlumni})`}
-            </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {radarViewMode === 'current' ? (
+                <Building2 size={18} color="#0284c7" />
+              ) : (
+                <GraduationCap size={18} color="#c084fc" />
+              )}
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                {radarViewMode === 'current'
+                  ? `Current Organizations (${companyRadar.totalUniqueCurrent})`
+                  : `Alumni & Past Tenure (${companyRadar.totalUniqueAlumni})`}
+              </h3>
+            </div>
+
+            {/* Quick Filter: All vs With Recruiters */}
+            <div
+              style={{
+                display: 'flex',
+                background: 'rgba(6, 10, 18, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '0.45rem',
+                padding: '2px',
+                gap: '2px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setCompanyFilter('ALL')}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '0.35rem',
+                  border: 'none',
+                  background: companyFilter === 'ALL' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                  color: companyFilter === 'ALL' ? '#f8fafc' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: companyFilter === 'ALL' ? 700 : 500,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                All ({radarViewMode === 'current' ? companyRadar.totalUniqueCurrent : companyRadar.totalUniqueAlumni})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCompanyFilter(companyFilter === 'RECRUITERS' ? 'ALL' : 'RECRUITERS')}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '0.35rem',
+                  border: companyFilter === 'RECRUITERS' ? '1px solid rgba(192, 132, 252, 0.4)' : '1px solid transparent',
+                  background: companyFilter === 'RECRUITERS' ? 'rgba(192, 132, 252, 0.22)' : 'transparent',
+                  color: companyFilter === 'RECRUITERS' ? '#c084fc' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Filter companies with at least 1 recruiter connection"
+              >
+                <span>With Recruiters</span>
+                <span
+                  style={{
+                    background: companyFilter === 'RECRUITERS' ? 'rgba(192, 132, 252, 0.4)' : 'rgba(255, 255, 255, 0.08)',
+                    color: companyFilter === 'RECRUITERS' ? '#ffffff' : '#c084fc',
+                    padding: '0.05rem 0.45rem',
+                    borderRadius: '999px',
+                    fontSize: '0.675rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {radarViewMode === 'current' ? currentRecruiterCompanyCount : alumniRecruiterCompanyCount}
+                </span>
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
@@ -716,11 +803,20 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                     <span>🤝 {comp.peers} Engineering/BI</span>
-                    <span>🎯 {comp.recruiters} Recruiter{comp.recruiters !== 1 ? 's' : ''}</span>
+                    <span style={{ color: comp.recruiters > 0 ? '#c084fc' : 'inherit', fontWeight: comp.recruiters > 0 ? 700 : 400 }}>
+                      🎯 {comp.recruiters} Recruiter{comp.recruiters !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
               );
             })}
+            {filteredCurrentCompanies.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.825rem' }}>
+                {companyFilter === 'RECRUITERS'
+                  ? 'No organizations with recruiters found matching your search.'
+                  : 'No organizations found matching your search.'}
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
