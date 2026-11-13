@@ -368,9 +368,9 @@ Return ONLY the ready-to-publish post content.`;
     const connectedRecruitersToday = connectedTodayList.filter(checkIsRecruiterPerson).length;
     const connectedPeersToday = connectedToday - connectedRecruitersToday;
 
-    // Targets: 5 Peers + 5 Recruiter Invites + 2 Recruiter Intros
+    // Targets: 5 Peers + 2 Recruiter Invites + 2 Recruiter Intros
     const peerTarget = 5;
-    const recruiterInviteTarget = 5;
+    const recruiterInviteTarget = 2;
     const recruiterTarget = 2;
     const totalTarget = peerTarget + recruiterInviteTarget + recruiterTarget;
     const totalDispatched =
@@ -606,7 +606,7 @@ Return ONLY the ready-to-publish post content.`;
               </span>
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Target: 5 Data/BI Peers + 5 Recruiter Invites + 2 Intros Daily Routine
+              Target: 5 Data/BI Peers + 2 Recruiter Invites + 2 Intros Daily Routine
             </div>
           </div>
         </div>
@@ -693,14 +693,14 @@ Return ONLY the ready-to-publish post content.`;
               </span>
             </div>
             <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
-              Target: 5 Recruiters
+              Target: 2 Recruiters
             </div>
           </div>
 
           {/* Recruiter Intros Card */}
           <div
             onClick={() => {
-              setNetworkingFilterPill('RECRUITERS');
+              setNetworkingFilterPill('INTRO_SENT');
               setActiveTab('networking');
             }}
             style={{
@@ -715,7 +715,7 @@ Return ONLY the ready-to-publish post content.`;
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
-            title="Click to view recruiter intros"
+            title="Click to view contacts with intro sent"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
               <span style={{ color: '#c084fc', fontWeight: 700 }}>
