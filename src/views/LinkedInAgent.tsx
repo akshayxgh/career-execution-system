@@ -318,10 +318,44 @@ Return ONLY the ready-to-publish post content.`;
     );
   };
 
-  // Today's Routine Pulse stats (5 Peers + 2 Recruiters target + Connected Today)
+  // Today's Routine Pulse stats (5 Peers + 5 Recruiter Invites + 2 Recruiter Intros + Connected Today)
   const routineStats = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // 1. Sent Connection Requests Today (strictly aligned with Analytics table logic):
+    const sentActionsToday = actions.filter((a) => {
+      if (a.action_type !== 'SEND_CONNECTION') return false;
+      const aDate = (a.executed_at || a.created_at || '').split('T')[0];
+      return aDate === todayStr;
+    });
+
+    const sentPeopleToday = people.filter((p) => {
+      const invTag = (p.tags || []).find((t) => t.startsWith('Invited:'));
+      if (invTag && invTag.includes(todayStr)) return true;
+      const pDate = (p.created_at || '').split('T')[0];
+      return pDate === todayStr && p.connection_status === 'INVITATION_SENT';
+    });
+
+    const sentRecruiters = sentPeopleToday.filter(checkIsRecruiterPerson).length;
+    const sentPeers = sentPeopleToday.filter((p) => !checkIsRecruiterPerson(p)).length;
+    const totalSent = Math.max(sentActionsToday.length, sentPeopleToday.length);
+    const peerInvitesSent = Math.max(sentPeers, totalSent - sentRecruiters);
+    const recruiterInvitesSent = sentRecruiters;
+
+    // 2. Recruiter Intros Dispatched Today (strictly aligned with Analytics table logic):
+    const introActionsToday = actions.filter((a) => {
+      if (a.action_type !== 'FOLLOW_UP' && (a.action_type as string) !== 'MESSAGE') return false;
+      if (!['EXECUTED', 'APPROVED', 'READY_FOR_MANUAL'].includes(a.status)) return false;
+      const aDate = (a.executed_at || a.updated_at || a.created_at || '').split('T')[0];
+      return aDate === todayStr;
+    });
+    const introPeopleToday = people.filter((p) => {
+      if (!Array.isArray(p.tags) || !p.tags.includes('Intro Sent')) return false;
+      return Boolean(p.last_interaction_at && p.last_interaction_at.startsWith(todayStr));
+    });
+    const introsDispatched = Math.max(introActionsToday.length, introPeopleToday.length);
+
+    // 3. Connected / Accepted Today (strictly aligned with Analytics table logic):
     const connectedTodayList = people.filter((p) => {
       if (p.connection_status !== 'CONNECTED') return false;
       const tag = (p.tags || []).find((t) => t.startsWith('Connected:'));
@@ -334,58 +368,22 @@ Return ONLY the ready-to-publish post content.`;
     const connectedRecruitersToday = connectedTodayList.filter(checkIsRecruiterPerson).length;
     const connectedPeersToday = connectedToday - connectedRecruitersToday;
 
-    // 1. Peer Invites Sent TODAY (Target: 5 Data/BI Peers)
-    const peerInviteIds = new Set<string>();
-    actions.forEach((a) => {
-      if (a.action_type === 'SEND_CONNECTION') {
-        const aDate = (a.executed_at || a.created_at || '').split('T')[0];
-        if (aDate === todayStr) {
-          peerInviteIds.add(a.target_id || (a.payload as any)?.person_id || (a.payload as any)?.recipient_name || a.id);
-        }
-      }
-    });
-    people.forEach((p) => {
-      if (!checkIsRecruiterPerson(p) && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status)) {
-        const createdToday = (p.created_at || '').startsWith(todayStr);
-        const interactedToday = Boolean(p.last_interaction_at && p.last_interaction_at.startsWith(todayStr));
-        const invitedTagToday = (p.tags || []).some((t) => t.startsWith('Invited:') && t.includes(todayStr));
-        if (createdToday || interactedToday || invitedTagToday) {
-          peerInviteIds.add(p.id);
-        }
-      }
-    });
-    const peerInvitesSent = peerInviteIds.size;
-
-    // 2. Recruiter Intros Dispatched TODAY (Target: 2 Recruiters)
-    const recruiterIntroIds = new Set<string>();
-    actions.forEach((a) => {
-      if (a.action_type === 'FOLLOW_UP' || (a.action_type as string) === 'MESSAGE') {
-        if (['EXECUTED', 'APPROVED', 'READY_FOR_MANUAL'].includes(a.status)) {
-          const aDate = (a.executed_at || a.updated_at || a.created_at || '').split('T')[0];
-          if (aDate === todayStr) {
-            recruiterIntroIds.add(a.target_id || (a.payload as any)?.person_id || (a.payload as any)?.recipient_name || a.id);
-          }
-        }
-      }
-    });
-    people.forEach((p) => {
-      if (checkIsRecruiterPerson(p) && Array.isArray(p.tags) && p.tags.includes('Intro Sent')) {
-        if (p.last_interaction_at && p.last_interaction_at.startsWith(todayStr)) {
-          recruiterIntroIds.add(p.id);
-        }
-      }
-    });
-    const introsDispatched = recruiterIntroIds.size;
-
+    // Targets: 5 Peers + 5 Recruiter Invites + 2 Recruiter Intros
     const peerTarget = 5;
+    const recruiterInviteTarget = 5;
     const recruiterTarget = 2;
-    const totalTarget = peerTarget + recruiterTarget;
-    const totalDispatched = Math.min(peerInvitesSent, peerTarget) + Math.min(introsDispatched, recruiterTarget);
+    const totalTarget = peerTarget + recruiterInviteTarget + recruiterTarget;
+    const totalDispatched =
+      Math.min(peerInvitesSent, peerTarget) +
+      Math.min(recruiterInvitesSent, recruiterInviteTarget) +
+      Math.min(introsDispatched, recruiterTarget);
     const percentComplete = Math.min(Math.round((totalDispatched / totalTarget) * 100), 100);
 
     return {
       peerInvitesSent,
       peerTarget,
+      recruiterInvitesSent,
+      recruiterInviteTarget,
       introsDispatched,
       recruiterTarget,
       totalDispatched,
@@ -608,7 +606,7 @@ Return ONLY the ready-to-publish post content.`;
               </span>
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Target: 5 Data/BI Peers + 2 Recruiters Daily Routine
+              Target: 5 Data/BI Peers + 5 Recruiter Invites + 2 Intros Daily Routine
             </div>
           </div>
         </div>
@@ -654,6 +652,48 @@ Return ONLY the ready-to-publish post content.`;
             </div>
             <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
               Target: 5 Data/BI Peers
+            </div>
+          </div>
+
+          {/* Recruiter Invites Card */}
+          <div
+            onClick={() => {
+              setNetworkingFilterPill('RECRUITERS');
+              setActiveTab('networking');
+            }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem',
+              minWidth: '145px',
+              padding: '0.45rem 0.75rem',
+              borderRadius: '0.5rem',
+              background: 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.28)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title="Click to view recruiters directory"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+              <span style={{ color: '#f59e0b', fontWeight: 700 }}>
+                Recruiter Invites
+              </span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: '#f59e0b',
+                  background: 'rgba(245, 158, 11, 0.22)',
+                  padding: '0.05rem 0.45rem',
+                  borderRadius: '999px',
+                  fontSize: '0.7rem',
+                }}
+              >
+                {routineStats.recruiterInvitesSent}/{routineStats.recruiterInviteTarget}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
+              Target: 5 Recruiters
             </div>
           </div>
 

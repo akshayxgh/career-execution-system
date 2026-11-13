@@ -194,13 +194,76 @@ class LinkedInAdapter extends BaseAdapter {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     try {
-      // 1. Gently scroll down to trigger lazy loading of invitations
-      for (let s = 0; s < 3; s++) {
-        window.scrollBy({ top: 700, behavior: 'smooth' });
-        await sleep(300);
+      // 1. Progressively scroll down to load ALL invitation cards via LinkedIn infinite scroll
+      if (text) text.textContent = 'Auto-scrolling to load all cards...';
+
+      // Check if LinkedIn displays total count, e.g. "People 23"
+      let expectedTotal = 0;
+      const navHeader = document.querySelector('.mn-invitation-manager__navigation, header, [class*="invitation-manager"]') || document.body;
+      const countMatch = (navHeader.innerText || '').match(/People\s*\(?(\d+)\)?/i);
+      if (countMatch) {
+        expectedTotal = parseInt(countMatch[1], 10);
+        console.log(`[MYCES Import] Detected expected invitations count: ${expectedTotal}`);
       }
+
+      let lastScrollHeight = 0;
+      let noChangeCount = 0;
+      const maxScrollIterations = 25;
+
+      for (let s = 0; s < maxScrollIterations; s++) {
+        // Count currently rendered profile cards
+        const currentLinks = Array.from(document.querySelectorAll('a[href*="/in/"]')).filter(a => {
+          return !a.closest('header, nav.global-nav, [role="banner"], #global-nav');
+        });
+        const currentSlugs = new Set(
+          currentLinks.map(a => {
+            const m = (a.href || a.getAttribute('href') || '').match(/\/in\/([^\/\?#]+)/i);
+            return m ? m[1].toLowerCase().trim() : null;
+          }).filter(Boolean)
+        );
+
+        if (text) {
+          text.textContent = expectedTotal > 0
+            ? `Loading cards: ${currentSlugs.size} of ${expectedTotal}...`
+            : `Loading cards: ${currentSlugs.size} found...`;
+        }
+
+        // If we reached or exceeded the expected total, we're done scrolling
+        if (expectedTotal > 0 && currentSlugs.size >= expectedTotal) {
+          break;
+        }
+
+        const currentScrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+
+        // Scroll all the way down
+        window.scrollTo({ top: currentScrollHeight, behavior: 'smooth' });
+        await sleep(750);
+
+        const newScrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+        if (newScrollHeight === lastScrollHeight) {
+          // Extra scroll push down
+          window.scrollBy({ top: 1200, behavior: 'smooth' });
+          await sleep(650);
+          const retryHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+          if (retryHeight === lastScrollHeight) {
+            noChangeCount++;
+            if (noChangeCount >= 2) {
+              // Reached actual bottom
+              break;
+            }
+          } else {
+            noChangeCount = 0;
+          }
+        } else {
+          noChangeCount = 0;
+        }
+
+        lastScrollHeight = newScrollHeight;
+      }
+
+      // Smooth scroll back to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      await sleep(250);
+      await sleep(350);
 
       // 2. Discover all profile links on this page (excluding global nav header)
       const allLinks = Array.from(document.querySelectorAll('a[href*="/in/"]')).filter(a => {
