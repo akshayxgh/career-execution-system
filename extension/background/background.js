@@ -1192,26 +1192,47 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
 
     if (!res.ok) throw new Error(`Failed to query database: ${res.status}`);
     const people = await res.json();
-    const total = people.length;
+
+    // 1. SMART FILTER: Only audit contacts who haven't had employment history pulled yet
+    const unauditedPeople = forceRefresh
+      ? people
+      : people.filter(p => {
+          const hasAlumniTags = Array.isArray(p.tags) && p.tags.some(t => typeof t === 'string' && (t.startsWith('Alumni:') || t === 'Employment: Checked'));
+          const hasPastEmployers = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
+          return !hasAlumniTags && !hasPastEmployers;
+        });
+
+    const totalToAudit = unauditedPeople.length;
+    const cachedCount = people.length - totalToAudit;
+
+    if (totalToAudit === 0) {
+      broadcastEmploymentProgress({
+        status: 'COMPLETED',
+        total: 0,
+        processed: 0,
+        updated: 0,
+        message: `All ${people.length} connections are already up to date! (0 new connections need auditing).`
+      }, senderTabId);
+      return { success: true, total: 0, processed: 0, updated: 0, message: "All connections already cached." };
+    }
 
     let processedCount = 0;
     let updatedCount = 0;
-    let skippedCount = 0;
     const results = [];
 
     broadcastEmploymentProgress({
       status: 'STARTING',
-      total,
+      total: totalToAudit,
       processed: 0,
       updated: 0,
-      message: `Auditing ${total} connections via Voyager API (skipping already pulled)...`
+      message: `Auditing ${totalToAudit} new connections (${cachedCount} already cached)...`
     }, senderTabId);
 
-    for (let i = 0; i < people.length; i++) {
+    for (let i = 0; i < unauditedPeople.length; i++) {
       if (cancelEmploymentPull) {
         broadcastEmploymentProgress({
           status: 'CANCELLED',
-          total,
+          total: totalToAudit,
           processed: processedCount,
           updated: updatedCount,
           message: 'Employment history sync cancelled by user.'
@@ -1219,7 +1240,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
         break;
       }
 
-      const person = people[i];
+      const person = unauditedPeople[i];
       const slug = extractProfileSlug(person.profile_url);
 
       if (!slug) {
@@ -1227,40 +1248,13 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
         continue;
       }
 
-      // 1. SMART CACHING: Skip contacts whose employment history has already been pulled/audited
-      const hasAlumniTags = Array.isArray(person.tags) && person.tags.some(t => typeof t === 'string' && (t.startsWith('Alumni:') || t === 'Employment: Checked'));
-      const hasPastEmployers = Boolean(person.interaction_notes && (person.interaction_notes.includes('Past Employers:') || person.interaction_notes.includes('Employment Audited')));
-
-      if (!forceRefresh && (hasAlumniTags || hasPastEmployers)) {
-        processedCount++;
-        skippedCount++;
-        if (hasAlumniTags) {
-          updatedCount++;
-        }
-
-        broadcastEmploymentProgress({
-          status: 'IN_PROGRESS',
-          total,
-          processed: processedCount,
-          updated: updatedCount,
-          currentPerson: person.full_name,
-          message: `⚡ ${person.full_name}: Already audited (skipped)`
-        }, senderTabId);
-
-        // Smooth non-blocking UI yield on high volume skips
-        if (skippedCount % 12 === 0) {
-          await delay(20);
-        }
-        continue;
-      }
-
       broadcastEmploymentProgress({
         status: 'IN_PROGRESS',
-        total,
+        total: totalToAudit,
         processed: processedCount + 1,
         updated: updatedCount,
         currentPerson: person.full_name,
-        message: `[${i + 1}/${total}] Fetching employment history for ${person.full_name}...`
+        message: `[${i + 1}/${totalToAudit}] Fetching employment history for ${person.full_name}...`
       }, senderTabId);
 
       try {
@@ -1305,7 +1299,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
             });
             broadcastEmploymentProgress({
               status: 'IN_PROGRESS',
-              total,
+              total: totalToAudit,
               processed: processedCount + 1,
               updated: updatedCount,
               currentPerson: person.full_name,
@@ -1335,7 +1329,7 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
 
           broadcastEmploymentProgress({
             status: 'IN_PROGRESS',
-            total,
+            total: totalToAudit,
             processed: processedCount + 1,
             updated: updatedCount,
             currentPerson: person.full_name,
@@ -1349,18 +1343,18 @@ async function handlePullAllEmploymentHistory(senderTabId = null, forceRefresh =
       processedCount++;
 
       // Polite pacing delay between live profile calls
-      if (i < people.length - 1) {
+      if (i < unauditedPeople.length - 1) {
         await delay(1200 + Math.floor(Math.random() * 800));
       }
     }
 
     broadcastEmploymentProgress({
       status: 'COMPLETED',
-      total,
+      total: totalToAudit,
       processed: processedCount,
       updated: updatedCount,
       results,
-      message: `Completed! Processed ${total} contacts (${updatedCount} mapped, ${skippedCount} already cached).`
+      message: `Completed! Successfully mapped ${updatedCount} new connections (${cachedCount} already cached).`
     }, senderTabId);
 
     return { success: true, total, processed: processedCount, updated: updatedCount, results };

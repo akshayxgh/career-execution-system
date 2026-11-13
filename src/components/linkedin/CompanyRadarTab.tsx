@@ -244,19 +244,37 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
     return () => window.removeEventListener('message', handleWindowMessage);
   }, [onRefresh]);
 
+  const unmappedCount = useMemo(() => {
+    return people.filter((p) => {
+      const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:') || t === 'Employment: Checked');
+      const hasNotes = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
+      return !hasAlumni && !hasNotes;
+    }).length;
+  }, [people]);
+
   const handleStartEmploymentPull = async () => {
+    const unmappedPeople = people.filter((p) => {
+      const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:') || t === 'Employment: Checked');
+      const hasNotes = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
+      return !hasAlumni && !hasNotes;
+    });
+
     setHistoryPullModalOpen(true);
     setIsPullingHistory(true);
     extensionDrivingRef.current = false;
     setPullProgress({
       status: 'IN_PROGRESS',
-      total: people.length,
+      total: unmappedPeople.length,
       processed: 0,
       updated: 0,
-      message: `Auditing ${people.length} contacts via LinkedIn Voyager API...`,
+      message: unmappedPeople.length > 0 
+        ? `Auditing ${unmappedPeople.length} new connections via Voyager API (${people.length - unmappedPeople.length} cached)...`
+        : `All ${people.length} connections are already cached!`,
       logs: [
         `Initiating Voyager API connection through active browser session...`,
-        `Connecting to directory & synchronizing position groups...`,
+        unmappedPeople.length > 0
+          ? `Found ${unmappedPeople.length} new/unmapped connections to audit (${people.length - unmappedPeople.length} already cached).`
+          : `All ${people.length} connections have verified employment history.`
       ],
     });
 
@@ -284,23 +302,23 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
         .catch(() => null);
 
       let currentMapped = 0;
-      for (let i = 0; i < people.length; i++) {
+      for (let i = 0; i < unmappedPeople.length; i++) {
         if (extensionDrivingRef.current) break;
-        const p = people[i];
+        const p = unmappedPeople[i];
         const comp = p.company || 'Enterprise Partner';
         const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:'));
         if (hasAlumni) currentMapped++;
 
         setPullProgress((prev) => {
           const newLogs = [...prev.logs];
-          newLogs.unshift(`✓ [${i + 1}/${people.length}] ${p.full_name} ➔ ${comp}`);
+          newLogs.unshift(`✓ [${i + 1}/${unmappedPeople.length}] ${p.full_name} ➔ ${comp}`);
           return {
             status: 'IN_PROGRESS',
-            total: people.length,
+            total: unmappedPeople.length,
             processed: i + 1,
             updated: currentMapped,
             currentPerson: p.full_name,
-            message: `[${i + 1}/${people.length}] Processing ${p.full_name}...`,
+            message: `[${i + 1}/${unmappedPeople.length}] Processing ${p.full_name}...`,
             logs: newLogs.slice(0, 40),
           };
         });
@@ -310,7 +328,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
 
       if (!extensionDrivingRef.current) {
         const syncResult = await syncPromise;
-        const finalCount = syncResult?.total || people.length;
+        const finalCount = syncResult?.total || unmappedPeople.length;
 
         setPullProgress((prev) => ({
           ...prev,
@@ -319,7 +337,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
           updated: prev.updated || finalCount,
           message: `Completed! Successfully mapped employment histories for all ${finalCount} contacts.`,
           logs: [
-            `✓ All ${finalCount} contacts processed & mapped!`,
+            `✓ All ${finalCount} new contacts processed & mapped!`,
             `✓ Company Radar and Alumni Referral Inroads are now live and refreshed.`,
             ...prev.logs,
           ],
@@ -334,7 +352,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
       setPullProgress((prev) => ({
         ...prev,
         status: 'COMPLETED',
-        processed: people.length,
+        processed: unmappedPeople.length,
         message: `Sync completed: ${msg}`,
       }));
       setIsPullingHistory(false);
@@ -498,10 +516,10 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
           </div>
           <div>
             <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Voyager API Employment History Radar
+              Voyager API Employment History Sync
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-              Pulls complete position groups & verified career timelines for your connections directly through your browser session.
+              Audits career histories for newly added connections (already-audited profiles are permanently cached and skipped).
             </div>
           </div>
         </div>
@@ -512,9 +530,9 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
           disabled={isPullingHistory}
           className="btn"
           style={{
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            color: '#ffffff',
-            border: 'none',
+            background: unmappedCount === 0 ? 'rgba(16, 185, 129, 0.15)' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            color: unmappedCount === 0 ? '#10b981' : '#ffffff',
+            border: unmappedCount === 0 ? '1px solid rgba(16, 185, 129, 0.35)' : 'none',
             padding: '0.55rem 1.15rem',
             borderRadius: '0.5rem',
             fontSize: '0.8rem',
@@ -523,18 +541,23 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '0.45rem',
-            boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)',
+            boxShadow: unmappedCount === 0 ? 'none' : '0 4px 14px rgba(124, 58, 237, 0.35)',
           }}
         >
           {isPullingHistory ? (
             <>
               <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
-              <span>Pulling ({pullProgress.processed}/{pullProgress.total})...</span>
+              <span>Syncing ({pullProgress.processed}/{pullProgress.total})...</span>
+            </>
+          ) : unmappedCount === 0 ? (
+            <>
+              <CheckCircle size={14} />
+              <span>All Connections Cached ({people.length})</span>
             </>
           ) : (
             <>
               <Sparkles size={14} />
-              <span>⚡ Pull All Employment History</span>
+              <span>⚡ Sync New Connections ({unmappedCount} Unmapped)</span>
             </>
           )}
         </button>
@@ -864,10 +887,10 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                    Voyager API: Employment History Pull
+                    Voyager API: Smart Employment History Sync
                   </h3>
                   <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                    Pulling positionGroups & past employers for all connections
+                    Auditing new & unmapped connections (cached profiles are automatically skipped)
                   </p>
                 </div>
               </div>
@@ -896,7 +919,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
                     {pullProgress.total}
                   </div>
                   <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                    Total Connections
+                    New To Audit
                   </div>
                 </div>
 

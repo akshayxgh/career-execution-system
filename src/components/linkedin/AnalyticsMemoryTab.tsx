@@ -132,18 +132,28 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
   }, [onRefresh]);
 
   const handleStartEmploymentPull = async () => {
+    const unmappedPeople = people.filter((p) => {
+      const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:') || t === 'Employment: Checked');
+      const hasNotes = Boolean(p.interaction_notes && (p.interaction_notes.includes('Past Employers:') || p.interaction_notes.includes('Employment Audited')));
+      return !hasAlumni && !hasNotes;
+    });
+
     setHistoryPullModalOpen(true);
     setIsPullingHistory(true);
     extensionDrivingRef.current = false;
     setPullProgress({
       status: 'IN_PROGRESS',
-      total: people.length,
+      total: unmappedPeople.length,
       processed: 0,
       updated: 0,
-      message: `Auditing ${people.length} contacts via LinkedIn Voyager API...`,
+      message: unmappedPeople.length > 0
+        ? `Auditing ${unmappedPeople.length} new connections via Voyager API (${people.length - unmappedPeople.length} cached)...`
+        : `All ${people.length} connections are already cached!`,
       logs: [
         `Initiating Voyager API connection through active browser session...`,
-        `Connecting to directory & synchronizing position groups...`
+        unmappedPeople.length > 0
+          ? `Found ${unmappedPeople.length} new/unmapped connections to audit (${people.length - unmappedPeople.length} cached).`
+          : `All ${people.length} connections have verified employment history.`
       ],
     });
 
@@ -168,23 +178,23 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
         .catch(() => null);
 
       let currentMapped = 0;
-      for (let i = 0; i < people.length; i++) {
+      for (let i = 0; i < unmappedPeople.length; i++) {
         if (extensionDrivingRef.current) break;
-        const p = people[i];
+        const p = unmappedPeople[i];
         const comp = p.company || 'Enterprise Partner';
         const hasAlumni = (p.tags || []).some((t) => t.startsWith('Alumni:'));
         if (hasAlumni) currentMapped++;
 
         setPullProgress((prev) => {
           const newLogs = [...prev.logs];
-          newLogs.unshift(`✓ [${i + 1}/${people.length}] ${p.full_name} ➔ ${comp}`);
+          newLogs.unshift(`✓ [${i + 1}/${unmappedPeople.length}] ${p.full_name} ➔ ${comp}`);
           return {
             status: 'IN_PROGRESS',
-            total: people.length,
+            total: unmappedPeople.length,
             processed: i + 1,
             updated: currentMapped,
             currentPerson: p.full_name,
-            message: `[${i + 1}/${people.length}] Processing ${p.full_name}...`,
+            message: `[${i + 1}/${unmappedPeople.length}] Processing ${p.full_name}...`,
             logs: newLogs.slice(0, 40),
           };
         });
@@ -195,7 +205,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
 
       if (!extensionDrivingRef.current) {
         const syncResult = await syncPromise;
-        const finalCount = syncResult?.total || people.length;
+        const finalCount = syncResult?.total || unmappedPeople.length;
 
         setPullProgress((prev) => ({
           ...prev,
@@ -204,7 +214,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
           updated: prev.updated || finalCount,
           message: `Completed! Successfully mapped employment histories for all ${finalCount} contacts.`,
           logs: [
-            `✓ All ${finalCount} contacts processed & mapped!`,
+            `✓ All ${finalCount} new contacts processed & mapped!`,
             `✓ Company Radar and Alumni Referral Inroads are now live and refreshed.`,
             ...prev.logs,
           ],
@@ -219,7 +229,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       setPullProgress((prev) => ({
         ...prev,
         status: 'COMPLETED',
-        processed: people.length,
+        processed: unmappedPeople.length,
         message: `Sync completed: ${msg}`,
       }));
       setIsPullingHistory(false);
@@ -2723,10 +2733,10 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                    Voyager API: Employment History Pull
+                    Voyager API: Smart Employment History Sync
                   </h3>
                   <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                    Pulling positionGroups & past employers for all connections
+                    Auditing new & unmapped connections (cached profiles are automatically skipped)
                   </p>
                 </div>
               </div>
@@ -2755,7 +2765,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
                     {pullProgress.total}
                   </div>
                   <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                    Total Connections
+                    New To Audit
                   </div>
                 </div>
 
