@@ -334,8 +334,49 @@ Return ONLY the ready-to-publish post content.`;
     const connectedRecruitersToday = connectedTodayList.filter(checkIsRecruiterPerson).length;
     const connectedPeersToday = connectedToday - connectedRecruitersToday;
 
-    const peerInvitesSent = people.filter((p) => p.connection_status === 'INVITATION_SENT').length;
-    const introsDispatched = people.filter((p) => Array.isArray(p.tags) && p.tags.includes('Intro Sent')).length;
+    // 1. Peer Invites Sent TODAY (Target: 5 Data/BI Peers)
+    const peerInviteIds = new Set<string>();
+    actions.forEach((a) => {
+      if (a.action_type === 'SEND_CONNECTION') {
+        const aDate = (a.executed_at || a.created_at || '').split('T')[0];
+        if (aDate === todayStr) {
+          peerInviteIds.add(a.target_id || (a.payload as any)?.person_id || (a.payload as any)?.recipient_name || a.id);
+        }
+      }
+    });
+    people.forEach((p) => {
+      if (!checkIsRecruiterPerson(p) && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status)) {
+        const createdToday = (p.created_at || '').startsWith(todayStr);
+        const interactedToday = Boolean(p.last_interaction_at && p.last_interaction_at.startsWith(todayStr));
+        const invitedTagToday = (p.tags || []).some((t) => t.startsWith('Invited:') && t.includes(todayStr));
+        if (createdToday || interactedToday || invitedTagToday) {
+          peerInviteIds.add(p.id);
+        }
+      }
+    });
+    const peerInvitesSent = peerInviteIds.size;
+
+    // 2. Recruiter Intros Dispatched TODAY (Target: 2 Recruiters)
+    const recruiterIntroIds = new Set<string>();
+    actions.forEach((a) => {
+      if (a.action_type === 'FOLLOW_UP' || (a.action_type as string) === 'MESSAGE') {
+        if (['EXECUTED', 'APPROVED', 'READY_FOR_MANUAL'].includes(a.status)) {
+          const aDate = (a.executed_at || a.updated_at || a.created_at || '').split('T')[0];
+          if (aDate === todayStr) {
+            recruiterIntroIds.add(a.target_id || (a.payload as any)?.person_id || (a.payload as any)?.recipient_name || a.id);
+          }
+        }
+      }
+    });
+    people.forEach((p) => {
+      if (checkIsRecruiterPerson(p) && Array.isArray(p.tags) && p.tags.includes('Intro Sent')) {
+        if (p.last_interaction_at && p.last_interaction_at.startsWith(todayStr)) {
+          recruiterIntroIds.add(p.id);
+        }
+      }
+    });
+    const introsDispatched = recruiterIntroIds.size;
+
     const peerTarget = 5;
     const recruiterTarget = 2;
     const totalTarget = peerTarget + recruiterTarget;
@@ -354,7 +395,7 @@ Return ONLY the ready-to-publish post content.`;
       connectedRecruitersToday,
       connectedPeersToday,
     };
-  }, [people]);
+  }, [people, actions]);
 
   // Active action for split-pane reviewer
   const activeAction = useMemo(() => {
