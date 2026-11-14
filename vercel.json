@@ -5,6 +5,10 @@
       "destination": "/api/agent/people?action=sync-employment"
     },
     {
+      "source": "/api/agent/video-meta",
+      "destination": "/api/agent/context?purpose=video-meta"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
