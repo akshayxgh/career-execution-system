@@ -213,8 +213,10 @@ export const LinkedInAgent: React.FC = () => {
 
   const [networkingFilterPill, setNetworkingFilterPill] = useState<'ALL' | 'RECRUITERS' | 'INTRO_SENT' | 'PENDING_INVITES' | 'CONNECTED' | 'CONNECTED_TODAY'>('ALL');
 
-  const checkIsRecruiterPerson = (p: LinkedInPerson): boolean => {
-    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+  const checkIsRecruiterPerson = (p?: LinkedInPerson | null): boolean => {
+    if (!p) return false;
+    const tagsStr = Array.isArray(p.tags) ? p.tags.join(' ') : (typeof p.tags === 'string' ? p.tags : '');
+    const text = `${p.role || ''} ${p.headline || ''} ${tagsStr}`.toLowerCase();
     return (
       text.includes('recruiter') ||
       text.includes('talent acquisition') ||
@@ -227,34 +229,46 @@ export const LinkedInAgent: React.FC = () => {
   };
 
   // Today's Routine Pulse stats (5 Peers + 2 Recruiter Invites + 2 Recruiter Intros + Connected Today)
+  // Strictly isolated to today's data (UTC and local day)
   const routineStats = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const todayLocalStr = new Date().toLocaleDateString('en-CA');
+    const safeActions = Array.isArray(actions) ? actions : [];
+    const safePeople = Array.isArray(people) ? people : [];
 
-    // 1. Sent Connection Requests Today (strictly aligned with Analytics table logic):
-    const sentActionsToday = actions.filter((a) => {
-      if (a.action_type !== 'SEND_CONNECTION') return false;
+    // 1. Sent Connection Requests Today (strictly today only):
+    const sentActionsToday = safeActions.filter((a) => {
+      if (!a || a.action_type !== 'SEND_CONNECTION') return false;
       const aDate = (a.executed_at || a.created_at || '').split('T')[0];
       return aDate === todayStr || aDate === todayLocalStr;
     });
 
-    const sentPeopleToday = people.filter((p) => {
-      const invTag = (p.tags || []).find((t) => t.startsWith('Invited:'));
+    const sentPeopleToday = safePeople.filter((p) => {
+      if (!p) return false;
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      const invTag = tags.find((t) => typeof t === 'string' && t.startsWith('Invited:'));
       if (invTag && (invTag.includes(todayStr) || invTag.includes(todayLocalStr))) return true;
 
       const pCreateDate = (p.created_at || '').split('T')[0];
       const pInteractDate = (p.last_interaction_at || '').split('T')[0];
-      const pUpdateDate = (p.updated_at || '').split('T')[0];
 
-      const matchesToday =
-        pCreateDate === todayStr ||
-        pCreateDate === todayLocalStr ||
-        pInteractDate === todayStr ||
-        pInteractDate === todayLocalStr ||
-        ((pUpdateDate === todayStr || pUpdateDate === todayLocalStr) &&
-          ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status));
+      // If created today and invited/connected:
+      if (
+        (pCreateDate === todayStr || pCreateDate === todayLocalStr) &&
+        ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status)
+      ) {
+        return true;
+      }
 
-      return matchesToday && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status);
+      // If invitation was sent today:
+      if (
+        p.connection_status === 'INVITATION_SENT' &&
+        (pInteractDate === todayStr || pInteractDate === todayLocalStr)
+      ) {
+        return true;
+      }
+
+      return false;
     });
 
     const sentRecruiters = sentPeopleToday.filter(checkIsRecruiterPerson).length;
@@ -263,30 +277,32 @@ export const LinkedInAgent: React.FC = () => {
     const peerInvitesSent = Math.max(sentPeers, totalSent - sentRecruiters);
     const recruiterInvitesSent = sentRecruiters;
 
-    // 2. Recruiter Intros Dispatched Today (strictly aligned with Analytics table logic):
-    const introActionsToday = actions.filter((a) => {
-      if (a.action_type !== 'FOLLOW_UP' && (a.action_type as string) !== 'MESSAGE') return false;
+    // 2. Recruiter Intros Dispatched Today (strictly today only):
+    const introActionsToday = safeActions.filter((a) => {
+      if (!a || (a.action_type !== 'FOLLOW_UP' && (a.action_type as string) !== 'MESSAGE')) return false;
       if (!['EXECUTED', 'APPROVED', 'READY_FOR_MANUAL'].includes(a.status)) return false;
       const aDate = (a.executed_at || a.updated_at || a.created_at || '').split('T')[0];
       return aDate === todayStr || aDate === todayLocalStr;
     });
-    const introPeopleToday = people.filter((p) => {
-      if (!Array.isArray(p.tags) || !p.tags.includes('Intro Sent')) return false;
-      const pInteract = p.last_interaction_at || '';
-      return pInteract.startsWith(todayStr) || pInteract.startsWith(todayLocalStr);
+    const introPeopleToday = safePeople.filter((p) => {
+      if (!p) return false;
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      if (!tags.includes('Intro Sent')) return false;
+      const pInteract = (p.last_interaction_at || '').split('T')[0];
+      return pInteract === todayStr || pInteract === todayLocalStr;
     });
     const introsDispatched = Math.max(introActionsToday.length, introPeopleToday.length);
 
-    // 3. Connected / Accepted Today (strictly aligned with Analytics table logic):
-    const connectedTodayList = people.filter((p) => {
-      if (p.connection_status !== 'CONNECTED') return false;
-      const tag = (p.tags || []).find((t) => t.startsWith('Connected:'));
+    // 3. Connected / Accepted Today (strictly today only):
+    const connectedTodayList = safePeople.filter((p) => {
+      if (!p || p.connection_status !== 'CONNECTED') return false;
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      const tag = tags.find((t) => typeof t === 'string' && t.startsWith('Connected:'));
       if (tag && (tag.includes(todayStr) || tag.includes(todayLocalStr))) return true;
-      if (
-        p.last_interaction_at &&
-        (p.last_interaction_at.startsWith(todayStr) || p.last_interaction_at.startsWith(todayLocalStr))
-      )
-        return true;
+
+      const pInteract = (p.last_interaction_at || '').split('T')[0];
+      if (pInteract === todayStr || pInteract === todayLocalStr) return true;
+
       const pDate = (p.created_at || '').split('T')[0];
       if (pDate === todayStr || pDate === todayLocalStr) return true;
       return false;

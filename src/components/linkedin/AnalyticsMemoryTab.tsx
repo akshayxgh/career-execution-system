@@ -437,8 +437,10 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
     };
   }, [people]);
 
-  const checkIsRecruiterContact = (p: { role?: string | null; headline?: string | null; tags?: string[] }): boolean => {
-    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
+  const checkIsRecruiterContact = (p?: { role?: string | null; headline?: string | null; tags?: string[] } | null): boolean => {
+    if (!p) return false;
+    const tagsStr = Array.isArray(p.tags) ? p.tags.join(' ') : (typeof p.tags === 'string' ? p.tags : '');
+    const text = `${p.role || ''} ${p.headline || ''} ${tagsStr}`.toLowerCase();
     return (
       text.includes('recruiter') ||
       text.includes('talent acquisition') ||
@@ -454,6 +456,8 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
   const dailyVelocityData = useMemo(() => {
     const daysList = [];
     const now = new Date();
+    const safeActions = Array.isArray(actions) ? actions : [];
+    const safePeople = Array.isArray(people) ? people : [];
 
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now);
@@ -464,36 +468,47 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       const dayLabel = isToday ? 'Today' : isYesterday ? 'Yesterday' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
 
-      // Sent requests on dateStr:
-      const sentActions = actions.filter((a) => {
-        if (a.action_type !== 'SEND_CONNECTION') return false;
+      // Sent requests on dateStr (strictly isolated to that day):
+      const sentActions = safeActions.filter((a) => {
+        if (!a || a.action_type !== 'SEND_CONNECTION') return false;
         const aDate = (a.executed_at || a.created_at || '').split('T')[0];
         return aDate === dateStr;
       });
-      const sentPeople = people.filter((p) => {
-        const invTag = (p.tags || []).find((t) => t.startsWith('Invited:'));
+      const sentPeople = safePeople.filter((p) => {
+        if (!p) return false;
+        const tags = Array.isArray(p.tags) ? p.tags : [];
+        const invTag = tags.find((t) => typeof t === 'string' && t.startsWith('Invited:'));
         if (invTag && invTag.includes(dateStr)) return true;
+
         const pCreateDate = (p.created_at || '').split('T')[0];
         const pInteractDate = (p.last_interaction_at || '').split('T')[0];
-        const pUpdateDate = (p.updated_at || '').split('T')[0];
 
-        const matchesDate =
-          pCreateDate === dateStr ||
-          pInteractDate === dateStr ||
-          (pUpdateDate === dateStr && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status));
+        // If created on this date and invited/connected:
+        if (pCreateDate === dateStr && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status)) {
+          return true;
+        }
 
-        return matchesDate && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status);
+        // If invitation was sent on this date:
+        if (p.connection_status === 'INVITATION_SENT' && pInteractDate === dateStr) {
+          return true;
+        }
+
+        return false;
       });
       const totalSent = Math.max(sentActions.length, sentPeople.length);
       const sentRecruiters = sentPeople.filter(checkIsRecruiterContact).length;
       const sentPeers = Math.max(0, totalSent - sentRecruiters);
 
       // Connected / Accepted on dateStr:
-      const acceptedPeople = people.filter((p) => {
-        if (p.connection_status !== 'CONNECTED') return false;
-        const tag = (p.tags || []).find((t) => t.startsWith('Connected:'));
+      const acceptedPeople = safePeople.filter((p) => {
+        if (!p || p.connection_status !== 'CONNECTED') return false;
+        const tags = Array.isArray(p.tags) ? p.tags : [];
+        const tag = tags.find((t) => typeof t === 'string' && t.startsWith('Connected:'));
         if (tag && tag.includes(dateStr)) return true;
-        if (p.last_interaction_at && p.last_interaction_at.startsWith(dateStr)) return true;
+        const pInteract = (p.last_interaction_at || '').split('T')[0];
+        if (pInteract === dateStr) return true;
+        const pCreate = (p.created_at || '').split('T')[0];
+        if (pCreate === dateStr) return true;
         return false;
       });
       const totalAccepted = acceptedPeople.length;
@@ -501,16 +516,18 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       const acceptedPeers = Math.max(0, totalAccepted - acceptedRecruiters);
 
       // Intros sent on dateStr:
-      const introActions = actions.filter((a) => {
-        if (a.action_type !== 'FOLLOW_UP' && (a.action_type as string) !== 'MESSAGE') return false;
+      const introActions = safeActions.filter((a) => {
+        if (!a || (a.action_type !== 'FOLLOW_UP' && (a.action_type as string) !== 'MESSAGE')) return false;
         if (a.status !== 'EXECUTED') return false;
         const aDate = (a.executed_at || a.updated_at || a.created_at || '').split('T')[0];
         return aDate === dateStr;
       });
-      const introPeople = people.filter((p) => {
-        if (!Array.isArray(p.tags) || !p.tags.includes('Intro Sent')) return false;
-        if (p.last_interaction_at && p.last_interaction_at.startsWith(dateStr)) return true;
-        return false;
+      const introPeople = safePeople.filter((p) => {
+        if (!p) return false;
+        const tags = Array.isArray(p.tags) ? p.tags : [];
+        if (!tags.includes('Intro Sent')) return false;
+        const pInteract = (p.last_interaction_at || '').split('T')[0];
+        return pInteract === dateStr;
       });
       const totalIntros = Math.max(introActions.length, introPeople.length);
 
