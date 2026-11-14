@@ -13,6 +13,101 @@ export default async function handler(req, res) {
   }
 
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const scope = url.searchParams.get('scope');
+
+  // =========================================================================
+  // SUB-HANDLER: Strategic Memory CRUD (linkedin_agent_memory)
+  // Consolidated here to minimize serverless function count
+  // =========================================================================
+  if (scope === 'memory' || url.pathname.includes('/memory')) {
+    const supabase = getServiceClient();
+    const userId = auth.user || 'Akshay';
+
+    if (req.method === 'GET') {
+      const type = url.searchParams.get('type');
+      let query = supabase
+        .from('linkedin_agent_memory')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+      if (type && type !== 'ALL') {
+        query = query.eq('memory_type', type);
+      }
+
+      const { data, error } = await query;
+      if (error) return res.status(500).json({ ok: false, message: error.message });
+      return res.status(200).json({ ok: true, memories: data || [] });
+    }
+
+    if (req.method === 'POST') {
+      const {
+        memory_type,
+        key,
+        value,
+        confidence = 1.0,
+      } = req.body || {};
+
+      if (!memory_type || !key || value === undefined) {
+        return res.status(400).json({
+          ok: false,
+          message: 'memory_type, key, and value are required.',
+        });
+      }
+
+      const allowedTypes = [
+        'AUDIENCE_PREFERENCE',
+        'TOPIC_PERFORMANCE',
+        'WRITING_STYLE_GUIDE',
+        'OUTREACH_STRATEGY',
+        'LESSON_LEARNED',
+      ];
+
+      if (!allowedTypes.includes(memory_type)) {
+        return res.status(400).json({
+          ok: false,
+          message: `Invalid memory_type. Must be one of: ${allowedTypes.join(', ')}`,
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('linkedin_agent_memory')
+        .upsert(
+          {
+            user_id: userId,
+            memory_type,
+            key,
+            value,
+            confidence: Math.max(0.0, Math.min(1.0, parseFloat(confidence) || 1.0)),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,memory_type,key' }
+        )
+        .select()
+        .single();
+
+      if (error) return res.status(500).json({ ok: false, message: error.message });
+      return res.status(200).json({ ok: true, memory: data });
+    }
+
+    if (req.method === 'DELETE') {
+      const id = url.searchParams.get('id');
+      if (!id) return res.status(400).json({ ok: false, message: 'Missing memory ID' });
+
+      const { error } = await supabase
+        .from('linkedin_agent_memory')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) return res.status(500).json({ ok: false, message: error.message });
+      return res.status(200).json({ ok: true, message: 'Strategic memory deleted.' });
+    }
+
+    res.setHeader('Allow', 'GET, POST, DELETE');
+    return res.status(405).json({ ok: false, message: 'Method Not Allowed' });
+  }
+
   const purpose = url.searchParams.get('purpose') || (url.searchParams.has('url') ? 'video-meta' : 'content');
 
   // =========================================================================

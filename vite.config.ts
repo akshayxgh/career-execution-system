@@ -32,27 +32,23 @@ export default defineConfig(({ mode }) => {
               } else if (urlPath === '/api/agent/actions') {
                 handlerModule = await importApiHandler('./api/agent/actions.js');
               } else if (urlPath === '/api/agent/publish-status') {
-                handlerModule = await importApiHandler('./api/agent/publish-status.js');
+                handlerModule = await importApiHandler('./api/agent/actions.js');
               } else if (urlPath === '/api/agent/people') {
                 handlerModule = await importApiHandler('./api/agent/people.js');
               } else if (urlPath === '/api/agent/opportunities') {
-                handlerModule = await importApiHandler('./api/agent/opportunities.js');
+                handlerModule = await importApiHandler('./api/agent/people.js');
               } else if (urlPath === '/api/agent/analytics') {
                 handlerModule = await importApiHandler('./api/agent/analytics.js');
               } else if (urlPath === '/api/agent/memory') {
-                handlerModule = await importApiHandler('./api/agent/memory.js');
+                handlerModule = await importApiHandler('./api/agent/context.js');
               } else if (urlPath === '/api/agent/sync-employment') {
                 handlerModule = await importApiHandler('./api/agent/people.js');
               } else if (urlPath === '/api/agent/maintenance') {
-                handlerModule = await importApiHandler('./api/agent/maintenance.js');
+                handlerModule = await importApiHandler('./api/agent/actions.js');
               } else if (urlPath === '/api/agent/video-meta') {
                 handlerModule = await importApiHandler('./api/agent/context.js');
-              } else if (urlPath === '/api/session') {
-                handlerModule = await importApiHandler('./api/session.js');
-              } else if (urlPath === '/api/login') {
-                handlerModule = await importApiHandler('./api/login.js');
-              } else if (urlPath === '/api/logout') {
-                handlerModule = await importApiHandler('./api/logout.js');
+              } else if (urlPath === '/api/session' || urlPath === '/api/login' || urlPath === '/api/logout' || urlPath === '/api/auth') {
+                handlerModule = await importApiHandler('./api/auth.js');
               } else {
                 return next();
               }

@@ -158,6 +158,110 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const action = url.searchParams.get('action') || (req.body && req.body.action);
+    const scope = url.searchParams.get('scope');
+
+    // =========================================================================
+    // SUB-HANDLER: Opportunities CRUD (linkedin_opportunities)
+    // Consolidated here to minimize serverless function count
+    // =========================================================================
+    if (scope === 'opportunities') {
+      if (req.method === 'GET') {
+        const type = url.searchParams.get('type');
+        const status = url.searchParams.get('status');
+
+        let query = supabase
+          .from('linkedin_opportunities')
+          .select('*, contact_person:linkedin_people(*)')
+          .eq('user_id', userId)
+          .order('updated_at', { ascending: false });
+
+        if (status && status !== 'ALL') {
+          query = query.eq('status', status);
+        }
+        if (type && type !== 'ALL') {
+          query = query.eq('opportunity_type', type);
+        }
+
+        const { data, error } = await query;
+        if (error) return res.status(500).json({ ok: false, message: error.message });
+        return res.status(200).json({ ok: true, opportunities: data || [] });
+      }
+
+      if (req.method === 'POST') {
+        const {
+          title,
+          company,
+          opportunity_type = 'JOB_POSTING',
+          source_url,
+          contact_person_id,
+          description,
+          score,
+          status = 'NEW',
+        } = req.body || {};
+
+        if (!title || !company || !source_url) {
+          return res.status(400).json({
+            ok: false,
+            message: 'Title, company, and source_url are required.',
+          });
+        }
+
+        const { data, error } = await supabase
+          .from('linkedin_opportunities')
+          .insert({
+            user_id: userId,
+            title,
+            company,
+            opportunity_type,
+            source_url,
+            contact_person_id,
+            description,
+            score,
+            status,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select('*, contact_person:linkedin_people(*)')
+          .single();
+
+        if (error) return res.status(500).json({ ok: false, message: error.message });
+        return res.status(201).json({ ok: true, opportunity: data });
+      }
+
+      if (req.method === 'PATCH') {
+        const id = url.searchParams.get('id');
+        if (!id) return res.status(400).json({ ok: false, message: 'Missing opportunity ID' });
+
+        const updates = { ...(req.body || {}), updated_at: new Date().toISOString() };
+        const { data, error } = await supabase
+          .from('linkedin_opportunities')
+          .update(updates)
+          .eq('id', id)
+          .eq('user_id', userId)
+          .select('*, contact_person:linkedin_people(*)')
+          .single();
+
+        if (error) return res.status(500).json({ ok: false, message: error.message });
+        return res.status(200).json({ ok: true, opportunity: data });
+      }
+
+      if (req.method === 'DELETE') {
+        const id = url.searchParams.get('id');
+        if (!id) return res.status(400).json({ ok: false, message: 'Missing opportunity ID' });
+
+        const { error } = await supabase
+          .from('linkedin_opportunities')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', userId);
+
+        if (error) return res.status(500).json({ ok: false, message: error.message });
+        return res.status(200).json({ ok: true, message: 'Opportunity deleted.' });
+      }
+
+      res.setHeader('Allow', 'GET, POST, PATCH, DELETE');
+      return res.status(405).json({ ok: false, message: 'Method Not Allowed' });
+    }
 
     if (action === 'sync-employment' || url.pathname.includes('sync-employment')) {
       return handleSyncEmployment(supabase, userId, res);

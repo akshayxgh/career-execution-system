@@ -1,6 +1,34 @@
 {
   "rewrites": [
     {
+      "source": "/api/login",
+      "destination": "/api/auth?action=login"
+    },
+    {
+      "source": "/api/logout",
+      "destination": "/api/auth?action=logout"
+    },
+    {
+      "source": "/api/session",
+      "destination": "/api/auth?action=session"
+    },
+    {
+      "source": "/api/agent/publish-status",
+      "destination": "/api/agent/actions?action=publish-status"
+    },
+    {
+      "source": "/api/agent/maintenance",
+      "destination": "/api/agent/actions?action=maintenance"
+    },
+    {
+      "source": "/api/agent/opportunities",
+      "destination": "/api/agent/people?scope=opportunities"
+    },
+    {
+      "source": "/api/agent/memory",
+      "destination": "/api/agent/context?scope=memory"
+    },
+    {
       "source": "/api/agent/sync-employment",
       "destination": "/api/agent/people?action=sync-employment"
     },
