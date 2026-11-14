@@ -11147,5 +11147,210 @@
         "conversion_pct": 0.0
       }
     }
+  },
+  "2026-11-14": {
+    "date": "2026-11-14",
+    "total_scraped": 644,
+    "total_deduplicated": 7,
+    "total_filtered": 45,
+    "total_analyzed": 599,
+    "total_apply": 81,
+    "total_maybe": 63,
+    "total_skip": 500,
+    "total_high_matches": 152,
+    "sources": {
+      "career:Accenture": {
+        "scraped": 1,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 1,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 1,
+        "high_matches": 0,
+        "avg_score": 25.0,
+        "conversion_pct": 0.0
+      },
+      "career:Ey": {
+        "scraped": 160,
+        "deduplicated": 0,
+        "filtered": 25,
+        "analyzed": 135,
+        "apply": 17,
+        "maybe": 46,
+        "skip": 97,
+        "high_matches": 71,
+        "avg_score": 46.7,
+        "conversion_pct": 10.6
+      },
+      "career:Genpact": {
+        "scraped": 2,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 2,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 2,
+        "high_matches": 0,
+        "avg_score": 30.0,
+        "conversion_pct": 0.0
+      },
+      "career:IBM": {
+        "scraped": 71,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 71,
+        "apply": 10,
+        "maybe": 0,
+        "skip": 61,
+        "high_matches": 10,
+        "avg_score": 23.7,
+        "conversion_pct": 14.1
+      },
+      "career:KPMG": {
+        "scraped": 1,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 1,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 1,
+        "high_matches": 0,
+        "avg_score": 45.0,
+        "conversion_pct": 0.0
+      },
+      "career:Tata Consultancy Services": {
+        "scraped": 6,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 6,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 6,
+        "high_matches": 0,
+        "avg_score": 17.2,
+        "conversion_pct": 0.0
+      },
+      "links:Indeed": {
+        "scraped": 7,
+        "deduplicated": 0,
+        "filtered": 2,
+        "analyzed": 5,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 7,
+        "high_matches": 0,
+        "avg_score": 19.0,
+        "conversion_pct": 0.0
+      },
+      "links:LinkedIn": {
+        "scraped": 37,
+        "deduplicated": 0,
+        "filtered": 1,
+        "analyzed": 36,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 37,
+        "high_matches": 0,
+        "avg_score": 18.2,
+        "conversion_pct": 0.0
+      },
+      "links:Naukri": {
+        "scraped": 163,
+        "deduplicated": 4,
+        "filtered": 14,
+        "analyzed": 149,
+        "apply": 5,
+        "maybe": 2,
+        "skip": 156,
+        "high_matches": 7,
+        "avg_score": 18.0,
+        "conversion_pct": 3.1
+      },
+      "naukri_recommended:Naukri": {
+        "scraped": 114,
+        "deduplicated": 0,
+        "filtered": 1,
+        "analyzed": 113,
+        "apply": 34,
+        "maybe": 15,
+        "skip": 65,
+        "high_matches": 49,
+        "avg_score": 62.6,
+        "conversion_pct": 29.8
+      },
+      "portals:Foundit": {
+        "scraped": 5,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 5,
+        "apply": 1,
+        "maybe": 0,
+        "skip": 4,
+        "high_matches": 1,
+        "avg_score": 26.4,
+        "conversion_pct": 20.0
+      },
+      "portals:Indeed": {
+        "scraped": 10,
+        "deduplicated": 1,
+        "filtered": 0,
+        "analyzed": 10,
+        "apply": 2,
+        "maybe": 0,
+        "skip": 8,
+        "high_matches": 2,
+        "avg_score": 37.4,
+        "conversion_pct": 20.0
+      },
+      "portals:LinkedIn": {
+        "scraped": 2,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 2,
+        "apply": 1,
+        "maybe": 0,
+        "skip": 1,
+        "high_matches": 1,
+        "avg_score": 48.5,
+        "conversion_pct": 50.0
+      },
+      "portals:Naukri": {
+        "scraped": 21,
+        "deduplicated": 2,
+        "filtered": 0,
+        "analyzed": 21,
+        "apply": 5,
+        "maybe": 0,
+        "skip": 16,
+        "high_matches": 5,
+        "avg_score": 37.0,
+        "conversion_pct": 23.8
+      },
+      "portals:Shine": {
+        "scraped": 18,
+        "deduplicated": 0,
+        "filtered": 2,
+        "analyzed": 16,
+        "apply": 6,
+        "maybe": 0,
+        "skip": 12,
+        "high_matches": 6,
+        "avg_score": 43.4,
+        "conversion_pct": 33.3
+      },
+      "portals:TimesJobs": {
+        "scraped": 26,
+        "deduplicated": 0,
+        "filtered": 0,
+        "analyzed": 26,
+        "apply": 0,
+        "maybe": 0,
+        "skip": 26,
+        "high_matches": 0,
+        "avg_score": 9.8,
+        "conversion_pct": 0.0
+      }
+    }
   }
 }

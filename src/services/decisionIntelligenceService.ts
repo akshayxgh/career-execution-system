@@ -78,11 +78,12 @@ export function formatStatusLabel(status: string | null | undefined): string {
   return status;
 }
 
-const DECISION_JOBS_CACHE_KEY = "decision_jobs_cache_v2";
+const DECISION_JOBS_CACHE_KEY = "decision_jobs_cache_v3";
 
 export function getCachedDecisionJobs(): DecisionJob[] {
   try {
-    localStorage.removeItem("decision_jobs_cache"); // clear legacy cache
+    localStorage.removeItem("decision_jobs_cache");
+    localStorage.removeItem("decision_jobs_cache_v2");
     const raw = localStorage.getItem(DECISION_JOBS_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);

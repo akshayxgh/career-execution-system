@@ -1,4 +1,20 @@
 ﻿Date,Category,Source,Scraped,Deduplicated,Filtered,AI_Analyzed,Apply_Matches,Maybe_Review,Skipped,High_Value_60plus,Avg_Score,Conversion_Pct
+2026-11-14,career,Accenture,1,0,0,1,0,0,1,0,25.0,0.0
+2026-11-14,career,Ey,160,0,25,135,17,46,97,71,46.7,10.6
+2026-11-14,career,Genpact,2,0,0,2,0,0,2,0,30.0,0.0
+2026-11-14,career,IBM,71,0,0,71,10,0,61,10,23.7,14.1
+2026-11-14,career,KPMG,1,0,0,1,0,0,1,0,45.0,0.0
+2026-11-14,career,Tata Consultancy Services,6,0,0,6,0,0,6,0,17.2,0.0
+2026-11-14,links,Indeed,7,0,2,5,0,0,7,0,19.0,0.0
+2026-11-14,links,LinkedIn,37,0,1,36,0,0,37,0,18.2,0.0
+2026-11-14,links,Naukri,163,4,14,149,5,2,156,7,18.0,3.1
+2026-11-14,naukri_recommended,Naukri,114,0,1,113,34,15,65,49,62.6,29.8
+2026-11-14,portals,Foundit,5,0,0,5,1,0,4,1,26.4,20.0
+2026-11-14,portals,Indeed,10,1,0,10,2,0,8,2,37.4,20.0
+2026-11-14,portals,LinkedIn,2,0,0,2,1,0,1,1,48.5,50.0
+2026-11-14,portals,Naukri,21,2,0,21,5,0,16,5,37.0,23.8
+2026-11-14,portals,Shine,18,0,2,16,6,0,12,6,43.4,33.3
+2026-11-14,portals,TimesJobs,26,0,0,26,0,0,26,0,9.8,0.0
 2026-11-13,career,Accenture,10,0,1,9,0,0,10,0,13.0,0.0
 2026-11-13,career,Cognizant,14,0,5,9,0,0,14,0,15.5,0.0
 2026-11-13,career,Deloitte,1,0,0,1,0,0,1,0,5.0,0.0
