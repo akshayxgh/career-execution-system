@@ -232,7 +232,7 @@ export default async function handler(req, res) {
     try {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const status = url.searchParams.get('status');
-      const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+      const limit = parseInt(url.searchParams.get('limit') || '200', 10);
 
       let query = supabase
         .from('linkedin_actions')

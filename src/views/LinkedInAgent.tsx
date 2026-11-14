@@ -79,7 +79,7 @@ export const LinkedInAgent: React.FC = () => {
       const [cCtx, nCtx, acts, ppl, opps, aSummary] = await Promise.all([
         linkedinAgentService.fetchContentContext().catch(() => null),
         linkedinAgentService.fetchNetworkingContext().catch(() => null),
-        linkedinAgentService.fetchActions(statusFilter === 'ALL' ? undefined : statusFilter).catch(() => []),
+        linkedinAgentService.fetchActions().catch(() => []),
         linkedinAgentService.fetchPeople().catch(() => []),
         linkedinAgentService.fetchOpportunities().catch(() => []),
         linkedinAgentService.fetchAnalyticsSummary().catch(() => null),
@@ -99,7 +99,7 @@ export const LinkedInAgent: React.FC = () => {
       setLoadingContext(false);
       setLoadingActions(false);
     }
-  }, [statusFilter]);
+  }, []);
 
   useEffect(() => {
     refreshAll();
@@ -107,14 +107,13 @@ export const LinkedInAgent: React.FC = () => {
 
   const refreshActions = useCallback(async () => {
     try {
-      const filter = statusFilter === 'ALL' ? undefined : statusFilter;
-      const data = await linkedinAgentService.fetchActions(filter);
+      const data = await linkedinAgentService.fetchActions();
       setActions(data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load actions.';
       setActionError(message);
     }
-  }, [statusFilter]);
+  }, []);
 
   const conceptMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -271,11 +270,27 @@ export const LinkedInAgent: React.FC = () => {
       return false;
     });
 
-    const sentRecruiters = sentPeopleToday.filter(checkIsRecruiterPerson).length;
-    const sentPeers = sentPeopleToday.filter((p) => !checkIsRecruiterPerson(p)).length;
-    const totalSent = Math.max(sentActionsToday.length, sentPeopleToday.length);
-    const peerInvitesSent = Math.max(sentPeers, totalSent - sentRecruiters);
-    const recruiterInvitesSent = sentRecruiters;
+    // Separate recruiters vs peers from Actions:
+    const sentRecruiterActions = sentActionsToday.filter((a) => {
+      const p = a.payload || {};
+      const text = `${p.recipient_role || ''} ${p.recipient_name || ''} ${a.reasoning || ''}`.toLowerCase();
+      return (
+        text.includes('recruiter') ||
+        text.includes('talent') ||
+        text.includes('hiring') ||
+        text.includes('sourcer') ||
+        text.includes('staffing') ||
+        text.includes('human resources') ||
+        text.includes('hr')
+      );
+    });
+    const sentPeerActions = sentActionsToday.filter((a) => !sentRecruiterActions.includes(a));
+
+    const sentRecruitersFromPeople = sentPeopleToday.filter(checkIsRecruiterPerson).length;
+    const sentPeersFromPeople = sentPeopleToday.filter((p) => !checkIsRecruiterPerson(p)).length;
+
+    const peerInvitesSent = Math.max(sentPeerActions.length, sentPeersFromPeople);
+    const recruiterInvitesSent = Math.max(sentRecruiterActions.length, sentRecruitersFromPeople);
 
     // 2. Recruiter Intros Dispatched Today (strictly today only):
     const introActionsToday = safeActions.filter((a) => {

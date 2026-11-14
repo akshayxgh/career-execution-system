@@ -2030,7 +2030,7 @@ async function handleImportSentInvitations(invitations = []) {
         if (inv.name) activeNames.add(inv.name.toLowerCase().trim());
       }
 
-      const checkRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?connection_status=eq.INVITATION_SENT&select=id,full_name,profile_url,interaction_notes`, {
+      const checkRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?connection_status=eq.INVITATION_SENT&select=id,full_name,profile_url,interaction_notes,created_at`, {
         headers: {
           'apikey': SUPABASE_SERVICE_KEY,
           'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
@@ -2040,6 +2040,11 @@ async function handleImportSentInvitations(invitations = []) {
       if (checkRes.ok) {
         const currentPending = await checkRes.json();
         for (const p of currentPending) {
+          // Guard: Never withdraw or invalidate invites sent within the last 24 hours
+          const createdAt = p.created_at ? new Date(p.created_at).getTime() : 0;
+          const isRecent = Date.now() - createdAt < 24 * 60 * 60 * 1000;
+          if (isRecent) continue;
+
           const slug = (p.profile_url || '').split('/in/')[1]?.replace(/\/+$/, '')?.toLowerCase();
           const name = (p.full_name || '').toLowerCase().trim();
           const isActive = (slug && activeSlugs.has(slug)) || activeNames.has(name);
