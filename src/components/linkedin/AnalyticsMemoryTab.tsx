@@ -471,8 +471,18 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
         return aDate === dateStr;
       });
       const sentPeople = people.filter((p) => {
-        const pDate = (p.created_at || '').split('T')[0];
-        return pDate === dateStr && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status);
+        const invTag = (p.tags || []).find((t) => t.startsWith('Invited:'));
+        if (invTag && invTag.includes(dateStr)) return true;
+        const pCreateDate = (p.created_at || '').split('T')[0];
+        const pInteractDate = (p.last_interaction_at || '').split('T')[0];
+        const pUpdateDate = (p.updated_at || '').split('T')[0];
+
+        const matchesDate =
+          pCreateDate === dateStr ||
+          pInteractDate === dateStr ||
+          (pUpdateDate === dateStr && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status));
+
+        return matchesDate && ['INVITATION_SENT', 'CONNECTED'].includes(p.connection_status);
       });
       const totalSent = Math.max(sentActions.length, sentPeople.length);
       const sentRecruiters = sentPeople.filter(checkIsRecruiterContact).length;
