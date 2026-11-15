@@ -2330,8 +2330,59 @@ async function fetchApprovedOutreachMessages() {
       }
     });
     if (!res.ok) return { actions: [] };
-    const actions = await res.json();
-    return { actions: actions || [] };
+    const rawActions = await res.json();
+    const actions = rawActions || [];
+
+    // Auto-reconciliation: Exclude and resolve actions whose recipient already received an intro
+    const validActions = [];
+    for (const act of actions) {
+      const targetId = act.target_id;
+      const recipientName = act.payload && act.payload.recipient_name;
+      let alreadySent = false;
+
+      if (targetId) {
+        try {
+          const pRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${targetId}&select=id,tags`, {
+            headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` }
+          });
+          const pList = await pRes.json();
+          if (pList && pList[0] && Array.isArray(pList[0].tags) && pList[0].tags.includes('Intro Sent')) {
+            alreadySent = true;
+          }
+        } catch (e) {}
+      } else if (recipientName) {
+        try {
+          const pRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?full_name=ilike.*${encodeURIComponent(recipientName.trim())}*&select=id,tags`, {
+            headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` }
+          });
+          const pList = await pRes.json();
+          if (pList && pList[0] && Array.isArray(pList[0].tags) && pList[0].tags.includes('Intro Sent')) {
+            alreadySent = true;
+          }
+        } catch (e) {}
+      }
+
+      if (alreadySent) {
+        // Asynchronously mark as EXECUTED in Supabase so it no longer shows anywhere as pending
+        fetch(`${SUPABASE_REST_URL}/linkedin_actions?id=eq.${act.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+          },
+          body: JSON.stringify({
+            status: 'EXECUTED',
+            executed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }).catch(() => null);
+      } else {
+        validActions.push(act);
+      }
+    }
+
+    return { actions: validActions };
   } catch (err) {
     return { actions: [], error: err.message };
   }

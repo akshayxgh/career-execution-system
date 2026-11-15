@@ -381,6 +381,26 @@ export default async function handler(req, res) {
         return res.status(500).json({ ok: false, message: error.message });
       }
 
+      // Auto-reconciliation: If marked as Intro Sent, mark any associated MESSAGE/FOLLOW_UP action as EXECUTED
+      if (Array.isArray(tags) && tags.includes('Intro Sent')) {
+        const now = new Date().toISOString();
+        try {
+          await supabase
+            .from('linkedin_actions')
+            .update({
+              status: 'EXECUTED',
+              executed_at: now,
+              updated_at: now,
+            })
+            .eq('user_id', userId)
+            .in('action_type', ['MESSAGE', 'FOLLOW_UP'])
+            .in('status', ['APPROVED', 'PENDING_APPROVAL', 'READY_FOR_MANUAL'])
+            .or(`target_id.eq.${id},payload->>recipient_name.ilike.%${data.full_name.trim()}%`);
+        } catch (actErr) {
+          console.warn('[People PATCH] Auto-action reconciliation warning:', actErr);
+        }
+      }
+
       return res.status(200).json({ ok: true, person: data });
     }
 
