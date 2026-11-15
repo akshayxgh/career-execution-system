@@ -216,69 +216,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // BUTTON 1: SEND REQUESTS (Routine + Dispatches Approved Notes + Sent Sync)
+    // BUTTON 1: SEND REQUESTS (Opens LinkedIn Grow page for on-page ⚡ Routine)
     if (btnSendRequests) {
       btnSendRequests.addEventListener('click', () => {
         btnSendRequests.disabled = true;
-        if (sendRequestsText) sendRequestsText.textContent = 'Checking MYCES...';
+        if (sendRequestsText) sendRequestsText.textContent = 'Opening Grow...';
         if (sendRequestsBadge) sendRequestsBadge.textContent = 'Active';
 
-        // 1. Check and dispatch all approved outreach messages
-        chrome.runtime.sendMessage({ action: 'GET_APPROVED_MESSAGES' }, async (res) => {
-          const actions = (res && res.actions) || [];
-
-          if (actions.length > 0) {
-            for (let i = 0; i < actions.length; i++) {
-              const act = actions[i];
-              const pUrl = (act.payload && act.payload.recipient_profile_url) || '';
-              let c = ((act.payload && act.payload.content) || '').trim();
-              c = c.replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, '').trim();
-              const n = (act.payload && act.payload.recipient_name) || 'Connection';
-
-              if (sendRequestsText) sendRequestsText.textContent = `Sending (${i + 1}/${actions.length})...`;
-
-              await new Promise((resolve) => {
-                chrome.runtime.sendMessage({
-                  action: 'DISPATCH_LINKEDIN_MESSAGE',
-                  actionId: act.id,
-                  recipientUrl: pUrl,
-                  content: c,
-                  recipientName: n
-                }, () => {
-                  setTimeout(resolve, 3500); // Human-like spacing
-                });
-              });
+        const growUrl = 'https://www.linkedin.com/mynetwork/grow/';
+        chrome.tabs.query({ url: '*://*.linkedin.com/*' }, (tabs) => {
+          const existingGrowTab = (tabs || []).find(t => t.url && t.url.includes('mynetwork/grow'));
+          if (existingGrowTab && existingGrowTab.id) {
+            chrome.tabs.update(existingGrowTab.id, { active: true });
+            if (existingGrowTab.windowId) {
+              chrome.windows.update(existingGrowTab.windowId, { focused: true });
             }
-
-            if (sendRequestsText) sendRequestsText.textContent = `All ${actions.length} Sent!`;
-            if (typeof loadApprovedMessages === 'function') loadApprovedMessages();
-            await new Promise((r) => setTimeout(r, 1200));
+          } else {
+            chrome.tabs.create({ url: growUrl });
           }
-
-          // 2. Auto-sync sent requests in background to reconcile pending invites
-          chrome.runtime.sendMessage({ action: 'SYNC_SENT_REQUESTS' });
-
-          // 3. Open LinkedIn Grow network to continue sending connection requests
-          if (sendRequestsText) sendRequestsText.textContent = 'Opening LinkedIn...';
-          chrome.tabs.create({ url: 'https://www.linkedin.com/mynetwork/grow/' });
 
           setTimeout(() => {
             btnSendRequests.disabled = false;
             if (sendRequestsText) sendRequestsText.textContent = 'Send Requests';
-            if (sendRequestsBadge) sendRequestsBadge.textContent = 'Launch Routine';
-          }, 3000);
+            if (sendRequestsBadge) sendRequestsBadge.textContent = 'Open Grow (⚡)';
+          }, 1500);
         });
       });
     }
 
-    // BUTTON 2: SYNC THE REST (Accepted Invites -> All Connections -> Career History)
+    // BUTTON 2: SYNC NETWORK & RADAR (Accepted Invites -> All Connections -> Career History)
     if (btnSyncTheRest) {
       btnSyncTheRest.addEventListener('click', async () => {
         btnSyncTheRest.disabled = true;
 
         try {
           // Phase 1/3: Accepted Invites
-          if (syncTheRestText) syncTheRestText.textContent = '1/3: Accepted Invites...';
+          if (syncTheRestText) syncTheRestText.textContent = '1/3: Checking Accepted...';
           if (syncTheRestBadge) syncTheRestBadge.textContent = 'Step 1 of 3';
           await new Promise((resolve) => {
             chrome.runtime.sendMessage({ action: 'SYNC_ACCEPTED_CONNECTIONS' }, (res) => {
@@ -316,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } finally {
           setTimeout(() => {
             btnSyncTheRest.disabled = false;
-            if (syncTheRestText) syncTheRestText.textContent = 'Sync All (The Rest)';
+            if (syncTheRestText) syncTheRestText.textContent = 'Sync Network & Radar';
             if (syncTheRestBadge) syncTheRestBadge.textContent = 'Accepted • Conn • Radar';
           }, 3500);
         }
