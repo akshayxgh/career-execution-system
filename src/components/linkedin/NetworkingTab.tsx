@@ -21,6 +21,8 @@ import {
   UserCheck,
   ChevronLeft,
   ChevronRight,
+  Mail,
+  Copy,
 } from 'lucide-react';
 import type {
   LinkedInPerson,
@@ -1532,23 +1534,39 @@ Focus on:
                     </td>
 
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      {person.company ? (
-                        <span
-                          style={{
-                            fontSize: '0.725rem',
-                            padding: '0.2rem 0.55rem',
-                            borderRadius: '6px',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: 'var(--text-main)',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {person.company}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
-                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {person.company ? (
+                          <span
+                            style={{
+                              fontSize: '0.725rem',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '6px',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              color: 'var(--text-main)',
+                              fontWeight: 500,
+                              width: 'fit-content',
+                            }}
+                          >
+                            {person.company}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                        )}
+                        {(() => {
+                          const emailMatch = person.interaction_notes ? person.interaction_notes.match(/Email:\s*([^\s\n\r()]+)/i) : null;
+                          const verifiedEmail = (person as any).email || (emailMatch ? emailMatch[1] : null);
+                          if (!verifiedEmail) return null;
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#34d399' }}>
+                              <Mail size={11} color="#10b981" />
+                              <a href={`mailto:${verifiedEmail}`} style={{ color: '#34d399', textDecoration: 'none' }} title="Send email">
+                                {verifiedEmail}
+                              </a>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </td>
 
                     <td style={{ padding: '0.75rem 1rem', maxWidth: '260px' }}>
@@ -1795,6 +1813,62 @@ Focus on:
                     {person.headline}
                   </p>
                 )}
+
+                {/* Verified Email Badge */}
+                {(() => {
+                  const emailMatch = person.interaction_notes ? person.interaction_notes.match(/Email:\s*([^\s\n\r()]+)/i) : null;
+                  const verifiedEmail = (person as any).email || (emailMatch ? emailMatch[1] : null);
+                  if (!verifiedEmail) return null;
+                  return (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '0.45rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1px solid rgba(16, 185, 129, 0.22)',
+                        padding: '0.25rem 0.55rem',
+                        borderRadius: '6px',
+                        fontSize: '0.725rem',
+                        color: '#34d399',
+                        fontWeight: 600,
+                        width: 'fit-content',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Mail size={12} color="#10b981" />
+                        <a
+                          href={`mailto:${verifiedEmail}`}
+                          style={{ color: '#34d399', textDecoration: 'none' }}
+                          title="Click to send email"
+                        >
+                          {verifiedEmail}
+                        </a>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(verifiedEmail);
+                          showToast(`Copied ${verifiedEmail}!`);
+                        }}
+                        title="Copy email to clipboard"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#6ee7b7',
+                          cursor: 'pointer',
+                          padding: '1px 3px',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Relationship Pipeline Stages Indicator */}
                 <div
