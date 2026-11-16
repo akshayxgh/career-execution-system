@@ -179,6 +179,42 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     return { all, recruiters, introSent, pendingInvites, connected, connectedToday };
   }, [people, todayStr]);
 
+  // Recruiter Verified Email Counter & Auto-Enrichment State
+  const verifiedRecruiterCount = useMemo(() => {
+    return people.filter((p) => {
+      const hasEmailTag = Array.isArray(p.tags) && p.tags.includes('Email: Verified');
+      const hasEmailNotes = Boolean(p.interaction_notes && p.interaction_notes.includes('Email:'));
+      return hasEmailTag || hasEmailNotes;
+    }).length;
+  }, [people]);
+
+  const [isEnrichingEmails, setIsEnrichingEmails] = useState(false);
+
+  const handleAutoEnrichEmails = async () => {
+    if (isEnrichingEmails) return;
+    setIsEnrichingEmails(true);
+    try {
+      const res = await fetch('/api/agent/enrich-emails?limit=15', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        if (data.enrichedCount > 0) {
+          showToast(`🎉 Enriched ${data.enrichedCount} new recruiter email(s)!`);
+          await onRefresh();
+        } else if (data.rateLimited) {
+          showToast('⏳ Daily API limit reached. Resuming automatically on next cycle.');
+        } else {
+          showToast('All recruiters are up to date!');
+        }
+      } else {
+        showToast(data.error || 'Enrichment completed.');
+      }
+    } catch (err: any) {
+      showToast(`Enrichment notice: ${err.message}`);
+    } finally {
+      setIsEnrichingEmails(false);
+    }
+  };
+
   // Filtered dataset
   const filteredPeople = useMemo(() => {
     return people.filter((p) => {
@@ -1385,6 +1421,39 @@ Focus on:
               )}
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleAutoEnrichEmails}
+            disabled={isEnrichingEmails}
+            className="btn"
+            title="Auto-Enrich recruiter corporate emails using Prospeo AI"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.5rem 0.85rem',
+              fontSize: '0.825rem',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.25) 100%)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              color: '#34d399',
+              borderRadius: '6px',
+              cursor: isEnrichingEmails ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {isEnrichingEmails ? (
+              <>
+                <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Enriching Emails...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} color="#34d399" />
+                <span>Auto-Enrich Emails ({verifiedRecruiterCount} Verified)</span>
+              </>
+            )}
+          </button>
 
           <button
             onClick={() => setIsAddModalOpen(true)}

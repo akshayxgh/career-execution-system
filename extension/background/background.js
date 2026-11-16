@@ -2317,6 +2317,28 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+// 4. Scheduled Background Recruiter Email Enrichment Agent (Runs every 12 hours)
+chrome.alarms.create('MYCES_RECRUITER_EMAIL_AGENT', { periodInMinutes: 720 });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'MYCES_RECRUITER_EMAIL_AGENT') {
+    console.log('[Alarm] Running scheduled recruiter email enrichment agent...');
+    handleAutoEnrichRecruiterEmails();
+  }
+});
+
+async function handleAutoEnrichRecruiterEmails() {
+  try {
+    const res = await fetch('https://myces.vercel.app/api/agent/enrich-emails?limit=15', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      console.log('[Email Agent] Completed auto-enrichment:', data);
+    }
+  } catch (err) {
+    console.warn('[Email Agent] Warning during scheduled enrichment:', err);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 1-CLICK LINKEDIN MESSAGE DISPATCHER (Option 1 Automation Engine)
 // ---------------------------------------------------------------------------
