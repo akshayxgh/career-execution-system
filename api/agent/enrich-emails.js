@@ -17,10 +17,11 @@ export default async function handler(req, res) {
   const supabase = getServiceClient();
 
   try {
-    // 1. Fetch recruiters who do not yet have a verified email
+    // 1. Fetch recruiters who are ALREADY CONNECTED and do not yet have a verified email
     const { data: people, error } = await supabase
       .from('linkedin_people')
-      .select('id, full_name, company, headline, role, profile_url, interaction_notes, tags')
+      .select('id, full_name, company, headline, role, profile_url, interaction_notes, tags, connection_status')
+      .eq('connection_status', 'CONNECTED')
       .contains('tags', ['RECRUITER'])
       .order('created_at', { ascending: false });
 
@@ -28,12 +29,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: error.message });
     }
 
-    // Filter candidate list in memory
+    // Filter candidate list: strictly 1st-degree connected recruiters without email
     const candidates = (people || []).filter((p) => {
+      const isConnected = p.connection_status === 'CONNECTED';
       const hasEmailTag = Array.isArray(p.tags) && p.tags.includes('Email: Verified');
       const hasEmailNotes = Boolean(p.interaction_notes && p.interaction_notes.includes('Email:'));
       const hasValidUrl = Boolean(p.profile_url && p.profile_url.includes('linkedin.com/in/'));
-      return !hasEmailTag && !hasEmailNotes && hasValidUrl;
+      return isConnected && !hasEmailTag && !hasEmailNotes && hasValidUrl;
     });
 
     const totalNeedingEnrichment = candidates.length;

@@ -179,12 +179,13 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     return { all, recruiters, introSent, pendingInvites, connected, connectedToday };
   }, [people, todayStr]);
 
-  // Recruiter Verified Email Counter & Auto-Enrichment State
+  // Recruiter Verified Email Counter & Auto-Enrichment State (Strictly Connected Contacts)
   const verifiedRecruiterCount = useMemo(() => {
     return people.filter((p) => {
+      const isConnected = p.connection_status === 'CONNECTED';
       const hasEmailTag = Array.isArray(p.tags) && p.tags.includes('Email: Verified');
       const hasEmailNotes = Boolean(p.interaction_notes && p.interaction_notes.includes('Email:'));
-      return hasEmailTag || hasEmailNotes;
+      return isConnected && (hasEmailTag || hasEmailNotes);
     }).length;
   }, [people]);
 

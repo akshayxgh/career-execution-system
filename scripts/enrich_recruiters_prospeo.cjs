@@ -7,8 +7,8 @@ const prospeoKey = 'pk_a8d93968bb4b28dd7c406969118b2c51d0eadb4dcf7fbc069637accf5
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function enrichRecruiters() {
-  console.log('Fetching recruiters from Supabase...');
-  const res = await fetch(`${supabaseUrl}/linkedin_people?select=id,full_name,company,headline,profile_url,interaction_notes,tags&tags=cs.{RECRUITER}&order=created_at.desc`, {
+  console.log('Fetching CONNECTED recruiters from Supabase...');
+  const res = await fetch(`${supabaseUrl}/linkedin_people?select=id,full_name,company,headline,profile_url,interaction_notes,tags,connection_status&tags=cs.{RECRUITER}&connection_status=eq.CONNECTED&order=created_at.desc`, {
     headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
   });
 
@@ -18,7 +18,7 @@ async function enrichRecruiters() {
   }
 
   const recruiters = await res.json();
-  console.log(`Found ${recruiters.length} recruiters in database.`);
+  console.log(`Found ${recruiters.length} 1st-degree connected recruiters in database.`);
 
   let foundEmails = 0;
   let skipped = 0;
