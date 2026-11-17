@@ -189,6 +189,32 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     }).length;
   }, [people]);
 
+  // Pending Invites Staleness Breakdown (Active <7d, Awaiting 7-14d, Stale >14d)
+  const getInviteAgeDays = (person: LinkedInPerson): number => {
+    const dateStr = person.last_interaction_at || person.created_at;
+    if (!dateStr) return 0;
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  };
+
+  const pendingBreakdown = useMemo(() => {
+    const pending = people.filter((p) => p.connection_status === 'INVITATION_SENT');
+    const now = Date.now();
+    let active = 0; // < 7 days
+    let awaiting = 0; // 7 - 14 days
+    let stale = 0; // >= 14 days
+
+    pending.forEach((p) => {
+      const d = p.last_interaction_at || p.created_at;
+      const days = d ? Math.floor((now - new Date(d).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      if (days >= 14) stale++;
+      else if (days >= 7) awaiting++;
+      else active++;
+    });
+
+    return { total: pending.length, active, awaiting, stale };
+  }, [people]);
+
   const [isEnrichingEmails, setIsEnrichingEmails] = useState(false);
 
   const handleAutoEnrichEmails = async () => {
@@ -648,12 +674,30 @@ Focus on:
       { num: 3, label: 'Intro Sent' },
     ];
 
+    const isPendingInvite = person?.connection_status === 'INVITATION_SENT';
+    const daysOld = isPendingInvite && person ? getInviteAgeDays(person) : 0;
+    const isStale = isPendingInvite && daysOld >= 14;
+    const isAwaiting = isPendingInvite && daysOld >= 7 && !isStale;
+    const pendingDotColor = isStale ? '#ef4444' : isAwaiting ? '#f59e0b' : '#10b981';
+
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
         {steps.map((st, i) => {
           const isDone = stage >= st.num;
           const isCurrent = stage === st.num;
           const isIntroStep = st.num === 3;
+          const isInvitedStep = st.num === 1;
+
+          let stepColor = isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)';
+          let dotBg = isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)';
+          let displayLabel = st.label;
+
+          if (isInvitedStep && isPendingInvite) {
+            stepColor = pendingDotColor;
+            dotBg = pendingDotColor;
+            displayLabel = `Invited (${daysOld}d${isStale ? ' ⚠️' : ''})`;
+          }
+
           return (
             <React.Fragment key={st.label}>
               <div
@@ -668,12 +712,14 @@ Focus on:
                   gap: '0.25rem',
                   fontSize: '0.675rem',
                   fontWeight: isCurrent ? 700 : 500,
-                  color: isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)',
+                  color: stepColor,
                   opacity: isDone ? 1 : 0.4,
                   cursor: isIntroStep && person && person.connection_status === 'CONNECTED' ? 'pointer' : 'default',
                 }}
                 title={
-                  isIntroStep && person && person.connection_status === 'CONNECTED'
+                  isInvitedStep && isPendingInvite
+                    ? `Invitation sent ${daysOld} day(s) ago.${isStale ? ' Stale (>14d) - Recommended to withdraw.' : ''}`
+                    : isIntroStep && person && person.connection_status === 'CONNECTED'
                     ? isDone
                       ? 'Click to remove Intro Sent'
                       : 'Click to mark as Intro Sent'
@@ -685,11 +731,11 @@ Focus on:
                     width: '6px',
                     height: '6px',
                     borderRadius: '50%',
-                    backgroundColor: isDone ? (st.num === 3 ? '#38bdf8' : '#10b981') : 'var(--text-muted)',
-                    boxShadow: isCurrent ? `0 0 6px ${st.num === 3 ? '#38bdf8' : '#10b981'}` : 'none',
+                    backgroundColor: dotBg,
+                    boxShadow: isCurrent ? `0 0 6px ${dotBg}` : 'none',
                   }}
                 />
-                <span>{st.label}</span>
+                <span>{displayLabel}</span>
               </div>
               {i < steps.length - 1 && (
                 <ArrowRight size={10} style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
@@ -1474,6 +1520,96 @@ Focus on:
           </button>
         </div>
       </div>
+
+      {/* Pending Invitations Hygiene Bar */}
+      {activePill === 'PENDING_INVITES' && (
+        <div
+          style={{
+            margin: '0 0 1rem 0',
+            padding: '0.85rem 1.15rem',
+            background: 'rgba(15, 23, 42, 0.75)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            borderRadius: '10px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              ⏳ Pending Invitations Hygiene:
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+              <span
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '999px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontWeight: 600,
+                }}
+                title="Invitations sent within the last 7 days"
+              >
+                🟢 Active (&lt;7d): {pendingBreakdown.active}
+              </span>
+              <span
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '999px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  color: '#fbbf24',
+                  fontWeight: 600,
+                }}
+                title="Invitations sent between 7 and 14 days ago"
+              >
+                🟡 Awaiting (7–14d): {pendingBreakdown.awaiting}
+              </span>
+              <span
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '999px',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#f87171',
+                  fontWeight: 600,
+                }}
+                title="Invitations sent over 14 days ago (recommended to withdraw to prevent account throttling)"
+              >
+                🔴 Stale (&gt;14d): {pendingBreakdown.stale}
+              </span>
+            </div>
+          </div>
+
+          <a
+            href="https://www.linkedin.com/mynetwork/invitation-manager/sent/?myces_withdraw_stale=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn"
+            title="Open LinkedIn Sent Invitations and automatically withdraw stale requests older than 14 days"
+            style={{
+              padding: '0.45rem 0.95rem',
+              fontSize: '0.775rem',
+              fontWeight: 600,
+              background: pendingBreakdown.stale > 0 ? 'linear-gradient(135deg, #e11d48, #be123c)' : 'rgba(255, 255, 255, 0.08)',
+              color: '#ffffff',
+              borderRadius: '6px',
+              border: 'none',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              boxShadow: pendingBreakdown.stale > 0 ? '0 2px 8px rgba(225, 29, 72, 0.35)' : 'none',
+            }}
+          >
+            <span>🧹</span>
+            <span>Withdraw Stale on LinkedIn ({pendingBreakdown.stale})</span>
+          </a>
+        </div>
+      )}
 
       {/* Directory Content */}
       {filteredPeople.length === 0 ? (

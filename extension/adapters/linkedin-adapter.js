@@ -38,6 +38,9 @@ class LinkedInAdapter extends BaseAdapter {
       if (url.includes('myces_sync=1') || url.includes('auto_sync=1')) {
         setTimeout(() => this.importAllSentInvitations(), 1200);
       }
+      if (url.includes('myces_withdraw_stale=1')) {
+        setTimeout(() => this.withdrawStaleInvitations(14), 1400);
+      }
       return;
     }
 
@@ -165,17 +168,138 @@ class LinkedInAdapter extends BaseAdapter {
 
     pill = document.createElement('div');
     pill.id = 'myces-linkedin-pill';
+    pill.style.gap = '8px';
     pill.innerHTML = `
-      <button id="myces-btn-import-sent" class="myces-pill-btn" title="Import All Sent Invitations into MYCES" style="width: auto; padding: 7px 14px; border-radius: 9999px;">
+      <button id="myces-btn-import-sent" class="myces-pill-btn" title="Import All Sent Invitations into MYCES" style="width: auto; padding: 7px 13px; border-radius: 9999px;">
         <span id="myces-import-icon">📥</span>
-        <span id="myces-import-text" style="font-weight: 700;">Import All Sent to MYCES</span>
+        <span id="myces-import-text" style="font-weight: 700;">Import All Sent</span>
+      </button>
+      <button id="myces-btn-withdraw-stale" class="myces-pill-btn" title="Withdraw invitations sent over 14 days ago to protect account hygiene" style="width: auto; padding: 7px 13px; border-radius: 9999px; background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);">
+        <span>🧹</span>
+        <span id="myces-withdraw-text" style="font-weight: 700;">Withdraw Stale (>14d)</span>
       </button>
     `;
 
     document.body.appendChild(pill);
 
     const btnImport = document.getElementById('myces-btn-import-sent');
-    btnImport.addEventListener('click', () => this.importAllSentInvitations());
+    if (btnImport) btnImport.addEventListener('click', () => this.importAllSentInvitations());
+
+    const btnWithdraw = document.getElementById('myces-btn-withdraw-stale');
+    if (btnWithdraw) btnWithdraw.addEventListener('click', () => this.withdrawStaleInvitations(14));
+  }
+
+  /**
+   * Automatically identifies and withdraws sent invitations older than 14 days
+   * to protect LinkedIn account health and free up pending invitation slots.
+   */
+  async withdrawStaleInvitations(daysThreshold = 14) {
+    const btn = document.getElementById('myces-btn-withdraw-stale');
+    const text = document.getElementById('myces-withdraw-text');
+    if (btn) btn.disabled = true;
+    if (text) text.textContent = 'Scanning stale invites...';
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    try {
+      // Find all withdraw buttons currently rendered on page
+      const withdrawButtons = Array.from(document.querySelectorAll('button')).filter((b) => {
+        const aria = (b.getAttribute('aria-label') || '').toLowerCase();
+        const txt = (b.innerText || '').toLowerCase().trim();
+        return (txt === 'withdraw' || aria.includes('withdraw')) && !b.disabled;
+      });
+
+      console.log(`[Withdraw Stale] Found ${withdrawButtons.length} total withdraw buttons on page.`);
+
+      const staleTargets = [];
+
+      for (const wBtn of withdrawButtons) {
+        const card = wBtn.closest('li, [class*="invitation-card"], [class*="card"], [class*="item"]') || wBtn.parentElement?.parentElement;
+        if (!card) continue;
+
+        const cardText = (card.innerText || '').toLowerCase();
+        let isStale = false;
+        let ageLabel = '';
+
+        if (cardText.includes('month') || cardText.includes('year')) {
+          isStale = true;
+          ageLabel = '1+ month';
+        } else {
+          const weekMatch = cardText.match(/sent\s+(\d+)\s+week/);
+          if (weekMatch) {
+            const weeks = parseInt(weekMatch[1], 10);
+            if (weeks >= 2) {
+              isStale = true;
+              ageLabel = `${weeks} weeks`;
+            }
+          } else {
+            const dayMatch = cardText.match(/sent\s+(\d+)\s+day/);
+            if (dayMatch) {
+              const days = parseInt(dayMatch[1], 10);
+              if (days >= daysThreshold) {
+                isStale = true;
+                ageLabel = `${days} days`;
+              }
+            }
+          }
+        }
+
+        if (isStale) {
+          const nameEl = card.querySelector('a[href*="/in/"] span[aria-hidden="true"], [class*="title"], strong');
+          const name = nameEl ? nameEl.innerText.trim() : 'Connection';
+          staleTargets.push({ button: wBtn, name, ageLabel });
+        }
+      }
+
+      if (staleTargets.length === 0) {
+        if (text) text.textContent = '0 Stale (>14d)';
+        this.showToast('All sent invitations are active (<14 days)! None needed withdrawing.', true);
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      console.log(`[Withdraw Stale] Found ${staleTargets.length} stale invitations (>14 days).`);
+
+      let withdrawnCount = 0;
+      for (let i = 0; i < staleTargets.length; i++) {
+        const item = staleTargets[i];
+        if (text) text.textContent = `Withdrawing (${i + 1}/${staleTargets.length})...`;
+
+        // Click withdraw button on card
+        item.button.click();
+        await sleep(650);
+
+        // Find modal confirmation button
+        const modalBtns = Array.from(document.querySelectorAll('.artdeco-modal button, [role="dialog"] button'));
+        const modalConfirm = modalBtns.find((b) => {
+          const t = (b.innerText || '').toLowerCase().trim();
+          return t === 'withdraw' || t.includes('withdraw');
+        });
+
+        if (modalConfirm) {
+          modalConfirm.click();
+          withdrawnCount++;
+          console.log(`[Withdraw Stale] Withdrew invitation for ${item.name} (${item.ageLabel} old)`);
+          await sleep(1500); // Polite pacing
+        } else {
+          console.warn(`[Withdraw Stale] Could not find modal confirmation for ${item.name}`);
+        }
+      }
+
+      this.showToast(`✓ Successfully withdrew ${withdrawnCount} stale invitation(s) (>14 days)!`, true);
+      if (text) text.textContent = `✓ Withdrew ${withdrawnCount}!`;
+
+      // Trigger background sync to refresh MYCES pending list
+      chrome.runtime.sendMessage({ action: 'SYNC_SENT_REQUESTS' });
+    } catch (err) {
+      console.error('[Withdraw Stale] Error:', err);
+      if (text) text.textContent = 'Error';
+    } finally {
+      setTimeout(() => {
+        if (btn) btn.disabled = false;
+        if (text) text.textContent = 'Withdraw Stale (>14d)';
+      }, 4000);
+    }
   }
 
   /**
