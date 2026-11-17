@@ -1053,19 +1053,52 @@ async function handleTrackLinkedInConnection(cand) {
   let savedPerson = false;
   let savedAction = false;
 
-  // Direct Supabase REST (Guaranteed 100% database persistence)
+  // Direct Supabase REST (Guaranteed 100% database persistence with upsert protection)
   try {
-    const pRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-        'Prefer': 'return=representation'
-      },
-      body: JSON.stringify(personPayload)
-    });
-    if (pRes.ok) savedPerson = true;
+    const slug = extractProfileSlug(cand.profileUrl);
+    let existingPerson = null;
+
+    if (slug) {
+      const checkRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?profile_url=ilike.*${encodeURIComponent(slug)}*&select=id,tags,interaction_notes`, {
+        headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}` }
+      });
+      if (checkRes.ok) {
+        const found = await checkRes.json();
+        if (found && found.length > 0) existingPerson = found[0];
+      }
+    }
+
+    if (existingPerson) {
+      const currentTags = Array.isArray(existingPerson.tags) ? existingPerson.tags : [];
+      const updatedTags = Array.from(new Set([...currentTags, cand.category || 'PEER', '1-Click Routine', 'LinkedIn Grow']));
+      const pRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people?id=eq.${existingPerson.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+        },
+        body: JSON.stringify({
+          connection_status: 'INVITATION_SENT',
+          interaction_notes: personPayload.interaction_notes,
+          tags: updatedTags,
+          updated_at: new Date().toISOString()
+        })
+      });
+      if (pRes.ok) savedPerson = true;
+    } else {
+      const pRes = await fetch(`${SUPABASE_REST_URL}/linkedin_people`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(personPayload)
+      });
+      if (pRes.ok) savedPerson = true;
+    }
 
     const aRes = await fetch(`${SUPABASE_REST_URL}/linkedin_actions`, {
       method: 'POST',
@@ -2040,10 +2073,10 @@ async function handleImportSentInvitations(invitations = []) {
       if (checkRes.ok) {
         const currentPending = await checkRes.json();
         for (const p of currentPending) {
-          // Guard: Never withdraw or invalidate invites sent within the last 24 hours
+          // Guard: Never invalidate active invites sent within the 14-day hygiene threshold
           const createdAt = p.created_at ? new Date(p.created_at).getTime() : 0;
-          const isRecent = Date.now() - createdAt < 24 * 60 * 60 * 1000;
-          if (isRecent) continue;
+          const isWithinHygieneThreshold = Date.now() - createdAt < 14 * 24 * 60 * 60 * 1000;
+          if (isWithinHygieneThreshold) continue;
 
           const slug = (p.profile_url || '').split('/in/')[1]?.replace(/\/+$/, '')?.toLowerCase();
           const name = (p.full_name || '').toLowerCase().trim();

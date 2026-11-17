@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   UserPlus,
   Search,
@@ -139,11 +139,30 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     );
   };
 
+  // Intelligent Pending Invite Detection (Single Source of Truth)
+  const checkIsPendingInvite = useCallback((p: LinkedInPerson): boolean => {
+    if (p.connection_status === 'CONNECTED') return false;
+    if (p.connection_status === 'INVITATION_SENT') return true;
+    const notes = p.interaction_notes || '';
+    const isWithdrawn =
+      notes.includes('Expired/Withdrawn') ||
+      notes.includes('expired or withdrawn') ||
+      (Array.isArray(p.tags) && p.tags.includes('Withdrawn'));
+    if (isWithdrawn) return false;
+    const isSent1Click =
+      notes.includes('Sent via 1-Click Routine') ||
+      (Array.isArray(p.tags) && p.tags.includes('1-Click Routine'));
+    const isImportedSent =
+      notes.includes('Imported from LinkedIn Sent Invitations') ||
+      (Array.isArray(p.tags) && p.tags.includes('Sent Invite'));
+    return Boolean(isSent1Click || isImportedSent);
+  }, []);
+
   // Pipeline stage: 0 = Not Connected, 1 = Invited, 2 = Connected, 3 = Intro Sent
   const getPipelineStage = (p: LinkedInPerson): number => {
     if (checkIsIntroSent(p)) return 3;
     if (p.connection_status === 'CONNECTED') return 2;
-    if (p.connection_status === 'INVITATION_SENT') return 1;
+    if (checkIsPendingInvite(p)) return 1;
     return 0;
   };
 
@@ -173,11 +192,11 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     const all = people.length;
     const recruiters = people.filter(checkIsRecruiter).length;
     const introSent = people.filter(checkIsIntroSent).length;
-    const pendingInvites = people.filter((p) => p.connection_status === 'INVITATION_SENT').length;
+    const pendingInvites = people.filter(checkIsPendingInvite).length;
     const connected = people.filter((p) => p.connection_status === 'CONNECTED').length;
     const connectedToday = people.filter(checkIsConnectedToday).length;
     return { all, recruiters, introSent, pendingInvites, connected, connectedToday };
-  }, [people, todayStr]);
+  }, [people, todayStr, checkIsPendingInvite]);
 
   // Recruiter Verified Email Counter & Auto-Enrichment State (Strictly Connected Contacts)
   const verifiedRecruiterCount = useMemo(() => {
@@ -191,6 +210,12 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
 
   // Pending Invites Staleness Breakdown (Active <7d, Awaiting 7-14d, Stale >14d)
   const getInviteAgeDays = (person: LinkedInPerson): number => {
+    const notes = person.interaction_notes || '';
+    const matchDays = notes.match(/Sent\s+(\d+)\s+days?\s+ago/i);
+    if (matchDays) return parseInt(matchDays[1], 10);
+    if (/Sent\s+yesterday/i.test(notes)) return 1;
+    if (/Sent\s+\d+\s+hours?\s+ago/i.test(notes)) return 0;
+
     const dateStr = person.last_interaction_at || person.created_at;
     if (!dateStr) return 0;
     const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -198,22 +223,20 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   };
 
   const pendingBreakdown = useMemo(() => {
-    const pending = people.filter((p) => p.connection_status === 'INVITATION_SENT');
-    const now = Date.now();
+    const pending = people.filter(checkIsPendingInvite);
     let active = 0; // < 7 days
     let awaiting = 0; // 7 - 14 days
     let stale = 0; // >= 14 days
 
     pending.forEach((p) => {
-      const d = p.last_interaction_at || p.created_at;
-      const days = d ? Math.floor((now - new Date(d).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      const days = getInviteAgeDays(p);
       if (days >= 14) stale++;
       else if (days >= 7) awaiting++;
       else active++;
     });
 
     return { total: pending.length, active, awaiting, stale };
-  }, [people]);
+  }, [people, checkIsPendingInvite]);
 
   const [isEnrichingEmails, setIsEnrichingEmails] = useState(false);
 
@@ -242,16 +265,31 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     }
   };
 
+  // Self-Healing Architecture: Automatically reconcile misclassified pending invites to INVITATION_SENT in Supabase
+  useEffect(() => {
+    const misclassified = people.filter(
+      (p) => checkIsPendingInvite(p) && p.connection_status !== 'INVITATION_SENT'
+    );
+    if (misclassified.length > 0) {
+      misclassified.forEach((p) => {
+        linkedinAgentService
+          .updatePerson(p.id, { connection_status: 'INVITATION_SENT' })
+          .catch(() => null);
+      });
+    }
+  }, [people, checkIsPendingInvite]);
+
   // Filtered dataset
   const filteredPeople = useMemo(() => {
     return people.filter((p) => {
       const isIntro = checkIsIntroSent(p);
       const isRec = checkIsRecruiter(p);
+      const isPending = checkIsPendingInvite(p);
 
       // Pill filter
       if (activePill === 'RECRUITERS' && !isRec) return false;
       if (activePill === 'INTRO_SENT' && !isIntro) return false;
-      if (activePill === 'PENDING_INVITES' && p.connection_status !== 'INVITATION_SENT') return false;
+      if (activePill === 'PENDING_INVITES' && !isPending) return false;
       if (activePill === 'CONNECTED' && p.connection_status !== 'CONNECTED') return false;
       if (activePill === 'CONNECTED_TODAY' && !checkIsConnectedToday(p)) return false;
 
@@ -260,10 +298,12 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
         if (statusFilter === 'INTRO_SENT' && !isIntro) return false;
         if (statusFilter === 'NO_INTRO' && isIntro) return false;
         if (statusFilter === 'CONNECTED_NO_INTRO' && (p.connection_status !== 'CONNECTED' || isIntro)) return false;
+        if (statusFilter === 'INVITATION_SENT' && !isPending) return false;
         if (
           statusFilter !== 'INTRO_SENT' &&
           statusFilter !== 'NO_INTRO' &&
           statusFilter !== 'CONNECTED_NO_INTRO' &&
+          statusFilter !== 'INVITATION_SENT' &&
           p.connection_status !== statusFilter
         ) {
           return false;
@@ -360,7 +400,7 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
       });
       setHygieneResult(res);
       setIsHygieneModalOpen(true);
-      showToast(`Hygiene complete: ${res.namesCleaned} names cleaned, ${res.contactsTagged} contacts tagged.`);
+      showToast(`Hygiene complete: ${res.namesCleaned} cleaned, ${res.contactsTagged} tagged, ${res.invitesReconciled} invites reconciled.`);
       await onRefresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Hygiene run failed';
@@ -674,7 +714,7 @@ Focus on:
       { num: 3, label: 'Intro Sent' },
     ];
 
-    const isPendingInvite = person?.connection_status === 'INVITATION_SENT';
+    const isPendingInvite = person ? checkIsPendingInvite(person) : false;
     const daysOld = isPendingInvite && person ? getInviteAgeDays(person) : 0;
     const isStale = isPendingInvite && daysOld >= 14;
     const isAwaiting = isPendingInvite && daysOld >= 7 && !isStale;
@@ -1835,7 +1875,7 @@ Focus on:
                             }}
                           >
                             <Sparkles size={12} color="#10b981" />
-                            <span>{isProcessing ? 'Generating...' : 'Connect Note'}</span>
+                            <span>{isProcessing ? 'Generating...' : checkIsPendingInvite(person) ? 'Regenerate Note' : 'Connect Note'}</span>
                           </button>
                         )}
 
@@ -2138,7 +2178,7 @@ Focus on:
                       }}
                     >
                       <Sparkles size={12} color="#10b981" />
-                      <span>{isProcessing ? 'Generating...' : person.connection_status === 'INVITATION_SENT' ? 'Regenerate Note' : 'Connect Note'}</span>
+                      <span>{isProcessing ? 'Generating...' : checkIsPendingInvite(person) ? 'Regenerate Note' : 'Connect Note'}</span>
                     </button>
                   ) : (
                     <>
@@ -2470,13 +2510,13 @@ Focus on:
 
             {/* Metrics Row */}
             <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.65rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.65rem' }}>
                 <div style={{ padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8' }}>
                     {hygieneResult.totalProcessed}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Audited Profiles
+                    Audited
                   </div>
                 </div>
 
@@ -2485,7 +2525,7 @@ Focus on:
                     {hygieneResult.namesCleaned}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: '#6ee7b7', marginTop: '0.2rem' }}>
-                    Names Cleaned
+                    Cleaned
                   </div>
                 </div>
 
@@ -2504,6 +2544,15 @@ Focus on:
                   </div>
                   <div style={{ fontSize: '0.7rem', color: '#fde68a', marginTop: '0.2rem' }}>
                     Merged Dups
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(56, 189, 248, 0.06)', border: '1px solid rgba(56, 189, 248, 0.15)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#38bdf8' }}>
+                    {hygieneResult.invitesReconciled || 0}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#7dd3fc', marginTop: '0.2rem' }}>
+                    Reconciled
                   </div>
                 </div>
               </div>

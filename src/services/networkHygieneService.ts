@@ -7,6 +7,7 @@ export interface HygieneResult {
   contactsTagged: number;
   duplicatesMerged: number;
   alumniIdentified: number;
+  invitesReconciled: number;
   details: string[];
 }
 
@@ -256,12 +257,46 @@ export class NetworkHygieneService {
       }
     }
 
+    // Phase 3: Status & Pending Invites Reconciliation
+    onProgress?.('Auditing & reconciling pending invitation statuses...');
+    let invitesReconciled = 0;
+    for (const person of people) {
+      if (person.connection_status === 'CONNECTED') continue;
+
+      const notes = person.interaction_notes || '';
+      const isWithdrawn =
+        notes.includes('Expired/Withdrawn') ||
+        notes.includes('expired or withdrawn') ||
+        (Array.isArray(person.tags) && person.tags.includes('Withdrawn'));
+      if (isWithdrawn) continue;
+
+      const isSent1Click =
+        notes.includes('Sent via 1-Click Routine') ||
+        (Array.isArray(person.tags) && person.tags.includes('1-Click Routine'));
+      const isImportedSent =
+        notes.includes('Imported from LinkedIn Sent Invitations') ||
+        (Array.isArray(person.tags) && person.tags.includes('Sent Invite'));
+
+      if ((isSent1Click || isImportedSent) && person.connection_status !== 'INVITATION_SENT') {
+        try {
+          await linkedinAgentService.updatePerson(person.id, {
+            connection_status: 'INVITATION_SENT',
+          });
+          invitesReconciled++;
+          details.push(`Reconciled pending invitation: "${person.full_name}" ➔ INVITATION_SENT`);
+        } catch (err) {
+          console.warn(`Failed to reconcile status for ${person.full_name}:`, err);
+        }
+      }
+    }
+
     return {
       totalProcessed: people.length,
       namesCleaned,
       contactsTagged,
       duplicatesMerged,
       alumniIdentified,
+      invitesReconciled,
       details,
     };
   }
