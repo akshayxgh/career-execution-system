@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // Dynamic Manifest Version Display
+  const versionTag = document.getElementById('extension-version-tag') || document.querySelector('.version-tag');
+  if (versionTag && chrome.runtime?.getManifest) {
+    versionTag.textContent = `v${chrome.runtime.getManifest().version}`;
+  }
+
   const statusText = document.getElementById('status-text');
   const btnImport = document.getElementById('btn-import');
   const fileInput = document.getElementById('import-file');
