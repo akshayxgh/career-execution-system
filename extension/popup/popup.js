@@ -412,6 +412,87 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    // 5. Fetch Recruiter Jobs (<14d Old)
+    const btnScanRecruiterJobs = document.getElementById('btn-scan-recruiter-jobs');
+    const scanRecruiterJobsText = document.getElementById('scan-recruiter-jobs-text');
+    const scanRecruiterJobsBadge = document.getElementById('scan-recruiter-jobs-badge');
+    const recruiterJobsContainer = document.getElementById('recruiter-jobs-container');
+    const recruiterJobsCount = document.getElementById('recruiter-jobs-count');
+    const recruiterJobsList = document.getElementById('recruiter-jobs-list');
+    const btnCopyRecruiterJobs = document.getElementById('btn-copy-recruiter-jobs');
+
+    function renderRecruiterJobs(jobs) {
+      if (!recruiterJobsContainer || !recruiterJobsList) return;
+      if (!Array.isArray(jobs) || jobs.length === 0) {
+        recruiterJobsContainer.style.display = 'none';
+        return;
+      }
+
+      recruiterJobsContainer.style.display = 'block';
+      if (recruiterJobsCount) recruiterJobsCount.textContent = jobs.length;
+      recruiterJobsList.innerHTML = '';
+
+      jobs.forEach((job) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 7px 9px; font-size: 11px;';
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; margin-bottom: 3px;">
+            <div style="font-weight: 700; color: #a7f3d0; font-size: 11.5px;">${job.roleTitle}</div>
+            <span style="font-size: 9.5px; color: #6ee7b7; background: rgba(16, 185, 129, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap;">${job.postTime}</span>
+          </div>
+          <div style="color: #94a3b8; font-size: 10px; margin-bottom: 4px;">
+            👤 <span style="color: #e2e8f0; font-weight: 600;">${job.recruiterName}</span> • ${job.recruiterCompany || 'Hiring'}
+          </div>
+          <div style="color: #cbd5e1; font-size: 10px; line-height: 1.35; margin-bottom: 5px; max-height: 48px; overflow: hidden; text-overflow: ellipsis;">
+            ${job.summary}
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 4px;">
+            <span style="font-size: 9px; color: #34d399;">${job.skills && job.skills.length > 0 ? job.skills.slice(0, 3).join(', ') : 'Hiring Post'}</span>
+            <a href="${job.postUrl || job.recruiterProfileUrl}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 10px; font-weight: 600;">Open Post ↗</a>
+          </div>
+        `;
+        recruiterJobsList.appendChild(card);
+      });
+
+      if (btnCopyRecruiterJobs) {
+        btnCopyRecruiterJobs.onclick = () => {
+          const exportText = JSON.stringify(jobs, null, 2);
+          navigator.clipboard.writeText(exportText).then(() => {
+            btnCopyRecruiterJobs.textContent = '✓ Copied!';
+            setTimeout(() => btnCopyRecruiterJobs.textContent = '📋 Copy All', 2000);
+          });
+        };
+      }
+    }
+
+    // Load previously scanned recruiter jobs from local cache if present
+    chrome.storage.local.get(['latestRecruiterJobs'], (res) => {
+      if (res && Array.isArray(res.latestRecruiterJobs) && res.latestRecruiterJobs.length > 0) {
+        renderRecruiterJobs(res.latestRecruiterJobs);
+      }
+    });
+
+    if (btnScanRecruiterJobs) {
+      btnScanRecruiterJobs.addEventListener('click', () => {
+        btnScanRecruiterJobs.disabled = true;
+        if (scanRecruiterJobsText) scanRecruiterJobsText.textContent = 'Scanning 54 Feeds...';
+        if (scanRecruiterJobsBadge) scanRecruiterJobsBadge.textContent = 'Running ⏳';
+
+        chrome.runtime.sendMessage({ action: 'FETCH_RECRUITER_JOBS_RADAR', options: { limit: 54 } }, (res) => {
+          btnScanRecruiterJobs.disabled = false;
+          if (scanRecruiterJobsText) scanRecruiterJobsText.textContent = 'Fetch Recruiter Posts (All)';
+
+          if (chrome.runtime.lastError || !res || !res.success) {
+            if (scanRecruiterJobsBadge) scanRecruiterJobsBadge.textContent = 'Error';
+            alert((res && res.error) || 'Failed to scan recruiter feeds.');
+          } else {
+            if (scanRecruiterJobsBadge) scanRecruiterJobsBadge.textContent = `✓ ${res.count} Posts`;
+            renderRecruiterJobs(res.jobs);
+          }
+        });
+      });
+    }
+
     // ==========================================
     // NAUKRI 1-CLICK HEADER ICON BUMPER (SPACE SAVER)
     // ==========================================

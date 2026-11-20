@@ -28,3 +28,6 @@ dist
 .env*
 .vercel
 outputs/
+recruiter_jobs*.json
+recruiters_for_apollo.csv
+scripts/test_inspect_recruiter.cjs

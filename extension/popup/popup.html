@@ -54,6 +54,28 @@
         </div>
         <span id="sync-the-rest-badge" style="font-size: 9.5px; font-weight: 600; opacity: 0.95; background: rgba(255,255,255,0.22); padding: 2px 6px; border-radius: 4px;">Accepted • Conn • Radar</span>
       </button>
+
+      <!-- Button 3: Fetch Recruiter Posts (All) -->
+      <button id="btn-scan-recruiter-jobs" class="btn" title="Fetch all recent posts from connected recruiters in your network without filtering" style="margin-top: 0; padding: 8px 10px; border: 1px solid #10b981; background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); color: #6ee7b7; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 700; box-shadow: 0 1px 3px rgba(16, 185, 129, 0.2); text-align: left;">
+        <div style="display: flex; align-items: center; gap: 7px; font-size: 12px;">
+          <span style="font-size: 14px;">🎯</span>
+          <span id="scan-recruiter-jobs-text">Fetch Recruiter Posts (All)</span>
+        </div>
+        <span id="scan-recruiter-jobs-badge" style="font-size: 9.5px; font-weight: 600; opacity: 0.95; background: rgba(16, 185, 129, 0.3); border: 1px solid rgba(16, 185, 129, 0.5); padding: 2px 6px; border-radius: 4px; color: #ffffff;">54 Recruiters</span>
+      </button>
+    </div>
+
+    <!-- Recruiter Jobs Results Display Container -->
+    <div id="recruiter-jobs-container" style="display: none; margin-top: 10px; background: #061e18; border: 1px solid #059669; border-radius: 8px; padding: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11.5px; font-weight: 700; color: #34d399; display: flex; align-items: center; gap: 5px;">
+          <span>🎯</span> Found <span id="recruiter-jobs-count">0</span> Jobs (<span id="recruiter-jobs-time">Recent</span>)
+        </span>
+        <button id="btn-copy-recruiter-jobs" style="background: #10b981; border: none; color: #ffffff; border-radius: 4px; padding: 3px 7px; font-size: 10px; font-weight: 700; cursor: pointer;">📋 Copy All</button>
+      </div>
+      <div id="recruiter-jobs-list" style="display: flex; flex-direction: column; gap: 7px; max-height: 220px; overflow-y: auto;">
+        <!-- Injected dynamically -->
+      </div>
     </div>
 
     <!-- Hidden Individual Controls (Available on demand) -->

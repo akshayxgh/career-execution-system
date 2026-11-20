@@ -127,6 +127,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === "FETCH_RECRUITER_JOBS_RADAR") {
+    fetchNetworkRecruiterJobs(request.options || {})
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
   if (request.action === "DISPATCH_LINKEDIN_MESSAGE") {
     handleDispatchLinkedInMessage(request)
       .then((res) => sendResponse(res))
@@ -1759,6 +1766,320 @@ async function scanRecruiterOpportunities() {
   } catch (err) {
     console.warn('[Opportunity Radar] Scan warning:', err);
     return { count: 0 };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RADAR SCANNER: FETCH JOBS POSTED BY CONNECTED RECRUITERS (<14 DAYS OLD)
+// ---------------------------------------------------------------------------
+
+function isPostWithin14Days(item) {
+  const ts = item.createdTime || item.postedAt || item.publishedAt;
+  if (ts && !isNaN(Number(ts))) {
+    const ageDays = (Date.now() - Number(ts)) / (1000 * 60 * 60 * 24);
+    return ageDays <= 14;
+  }
+
+  const subText = (item.actor?.subDescription?.text || item.subDescription?.text || '').trim();
+  if (!subText) return true;
+
+  if (/(\d+)\s*mo/i.test(subText)) return false;
+  if (/(\d+)\s*y/i.test(subText)) return false;
+  const weekMatch = subText.match(/(\d+)\s*w/i);
+  if (weekMatch) {
+    const weeks = parseInt(weekMatch[1], 10);
+    return weeks <= 2;
+  }
+  const dayMatch = subText.match(/(\d+)\s*d/i);
+  if (dayMatch) {
+    const days = parseInt(dayMatch[1], 10);
+    return days <= 14;
+  }
+  if (/(\d+)\s*(h|m|s)/i.test(subText)) return true;
+
+  return true;
+}
+
+function extractPostTimeLabel(item) {
+  const subText = (item.actor?.subDescription?.text || item.subDescription?.text || '').trim();
+  if (subText) {
+    const clean = subText.split('•')[0].trim();
+    if (clean) return clean;
+  }
+  const ts = item.createdTime || item.postedAt;
+  if (ts && !isNaN(Number(ts))) {
+    const days = Math.floor((Date.now() - Number(ts)) / (1000 * 60 * 60 * 24));
+    return days === 0 ? 'Today' : days === 1 ? '1d ago' : `${days}d ago`;
+  }
+  return 'Recent (<14d)';
+}
+
+function detectJobDetailsFromPost(postText, recruiter) {
+  if (!postText || postText.length < 25) return null;
+  const lower = postText.toLowerCase();
+
+  const hiringKeywords = [
+    'hiring', 'we are hiring', 'looking for', 'immediate joiner',
+    'open role', 'open position', 'job opportunity', 'hiring for',
+    'requisition', 'candidates with', 'years of experience',
+    'share cv', 'send resume', 'dm me', 'reach out', 'apply now',
+    'opening for', 'vacancy', 'job opening', 'job alert', 'opportunity for',
+    'role of', 'position of', 'send your cv', 'mail cv', 'drop cv', 'careers@'
+  ];
+
+  const hasHiringSignal = hiringKeywords.some(k => lower.includes(k));
+  if (!hasHiringSignal) return null;
+
+  const skillsList = [
+    'Power BI', 'Fabric', 'Microsoft Fabric', 'DAX', 'SQL', 'Python', 'Excel',
+    'VBA', 'Power Automate', 'Azure', 'Databricks', 'Data Engineering', 'ETL',
+    'Data Analyst', 'Business Analyst', 'BI Developer', 'Data Warehouse', 'Snowflake',
+    'Tableau', 'AWS', 'GCP', 'Oracle'
+  ];
+  const detectedSkills = skillsList.filter(s => lower.includes(s.toLowerCase()));
+
+  let roleTitle = 'Hiring Role';
+  if (lower.includes('power bi') || lower.includes('powerbi') || lower.includes('dax')) {
+    roleTitle = 'Power BI / BI Reporting Developer';
+  } else if (lower.includes('fabric')) {
+    roleTitle = 'Microsoft Fabric / Data Solutions Architect';
+  } else if (lower.includes('data engineer')) {
+    roleTitle = 'Data Engineer (Azure / SQL / Python / ETL)';
+  } else if (lower.includes('data analyst') || lower.includes('analytics')) {
+    roleTitle = 'Data & Business Analytics Specialist';
+  } else if (lower.includes('automation') || lower.includes('power automate') || lower.includes('vba')) {
+    roleTitle = 'Process Automation Specialist (VBA / Power Automate / Python)';
+  } else {
+    const titleMatch = postText.match(/(?:hiring for|looking for|opening for|role of)\s+([A-Za-z0-9\s\/\-&]{3,40})(?=[,\n.\-]|$)/i);
+    if (titleMatch) roleTitle = titleMatch[1].trim();
+  }
+
+  let company = recruiter.company || '';
+  if (!company && recruiter.headline) {
+    const atMatch = recruiter.headline.match(/@\s*([^|•\n,]+)/i) || recruiter.headline.match(/at\s+([^|•\n,]+)/i);
+    if (atMatch) company = atMatch[1].trim();
+  }
+
+  return {
+    roleTitle,
+    company: company || 'Recruiter Client / Industry',
+    detectedSkills,
+    summary: postText.slice(0, 350).trim() + (postText.length > 350 ? '...' : '')
+  };
+}
+
+async function sendRemoteLog(msg, data = null) {
+  try {
+    await fetch('http://127.0.0.1:4567/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ msg, data })
+    });
+  } catch (e) {}
+}
+
+function extractPostUrl(item, defaultUrl) {
+  if (!item) return defaultUrl;
+  const candidates = [
+    item.entityUrn,
+    item.urn,
+    item['*entityUrn'],
+    item.updateMetadata?.urn,
+    item.metadata?.urn,
+    item.resharedUpdate,
+    item.target
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string') {
+      const match = c.match(/(?:activity|ugcPost|share):(\d+)/);
+      if (match) {
+        return `https://www.linkedin.com/feed/update/urn:li:activity:${match[1]}`;
+      }
+    }
+  }
+  return defaultUrl;
+}
+
+function extractAnyTextFromVoyagerItem(item) {
+  if (!item) return '';
+  if (item.commentary?.text?.text) return item.commentary.text.text;
+  if (item.text?.text) return item.text.text;
+  if (item.specificContent?.['com.linkedin.ugc.ShareContent']?.shareCommentary?.text) {
+    return item.specificContent['com.linkedin.ugc.ShareContent'].shareCommentary.text;
+  }
+  if (item.header?.text?.text) return item.header.text.text;
+  if (item.title?.text) return item.title.text;
+  if (item.summary?.text) return item.summary.text;
+  if (typeof item.commentary?.text === 'string') return item.commentary.text;
+  return '';
+}
+
+async function fetchNetworkRecruiterJobs(options = {}) {
+  const maxRecruiters = options.limit || 54;
+  console.log(`[Opportunity Radar] Fetching jobs from connected recruiters (<14d old, limit: ${maxRecruiters})...`);
+
+  try {
+    const res = await fetch(`${SUPABASE_REST_URL}/linkedin_people?tags=cs.{RECRUITER}&connection_status=eq.CONNECTED&select=id,full_name,headline,company,profile_url&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      }
+    });
+
+    if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+    const recruiters = await res.json();
+    if (!recruiters || recruiters.length === 0) {
+      await sendRemoteLog('[Radar] No connected recruiters found in Supabase.');
+      return { success: true, count: 0, jobs: [], message: 'No connected recruiters found.' };
+    }
+
+    const csrfToken = await getLinkedInCsrfToken();
+    if (!csrfToken) {
+      await sendRemoteLog('[Radar] ERROR: LinkedIn session not active. csrfToken missing.');
+      return { success: false, error: 'LinkedIn session not active. Please ensure you are logged into LinkedIn.' };
+    }
+
+    const targetRecruiters = recruiters.slice(0, maxRecruiters);
+    await sendRemoteLog(`[Radar] Beginning scan across ${targetRecruiters.length} recruiters. CSRF active.`);
+    const jobsFound = [];
+
+    for (let i = 0; i < targetRecruiters.length; i++) {
+      const r = targetRecruiters[i];
+      const slug = extractProfileSlug(r.profile_url);
+      if (!slug) continue;
+
+      try {
+        let pRes = null;
+        let data = null;
+        let endpointName = 'feed/updates';
+        let profileUrnId = '';
+
+        // Step A: Resolve member profile URN ID using vanity slug
+        try {
+          const profileRes = await fetch(`https://www.linkedin.com/voyager/api/identity/profiles/${encodeURIComponent(slug)}`, {
+            headers: {
+              'csrf-token': csrfToken,
+              'x-restli-protocol-version': '2.0.0',
+              'accept': 'application/vnd.linkedin.normalized+json+2.1'
+            },
+            credentials: 'include'
+          });
+          if (profileRes.ok) {
+            const profData = await profileRes.json();
+            const entityUrn = profData.entityUrn || (profData.miniProfile && profData.miniProfile.entityUrn) || '';
+            if (entityUrn) {
+              profileUrnId = entityUrn.split(':').pop();
+            }
+          }
+        } catch (e) {}
+
+        const targetId = profileUrnId || slug;
+
+        // Endpoint 1: Voyager feed/updates (canonical member share feed)
+        const url1 = `https://www.linkedin.com/voyager/api/feed/updates?count=10&moduleKey=member-share&profileId=${encodeURIComponent(targetId)}&q=memberShareFeed`;
+        pRes = await fetch(url1, {
+          headers: {
+            'csrf-token': csrfToken,
+            'x-restli-protocol-version': '2.0.0',
+            'accept': 'application/vnd.linkedin.normalized+json+2.1'
+          },
+          credentials: 'include'
+        });
+
+        if (pRes.ok) {
+          data = await pRes.json();
+          endpointName = 'feed/updates(member-share)';
+        } else {
+          // Endpoint 2: Fallback to profileUpdatesV2 with profileUrn or vanityName
+          endpointName = 'profileUpdatesV2';
+          const url2 = profileUrnId 
+            ? `https://www.linkedin.com/voyager/api/identity/profileUpdatesV2?count=10&includeLongTermHistory=true&moduleKey=member-shares&q=memberShareFeed&profileUrn=${encodeURIComponent('urn:li:fsd_profile:' + profileUrnId)}`
+            : `https://www.linkedin.com/voyager/api/identity/profileUpdatesV2?count=10&includeLongTermHistory=true&moduleKey=member-shares&q=memberShareFeed&vanityName=${slug}`;
+          
+          const pRes2 = await fetch(url2, {
+            headers: {
+              'csrf-token': csrfToken,
+              'x-restli-protocol-version': '2.0.0',
+              'accept': 'application/vnd.linkedin.normalized+json+2.1'
+            },
+            credentials: 'include'
+          });
+          if (pRes2.ok) {
+            pRes = pRes2;
+            data = await pRes2.json();
+          } else {
+            const err1 = !pRes.ok ? await pRes.text().catch(() => '') : '';
+            const err2 = !pRes2.ok ? await pRes2.text().catch(() => '') : '';
+            await sendRemoteLog(`[Radar] (${i + 1}/${targetRecruiters.length}) ${r.full_name} (${slug}) -> URN:${profileUrnId || 'none'} | HTTP 1:${pRes.status}, 2:${pRes2.status} | Err1: ${err1.slice(0, 100)} | Err2: ${err2.slice(0, 100)}`);
+          }
+        }
+
+        if (pRes && pRes.ok && data) {
+          let recruiterPostsCount = 0;
+          const items = Array.isArray(data.included) ? data.included : (Array.isArray(data.elements) ? data.elements : []);
+
+          for (const item of items) {
+            const postText = extractAnyTextFromVoyagerItem(item);
+            if (!postText || postText.trim().length < 8) continue;
+
+            const jobDetails = detectJobDetailsFromPost(postText, r);
+
+            const postUrl = extractPostUrl(item, r.profile_url);
+            const timeLabel = extractPostTimeLabel(item);
+
+            jobsFound.push({
+              recruiterName: r.full_name,
+              recruiterCompany: r.company || (jobDetails ? jobDetails.company : 'Recruiter Network'),
+              recruiterHeadline: r.headline || '',
+              recruiterProfileUrl: r.profile_url,
+              postUrl,
+              postUrn: item.entityUrn || item.urn || '',
+              postTime: timeLabel,
+              roleTitle: jobDetails ? jobDetails.roleTitle : 'Recruiter Post / Update',
+              skills: jobDetails ? jobDetails.detectedSkills : [],
+              isHiringPost: !!jobDetails,
+              fullPostText: postText,
+              summary: jobDetails ? jobDetails.summary : (postText.slice(0, 320) + (postText.length > 320 ? '...' : '')),
+              scannedAt: new Date().toISOString()
+            });
+            recruiterPostsCount++;
+          }
+
+          await sendRemoteLog(`[Radar] (${i + 1}/${targetRecruiters.length}) ${r.full_name} [${endpointName}] -> HTTP 200, items: ${items.length}, posts: ${recruiterPostsCount}`);
+        }
+      } catch (err) {
+        await sendRemoteLog(`[Radar] Error scanning ${r.full_name}: ${err.message}`);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    await sendRemoteLog(`[Radar] Scan complete. Total posts gathered: ${jobsFound.length}`);
+
+    try {
+      await chrome.storage.local.set({
+        latestRecruiterJobs: jobsFound,
+        lastRecruiterScanAt: new Date().toISOString()
+      });
+    } catch (e) {}
+
+    try {
+      await fetch('http://127.0.0.1:4567/api/save-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jobsFound)
+      });
+    } catch (e) {}
+
+    return {
+      success: true,
+      scannedRecruiters: targetRecruiters.length,
+      count: jobsFound.length,
+      jobs: jobsFound
+    };
+  } catch (err) {
+    console.error('[Opportunity Radar] Error:', err);
+    return { success: false, error: err.message };
   }
 }
 

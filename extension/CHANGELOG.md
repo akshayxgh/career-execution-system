@@ -4,7 +4,53 @@ All notable changes and architectural updates to the **Job Autofill Pro** Chrome
 
 ---
 
-## [2.1.0] - 2026-11-18 (Current Release)
+## [2.1.5] - 2026-11-20 (Current Release)
+
+### 🔗 Direct Post URL & Activity URN Resolution
+- **Direct Activity Link Extraction:** Implemented `extractPostUrl()` to parse `item.entityUrn`, `item.updateMetadata.urn`, and `item.resharedUpdate` for `activity:(\d+)` patterns.
+- **Deep Linking:** The **Open ↗** button now links directly to the specific LinkedIn post (`https://www.linkedin.com/feed/update/urn:li:activity:<id>`) instead of falling back to the recruiter profile.
+- **Persistent Post URN:** Stored `postUrn` across all captured records.
+
+---
+
+## [2.1.4] - 2026-11-20
+
+### 🔑 Profile URN Resolution & Canonical Feed Routing
+- **Vanity Slug to URN ID Resolution:** Before querying member feeds, the extension now resolves the member's profile URN via `identity/profiles/${slug}` to obtain their unique internal `profileId` (`ACoAA...`).
+- **Canonical Voyager `/feed/updates` Routing:** Fixes HTTP 400 Bad Request by querying `/voyager/api/feed/updates?moduleKey=member-share&profileId=${targetId}&q=memberShareFeed`.
+- **Enhanced Telemetry:** Emits URN resolution status and server response bodies to local listener for real-time verification.
+
+---
+
+## [2.1.3] - 2026-11-20
+
+### 🛰️ Multi-Endpoint Feed Resolution & Live Telemetry
+- **Fallback Feed Routing:** Automatically cascades across 3 LinkedIn Voyager endpoints (`moduleKey=member-shares`, `moduleKey=creator_activity`, and `feed/updatesV2`) to guarantee non-creator and standard member profiles are captured.
+- **Deep Schema Text Parser:** `extractAnyTextFromVoyagerItem()` searches all normalized text containers (`commentary`, `text`, `specificContent`, `header`, `title`, `summary`).
+- **Live Remote Diagnostics:** Emits HTTP response telemetry to `http://127.0.0.1:4567/api/log` for real-time visibility into each recruiter's feed retrieval status.
+
+---
+
+## [2.1.2] - 2026-11-20
+
+### 🔓 Unfiltered Recruiter Feed Extraction Test
+- **Removed Job & Date Filtering:** Disabled keyword filtering and date boundaries in `fetchNetworkRecruiterJobs` so all raw posts/updates across connected 1st-degree recruiters are collected directly to verify Voyager API payload ingestion.
+- **Multi-Path Text Resolver:** Added support for various LinkedIn Voyager schemas (`commentary.text.text`, `text.text`, `specificContent...shareCommentary.text`).
+- **Live Logging:** Added per-recruiter console logging in background service worker to monitor Voyager API HTTP responses and item counts.
+
+---
+
+## [2.1.1] - 2026-11-20
+
+### 🎯 Network Recruiter Opportunity Radar (<14 Days)
+- **Recruiter Share Feed Scanning:** Added `FETCH_RECRUITER_JOBS_RADAR` in `background.js` to scan share feeds (`memberShareFeed`) via LinkedIn Voyager API across connected 1st-degree recruiters.
+- **Strict 14-Day Recency Filter:** Implemented `isPostWithin14Days()` to verify relative time markers (`Xd`, `1w`, `2w`) and exact epoch timestamps, strictly rejecting posts older than 14 days (e.g. `3w+`, `1mo+`, `1y`).
+- **Hiring Intent & Skill Extraction:** `detectJobDetailsFromPost()` identifies hiring signals (e.g. *we are hiring*, *immediate joiner*, *opening for*, *share cv*) and maps relevant core skills (*Power BI, Microsoft Fabric, DAX, SQL, Python, Azure, Databricks, ETL*).
+- **Direct UI & Local Sync:** Added **`🎯 Fetch Recruiter Jobs (<14d)`** button in `popup.html` and `popup.js` with instant result rendering, copy-to-clipboard button, and HTTP dispatcher to local listener (`http://127.0.0.1:4567/api/save-jobs`) without altering the MYCES remote database.
+
+---
+
+## [2.1.0] - 2026-11-18
 
 ### 🚀 Highlights & Critical Fixes
 - **Strict "Send Requests" Routing:** Fixed button behavior so clicking **Send Requests** (`#btn-send-requests`) exclusively opens the LinkedIn Grow page (`https://www.linkedin.com/mynetwork/grow/`) for the 1-Click routine. Completely removed any background trigger of `SYNC_SENT_REQUESTS`, ensuring the sent invitations manager tab (`/mynetwork/invitation-manager/sent/`) is never opened unexpectedly.
