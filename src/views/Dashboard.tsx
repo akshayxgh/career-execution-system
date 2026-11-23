@@ -100,10 +100,6 @@ export const Dashboard = () => {
     .filter((l) => isSameWeek(new Date(l.date), new Date()))
     .reduce((sum, log) => sum + log.actualHours, 0);
 
-  const openWeaknesses = state.weaknesses.filter(
-    (w) => w.status === 'Open' || w.status === 'Learning'
-  ).length;
-
   // Top AI Match Job (Should be today's scraped jobs only if available)
   const isDateToday = (dateStr?: string | null) => {
     if (!dateStr) return false;
@@ -325,42 +321,7 @@ export const Dashboard = () => {
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {openWeaknesses > 0 ? (
-              <div
-                style={{
-                  padding: '0.75rem 0.85rem',
-                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                  borderLeft: '4px solid var(--danger)',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                <span style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.85rem' }}>
-                  {openWeaknesses} Unresolved Weaknesses
-                </span>
-                <p className="text-xs text-muted" style={{ margin: '0.2rem 0 0' }}>
-                  Review interview weaknesses.
-                </p>
-              </div>
-            ) : (
-              <div
-                style={{
-                  padding: '0.75rem 0.85rem',
-                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                  borderLeft: '4px solid var(--success)',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                <span style={{ color: 'var(--success)', fontWeight: 700, fontSize: '0.85rem' }}>
-                  <CheckCircle size={14} style={{ display: 'inline', marginRight: '4px' }} />
-                  Interview Ready
-                </span>
-                <p className="text-xs text-muted" style={{ margin: '0.2rem 0 0' }}>
-                  No open weaknesses logged.
-                </p>
-              </div>
-            )}
-
-            {decisionJobs.length > 0 && (
+            {decisionJobs.length > 0 ? (
               <div
                 style={{
                   padding: '0.75rem 0.85rem',
@@ -374,6 +335,23 @@ export const Dashboard = () => {
                 </span>
                 <p className="text-xs text-muted" style={{ margin: '0.2rem 0 0' }}>
                   Review leads & contact recruiters.
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: '0.75rem 0.85rem',
+                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                  borderLeft: '4px solid var(--success)',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <span style={{ color: 'var(--success)', fontWeight: 700, fontSize: '0.85rem' }}>
+                  <CheckCircle size={14} style={{ display: 'inline', marginRight: '4px' }} />
+                  Execution On Track
+                </span>
+                <p className="text-xs text-muted" style={{ margin: '0.2rem 0 0' }}>
+                  All daily priorities completed.
                 </p>
               </div>
             )}

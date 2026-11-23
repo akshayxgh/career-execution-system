@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../store/StoreContext';
-import type { QuestionBankItem, QuestionConfidence, Weakness } from '../types';
+import type { QuestionBankItem, QuestionConfidence } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import {
   FileQuestion,
@@ -9,7 +9,6 @@ import {
   Sparkles,
   Layers,
   CheckCircle2,
-  AlertTriangle,
   UploadCloud,
   Loader2,
   Trash2,
@@ -860,25 +859,6 @@ export const QuestionBank: React.FC = () => {
     updateState({ questionBank: updated });
   };
 
-  // Push to Weaknesses
-  const handlePushToWeakness = (e: React.MouseEvent, item: QuestionBankItem) => {
-    e.stopPropagation();
-    const newWeakness: Weakness = {
-      id: uuidv4(),
-      topic: item.topic || 'Interview Question',
-      interviewCompany: item.company || 'General',
-      dateIdentified: new Date().toISOString().split('T')[0],
-      description: `Question: ${item.question}\n\nPitch: ${item.humanAnswer?.pitch || 'N/A'}`,
-      resolutionPlan: `Master steps:\n${(item.humanAnswer?.steps || []).join('\n')}\n\nPro Tip: ${
-        item.humanAnswer?.proTip || ''
-      }`,
-      status: 'Open',
-    };
-
-    updateState({ weaknesses: [newWeakness, ...(state.weaknesses || [])] });
-    showToast(`Added to Weakness Tracker: "${item.topic}"`);
-  };
-
   // Delete Question
   const handleDeleteQuestion = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -1563,23 +1543,6 @@ export const QuestionBank: React.FC = () => {
                           title="Edit Question, Tags & Answers"
                         >
                           <Edit3 size={14} />
-                        </button>
-
-                        {/* Push to Weakness Button */}
-                        <button
-                          className="btn-icon"
-                          style={{
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--bg-card)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '5px',
-                            cursor: 'pointer',
-                            color: 'var(--warning)',
-                          }}
-                          onClick={(e) => handlePushToWeakness(e, item)}
-                          title="Add to Weakness Tracker"
-                        >
-                          <AlertTriangle size={14} />
                         </button>
 
                         {/* Delete Button */}

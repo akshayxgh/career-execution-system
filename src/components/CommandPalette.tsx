@@ -9,7 +9,6 @@ import {
   Calculator,
   Briefcase,
   FileQuestion,
-  AlertTriangle,
   FolderGit2,
   FileText,
   Files,
@@ -246,16 +245,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => nav('/question-bank'),
       },
       {
-        id: 'mod-weaknesses',
-        title: 'Weaknesses & Mistake Tracker',
-        category: 'Modules',
-        description: 'Post-mortem mistake logging, blind spots, recurring technical gaps',
-        icon: <AlertTriangle size={18} />,
-        keywords: ['weaknesses', 'mistakes', 'errors', 'gaps', 'post-mortem', 'improvements', 'blind spots'],
-        badge: 'Improve',
-        action: () => nav('/weaknesses'),
-      },
-      {
         id: 'mod-tracks',
         title: 'Learning Tracks & Roadmaps',
         category: 'Modules',
@@ -440,16 +429,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         keywords: ['new application', 'add job', 'create application', 'log job', 'apply'],
         badge: 'Create',
         action: () => nav('/applications'),
-      },
-      {
-        id: 'act-new-weakness',
-        title: 'Log Mistake or Weakness',
-        category: 'Quick Actions',
-        description: 'Add an identified gap from an interview with resolution plan',
-        icon: <PlusCircle size={18} />,
-        keywords: ['new weakness', 'add mistake', 'log error', 'record weakness'],
-        badge: 'Create',
-        action: () => nav('/weaknesses'),
       },
       {
         id: 'act-new-project',
@@ -637,26 +616,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           action: () => {
             clearAutoRedirectTimer();
             navigate('/projects');
-            closePalette();
-          },
-        });
-      });
-    }
-
-    // Weaknesses
-    if (state.weaknesses && state.weaknesses.length > 0) {
-      state.weaknesses.slice(0, 10).forEach((w) => {
-        items.push({
-          id: `data-weak-${w.id}`,
-          title: `Gap: ${w.topic}`,
-          category: 'My Data',
-          description: `From: ${w.interviewCompany || 'Practice'} | Status: ${w.status}`,
-          icon: <AlertTriangle size={18} />,
-          keywords: [w.topic, w.interviewCompany || '', w.status, 'weakness', 'mistake'],
-          badge: 'Weakness',
-          action: () => {
-            clearAutoRedirectTimer();
-            navigate('/weaknesses');
             closePalette();
           },
         });

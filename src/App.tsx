@@ -9,7 +9,6 @@ import { Dashboard } from './views/Dashboard';
 import { LearningTracks } from './views/LearningTracks';
 import { Applications } from './views/Applications';
 import { QuestionBank } from './views/QuestionBank';
-import { Weaknesses } from './views/Weaknesses';
 import { ConceptLibrary } from './views/ConceptLibrary';
 import { ProjectTracker } from './views/ProjectTracker';
 import { ResumeTracker } from './views/ResumeTracker';
@@ -39,7 +38,6 @@ function App() {
             <Route path="tracks" element={<LearningTracks />} />
             <Route path="applications" element={<Applications />} />
             <Route path="question-bank" element={<QuestionBank />} />
-            <Route path="weaknesses" element={<Weaknesses />} />
             <Route path="concept-library" element={<ConceptLibrary />} />
             <Route path="projects" element={<ProjectTracker />} />
             <Route path="resumes" element={<ResumeTracker />} />
