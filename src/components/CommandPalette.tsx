@@ -8,7 +8,6 @@ import {
   Library,
   Calculator,
   Briefcase,
-  Mic,
   FileQuestion,
   AlertTriangle,
   FolderGit2,
@@ -227,16 +226,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         action: () => nav('/decision-intelligence'),
       },
       {
-        id: 'mod-interview-arena',
-        title: 'Interview Arena (AI Voice Simulator)',
-        category: 'Modules',
-        description: 'Real-time mock interview arena with AI speech critique and scoring',
-        icon: <Mic size={18} />,
-        keywords: ['arena', 'interview arena', 'mock', 'simulation', 'practice', 'voice', 'speech', 'ai interview'],
-        badge: 'Practice',
-        action: () => nav('/interview-arena'),
-      },
-      {
         id: 'mod-applications',
         title: 'Job Applications Tracker',
         category: 'Modules',
@@ -347,26 +336,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         keywords: ['pbi interview', 'power bi scenarios', 'rls', 'incremental refresh', 'performance tuning'],
         badge: 'DEXer Tab',
         action: () => nav('/dax-mastery?tab=pbi'),
-      },
-      {
-        id: 'sub-arena-45m',
-        title: 'Interview Arena: 45m Comprehensive Workout',
-        category: 'Sub-Views',
-        description: 'Full-length simulated technical interview with timed voice/text responses',
-        icon: <Mic size={18} />,
-        keywords: ['45m workout', 'full mock interview', 'timed interview', 'arena workout'],
-        badge: 'Arena Mode',
-        action: () => nav('/interview-arena'),
-      },
-      {
-        id: 'sub-arena-15m',
-        title: 'Interview Arena: 15m Sprint Drill',
-        category: 'Sub-Views',
-        description: 'High-intensity rapid-fire questioning drill',
-        icon: <Zap size={18} />,
-        keywords: ['15m sprint', 'sprint drill', 'rapid fire interview', 'quick practice'],
-        badge: 'Arena Mode',
-        action: () => nav('/interview-arena'),
       },
       {
         id: 'sub-qb-pbi',
@@ -943,7 +912,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             ref={inputRef}
             type="text"
             className="cmd-palette-input"
-            placeholder="Type anything... (e.g. 'dax', 'formatter', 'arena', 'sql')"
+            placeholder="Type anything... (e.g. 'dax', 'formatter', 'questions', 'sql')"
             value={query}
             onChange={(e) => {
               isCancelledRef.current = false;
@@ -997,7 +966,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <Sparkles size={28} className="cmd-palette-empty-icon" />
               <p className="cmd-palette-empty-title">No matching modules or data found</p>
               <p className="cmd-palette-empty-sub">
-                Try searching for "dax", "formatter", "sql", "arena", or a company name.
+                Try searching for "dax", "formatter", "sql", "questions", or a company name.
               </p>
             </div>
           ) : (

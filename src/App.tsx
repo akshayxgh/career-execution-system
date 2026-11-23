@@ -8,7 +8,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Dashboard } from './views/Dashboard';
 import { LearningTracks } from './views/LearningTracks';
 import { Applications } from './views/Applications';
-import { InterviewArena } from './views/InterviewArena';
 import { QuestionBank } from './views/QuestionBank';
 import { Weaknesses } from './views/Weaknesses';
 import { ConceptLibrary } from './views/ConceptLibrary';
@@ -39,7 +38,6 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="tracks" element={<LearningTracks />} />
             <Route path="applications" element={<Applications />} />
-            <Route path="interview-arena" element={<InterviewArena />} />
             <Route path="question-bank" element={<QuestionBank />} />
             <Route path="weaknesses" element={<Weaknesses />} />
             <Route path="concept-library" element={<ConceptLibrary />} />
