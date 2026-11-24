@@ -128,6 +128,7 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   const [editProfileUrl, setEditProfileUrl] = useState('');
   const [editCompany, setEditCompany] = useState('');
   const [editRole, setEditRole] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editHeadline, setEditHeadline] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editStatus, setEditStatus] = useState<ConnectionStatus>('NOT_CONNECTED');
@@ -138,11 +139,15 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
 
   const handleOpenEditModal = (person: LinkedInPerson) => {
     const isRec = checkIsRecruiter(person);
+    const emailMatch = person.interaction_notes ? person.interaction_notes.match(/Email:\s*([^\s\n\r()]+)/i) : null;
+    const initialEmail = (person as any).email || (emailMatch ? emailMatch[1] : '');
+
     setEditingPerson(person);
     setEditName(person.full_name || '');
     setEditProfileUrl(person.profile_url || '');
     setEditCompany(person.company || '');
     setEditRole(person.role || '');
+    setEditEmail(initialEmail);
     setEditHeadline(person.headline || '');
     setEditNotes(person.interaction_notes || '');
     setEditStatus(person.connection_status || 'NOT_CONNECTED');
@@ -151,51 +156,35 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
     setNewTagInput('');
   };
 
-  const handleToggleCategory = async (person: LinkedInPerson, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const isRec = checkIsRecruiter(person);
-    const targetCategory = isRec ? 'PEER' : 'RECRUITER';
-    const updatedTags = (person.tags || []).filter((t) => t !== 'RECRUITER' && t !== 'PEER' && t !== 'Recruiter');
-    updatedTags.unshift(targetCategory);
-
-    const updatedRole = targetCategory === 'PEER' ? 'Senior Engineering Peer' : 'Tech Talent Recruiter';
-
-    try {
-      await linkedinAgentService.updatePerson(person.id, {
-        tags: updatedTags,
-        role: updatedRole,
-      });
-      showToast(`Switched ${person.full_name} to ${targetCategory === 'PEER' ? '🤝 Peer' : '🎯 Recruiter'}`);
-      await onRefresh();
-    } catch (err: unknown) {
-      showToast(`Failed to update type: ${err instanceof Error ? err.message : 'Error'}`);
-    }
-  };
-
-  const handleQuickStatusChange = async (person: LinkedInPerson, newStatus: ConnectionStatus, e?: React.ChangeEvent<HTMLSelectElement>) => {
-    if (e) e.stopPropagation();
-    try {
-      await linkedinAgentService.updatePerson(person.id, {
-        connection_status: newStatus,
-      });
-      showToast(`Updated ${person.full_name} status to ${newStatus}`);
-      await onRefresh();
-    } catch (err: unknown) {
-      showToast(`Failed to update status: ${err instanceof Error ? err.message : 'Error'}`);
-    }
-  };
-
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPerson) return;
     setIsSavingEdit(true);
     try {
-      const finalTags = editTags.filter((t) => t !== 'PEER' && t !== 'RECRUITER' && t !== 'Recruiter');
+      let finalTags = editTags.filter((t) => t !== 'PEER' && t !== 'RECRUITER' && t !== 'Recruiter');
       finalTags.unshift(editCategory);
 
       let finalRole = editRole.trim();
       if (!finalRole) {
         finalRole = editCategory === 'PEER' ? 'Senior Engineering Peer' : 'Tech Talent Recruiter';
+      }
+
+      // Handle Email in notes and tags
+      let updatedNotes = editNotes.trim();
+      const trimmedEmail = editEmail.trim();
+
+      if (trimmedEmail) {
+        if (/Email:\s*[^\s\n\r()]+/i.test(updatedNotes)) {
+          updatedNotes = updatedNotes.replace(/Email:\s*[^\s\n\r()]+(\s*\([^\)]*\))?/i, `Email: ${trimmedEmail} (VERIFIED)`);
+        } else {
+          updatedNotes = `Email: ${trimmedEmail} (VERIFIED)` + (updatedNotes ? `\n${updatedNotes}` : '');
+        }
+        if (!finalTags.includes('Email: Verified')) {
+          finalTags.push('Email: Verified');
+        }
+      } else {
+        updatedNotes = updatedNotes.replace(/^Email:\s*[^\n\r]+[\r\n]*/im, '').trim();
+        finalTags = finalTags.filter((t) => t !== 'Email: Verified');
       }
 
       await linkedinAgentService.updatePerson(editingPerson.id, {
@@ -204,7 +193,7 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
         company: editCompany.trim() || undefined,
         role: finalRole,
         headline: editHeadline.trim() || undefined,
-        interaction_notes: editNotes.trim() || undefined,
+        interaction_notes: updatedNotes || undefined,
         connection_status: editStatus,
         tags: finalTags,
       });
@@ -1841,26 +1830,21 @@ Focus on:
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{person.full_name}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleCategory(person, e)}
-                              title={checkIsRecruiter(person) ? "Currently Recruiter. Click to switch to Peer" : "Currently Peer. Click to switch to Recruiter"}
-                              style={{
-                                fontSize: '0.65rem',
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: '4px',
-                                background: checkIsRecruiter(person) ? 'rgba(139, 92, 246, 0.15)' : 'rgba(2, 132, 199, 0.15)',
-                                color: checkIsRecruiter(person) ? '#c084fc' : '#38bdf8',
-                                border: checkIsRecruiter(person) ? '1px solid rgba(139, 92, 246, 0.35)' : '1px solid rgba(2, 132, 199, 0.35)',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '2px',
-                              }}
-                            >
-                              {checkIsRecruiter(person) ? '🎯 Recruiter ⇄' : '🤝 Peer ⇄'}
-                            </button>
+                            {checkIsRecruiter(person) && (
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '4px',
+                                  background: 'rgba(139, 92, 246, 0.15)',
+                                  color: '#c084fc',
+                                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Recruiter
+                              </span>
+                            )}
                           </div>
                           <a
                             href={person.profile_url}
@@ -2072,26 +2056,21 @@ Focus on:
                         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
                           {person.full_name}
                         </h4>
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleCategory(person, e)}
-                          title={isRecruiter ? "Currently Recruiter. Click to switch to Peer" : "Currently Peer. Click to switch to Recruiter"}
-                          style={{
-                            fontSize: '0.65rem',
-                            padding: '0.1rem 0.4rem',
-                            borderRadius: '4px',
-                            background: isRecruiter ? 'rgba(139, 92, 246, 0.15)' : 'rgba(2, 132, 199, 0.15)',
-                            color: isRecruiter ? '#c084fc' : '#38bdf8',
-                            border: isRecruiter ? '1px solid rgba(139, 92, 246, 0.35)' : '1px solid rgba(2, 132, 199, 0.35)',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '2px',
-                          }}
-                        >
-                          {isRecruiter ? '🎯 Recruiter ⇄' : '🤝 Peer ⇄'}
-                        </button>
+                        {isRecruiter && (
+                          <span
+                            style={{
+                              fontSize: '0.65rem',
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '4px',
+                              background: 'rgba(139, 92, 246, 0.15)',
+                              color: '#c084fc',
+                              border: '1px solid rgba(139, 92, 246, 0.3)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Recruiter
+                          </span>
+                        )}
                       </div>
                       <div
                         style={{
@@ -2258,48 +2237,26 @@ Focus on:
                   }}
                 >
                   {renderPipeline(stage, person)}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <select
-                      value={person.connection_status}
-                      onChange={(e) => handleQuickStatusChange(person, e.target.value as ConnectionStatus, e)}
+                  {isConnected && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleIntroSent(person)}
                       style={{
-                        background: 'rgba(255, 255, 255, 0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        color: person.connection_status === 'CONNECTED' ? '#10b981' : person.connection_status === 'INVITATION_SENT' ? '#38bdf8' : 'var(--text-muted)',
+                        background: isIntro ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                        border: isIntro ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        color: isIntro ? '#38bdf8' : 'var(--text-muted)',
                         borderRadius: '4px',
                         fontSize: '0.65rem',
                         fontWeight: 600,
-                        padding: '1px 3px',
+                        padding: '2px 6px',
                         cursor: 'pointer',
+                        transition: 'all 0.15s ease',
                       }}
-                      title="Quick change connection status"
+                      title={isIntro ? 'Click to remove Intro Sent tag' : 'Click to mark as Intro Sent (if messaged on LinkedIn)'}
                     >
-                      <option value="NOT_CONNECTED" style={{ background: '#0f172a', color: '#94a3b8' }}>Not Connected</option>
-                      <option value="INVITATION_SENT" style={{ background: '#0f172a', color: '#38bdf8' }}>Invited</option>
-                      <option value="CONNECTED" style={{ background: '#0f172a', color: '#10b981' }}>Connected</option>
-                    </select>
-
-                    {isConnected && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleIntroSent(person)}
-                        style={{
-                          background: isIntro ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-                          border: isIntro ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-                          color: isIntro ? '#38bdf8' : 'var(--text-muted)',
-                          borderRadius: '4px',
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          padding: '2px 5px',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                        title={isIntro ? 'Click to remove Intro Sent tag' : 'Click to mark as Intro Sent (if messaged on LinkedIn)'}
-                      >
-                        {isIntro ? '✓ Intro' : '+ Intro'}
-                      </button>
-                    )}
-                  </div>
+                      {isIntro ? '✓ Intro Sent' : '+ Mark Intro'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Contextual Action Buttons */}
@@ -2828,6 +2785,31 @@ Focus on:
                       fontSize: '0.85rem',
                     }}
                   />
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Email Address
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="e.g. name@company.com"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem 0.5rem 2rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                  <Mail size={13} style={{ position: 'absolute', left: '0.65rem', color: editEmail ? '#34d399' : 'var(--text-muted)' }} />
                 </div>
               </div>
 
