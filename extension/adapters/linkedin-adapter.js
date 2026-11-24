@@ -145,11 +145,11 @@ class LinkedInAdapter extends BaseAdapter {
     pill = document.createElement('div');
     pill.id = 'myces-linkedin-pill';
     pill.innerHTML = `
-      <button id="myces-btn-auto-routine" class="myces-pill-btn" title="1-Click Daily Routine: Connect with 5 Peers + 2 Recruiters">
+      <button id="myces-btn-auto-routine" class="myces-pill-btn" title="1-Click Daily Routine: Connect with 4 Peers + 3 HR / Recruiters">
         <span id="myces-routine-icon">⚡</span>
       </button>
       <div class="myces-pill-status" id="myces-pill-status-area">
-        <span>5 Peers + 2 Recruiters</span>
+        <span>4 Peers + 3 HR / Recruiters</span>
       </div>
     `;
 
@@ -754,7 +754,7 @@ class LinkedInAdapter extends BaseAdapter {
       await this.delay(900);
 
       // ==========================================
-      // PHASE 2: AI TARGET SELECTION (5 PEERS + 2 RECRUITERS)
+      // PHASE 2: AI TARGET SELECTION (4 PEERS + 3 HR / RECRUITERS)
       // ==========================================
       const candidates = this.extractCandidateCards();
       const allPeers = candidates.filter(c => c.category === 'PEER');
@@ -762,10 +762,10 @@ class LinkedInAdapter extends BaseAdapter {
 
       console.log(`[LinkedIn Routine] Pool breakdown: ${allPeers.length} Peers, ${allRecruiters.length} Recruiters from ${candidates.length} qualified cards.`);
 
-      // Select 2 recruiters first
-      const selectedRecruiters = allRecruiters.slice(0, 2);
-      // Backfill with peers to guarantee exactly 7 targets
-      const peersNeeded = Math.max(5, 7 - selectedRecruiters.length);
+      // Select 3 recruiters/HR first
+      const selectedRecruiters = allRecruiters.slice(0, 3);
+      // Backfill with peers to guarantee exactly 7 targets (4 peers when 3 recruiters found)
+      const peersNeeded = Math.max(4, 7 - selectedRecruiters.length);
       const selectedPeers = allPeers.slice(0, peersNeeded);
 
       const targets = [...selectedPeers, ...selectedRecruiters].slice(0, 7);
@@ -852,7 +852,7 @@ class LinkedInAdapter extends BaseAdapter {
       icon.textContent = '⚡';
     }
     if (statusArea) {
-      statusArea.innerHTML = '<span>5 Peers + 2 Recruiters</span>';
+      statusArea.innerHTML = '<span>4 Peers + 3 HR / Recruiters</span>';
     }
   }
 
@@ -925,15 +925,28 @@ class LinkedInAdapter extends BaseAdapter {
       let headline = textLines[1] || 'Technical Specialist';
       const hLower = headline.toLowerCase();
 
-      // Categorize
+      // Categorize with strict word boundaries (\b) to prevent substring false positives (e.g. "through", "thru", "Synchrony", "Philanthropist")
       let category = null;
-      const isRecruiter = hLower.includes('recruiter') || hLower.includes('talent') || hLower.includes('hiring') || hLower.includes('staffing') || hLower.includes('hr') || hLower.includes('ta specialist');
-      const isDataPeer = hLower.includes('data') || hLower.includes('bi') || hLower.includes('power bi') || hLower.includes('analytics') || hLower.includes('analyst') || hLower.includes('engineer') || hLower.includes('architect') || hLower.includes('sql') || hLower.includes('python') || hLower.includes('fabric') || hLower.includes('strategist') || hLower.includes('reporting');
 
-      if (isRecruiter) {
-        category = 'RECRUITER';
+      const recruiterRegex = /\b(recruiter|recruiting|recruitment|talent\s*a[c]?quisition|talent\s*hiring[s]?|talent\s*partner|talent\s*specialist|talent\s*sourcer|talent\s*lead|talent\s*advisor|talent\s*manager|sourcer|headhunter|staffing|human\s*resources|hrbp|hr\s*executive|hr\s*manager|hr\s*specialist|hr\s*generalist|hr\s*lead|hr\s*director|hr\s*consultant|hr\s*recruiter|technical\s*recruitment|technical\s*recruiter|it\s*recruiter|campus\s*recruiter|campus\s*hiring|people\s*&\s*culture|people\s*partner|people\s*operations|ta\s*specialist|ta\s*partner|ta\s*lead)\b/i;
+      const isHrWord = /\bhr\b/i.test(hLower) && !/\bhr\s*(analytics|analyst|data|ops)\b/i.test(hLower);
+      const isRecruiter = recruiterRegex.test(hLower) || isHrWord;
+
+      const dataPeerRegex = /\b(data\s*analyst|senior\s*data\s*analyst|lead\s*data\s*analyst|data\s*engineer|senior\s*data\s*engineer|data\s*scientist|data\s*governance|data\s*architect|data\s*operations|master\s*data|data\s*quality|business\s*intelligence|bi\s*developer|bi\s*analyst|bi\s*specialist|bi\s*engineer|power\s*bi|tableau|analytics\s*manager|analytics\s*lead|analytics\s*engineer|avp[,\s]+analytics|vp[,\s]+analytics|head\s+of\s+analytics|director\s+of\s+analytics|sql\s*developer|mis\s*analyst|reporting\s*analyst|database\s*administrator|etl\s*developer|data\s*&\s*ai|analytics|data)\b/i;
+      const isDataPeer = dataPeerRegex.test(hLower);
+
+      // Conflict resolution: If someone has both (e.g. "Lead Data Analyst | Hiring for my team" vs "Technical Recruiter | Hiring Data Engineers"):
+      if (isRecruiter && isDataPeer) {
+        const firstSegment = (headline || '').split(/[|•–\n@-]/)[0].toLowerCase().trim();
+        if (recruiterRegex.test(firstSegment) || (/\bhr\b/i.test(firstSegment) && !/\bhr\s*(analytics|analyst|data)\b/i.test(firstSegment))) {
+          category = 'RECRUITER';
+        } else {
+          category = 'PEER';
+        }
       } else if (isDataPeer) {
         category = 'PEER';
+      } else if (isRecruiter) {
+        category = 'RECRUITER';
       }
 
       if (category) {

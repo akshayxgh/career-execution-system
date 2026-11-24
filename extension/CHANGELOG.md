@@ -4,7 +4,25 @@ All notable changes and architectural updates to the **Job Autofill Pro** Chrome
 
 ---
 
-## [2.1.5] - 2026-11-20 (Current Release)
+## [2.1.7] - 2026-11-24 (Current Release)
+
+### 🎯 Strict Word-Boundary Recruiter & Peer Classification
+- **Bug Fix for False Recruiter Identification:** Fixed substring match flaw where words like "through", "thru", "Synchrony", "Philanthropist", and "threat" were erroneously triggering the `hr` keyword check and classifying senior Data/BI peers (such as Senior Data Analysts and Data Governance Leaders) as tech recruiters.
+- **Whole-Word & Role Boundary Checks:** Updated `extractCandidateCards()` in `linkedin-adapter.js` and `isRecruiterProfile()` in `background.js` to strictly enforce `\b` regex word boundaries for HR/recruitment titles.
+- **Practitioner Protection & Conflict Resolution:** If a profile headline contains practitioner roles (e.g., Data Analyst, Data Engineer, BI Specialist, Data Governance Leader), it is strictly classified as a `PEER` even if terms like "hiring" appear in secondary text, ensuring authentic peer notes and preventing recruiter welcome messages.
+
+---
+
+## [2.1.6] - 2026-11-23
+
+### ⚡ 4 Peers + 3 HR Routine & Streamlined Popup UI
+- **Routine Target Realignment:** Updated daily LinkedIn connection routine target to **4 Data/BI Peers + 3 HR / Recruiters** (was 5 Peers + 2 Recruiters) across the extension widget, background runner, and MYCES dashboard.
+- **Hidden Job Cards Section in Popup:** Removed the bulky job feed display list (`#recruiter-jobs-container`) from the popup interface. Posts are now cleanly viewed and filtered in the dedicated tabular dashboard at `http://127.0.0.1:4567/api/save-jobs`.
+- **Status Indicator:** Scan button now cleanly indicates status (`✓ N Saved`) without cluttering the extension popup view.
+
+---
+
+## [2.1.5] - 2026-11-20
 
 ### 🔗 Direct Post URL & Activity URN Resolution
 - **Direct Activity Link Extraction:** Implemented `extractPostUrl()` to parse `item.entityUrn`, `item.updateMetadata.urn`, and `item.resharedUpdate` for `activity:(\d+)` patterns.

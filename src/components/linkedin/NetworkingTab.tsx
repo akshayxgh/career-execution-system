@@ -23,7 +23,9 @@ import {
   ChevronRight,
   Mail,
   Copy,
+  Pencil,
 } from 'lucide-react';
+import { checkIsRecruiter } from '../../utils/recruiterClassifier';
 import type {
   LinkedInPerson,
   ConnectionStatus,
@@ -120,23 +122,119 @@ export const NetworkingTab: React.FC<NetworkingTabProps> = ({
   const [newStatus, setNewStatus] = useState<ConnectionStatus>('NOT_CONNECTED');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Edit Contact Form State
+  const [editingPerson, setEditingPerson] = useState<LinkedInPerson | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editProfileUrl, setEditProfileUrl] = useState('');
+  const [editCompany, setEditCompany] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editHeadline, setEditHeadline] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editStatus, setEditStatus] = useState<ConnectionStatus>('NOT_CONNECTED');
+  const [editCategory, setEditCategory] = useState<'PEER' | 'RECRUITER'>('PEER');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleOpenEditModal = (person: LinkedInPerson) => {
+    const isRec = checkIsRecruiter(person);
+    setEditingPerson(person);
+    setEditName(person.full_name || '');
+    setEditProfileUrl(person.profile_url || '');
+    setEditCompany(person.company || '');
+    setEditRole(person.role || '');
+    setEditHeadline(person.headline || '');
+    setEditNotes(person.interaction_notes || '');
+    setEditStatus(person.connection_status || 'NOT_CONNECTED');
+    setEditCategory(isRec ? 'RECRUITER' : 'PEER');
+    setEditTags(Array.isArray(person.tags) ? [...person.tags] : []);
+    setNewTagInput('');
+  };
+
+  const handleToggleCategory = async (person: LinkedInPerson, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const isRec = checkIsRecruiter(person);
+    const targetCategory = isRec ? 'PEER' : 'RECRUITER';
+    const updatedTags = (person.tags || []).filter((t) => t !== 'RECRUITER' && t !== 'PEER' && t !== 'Recruiter');
+    updatedTags.unshift(targetCategory);
+
+    const updatedRole = targetCategory === 'PEER' ? 'Senior Engineering Peer' : 'Tech Talent Recruiter';
+
+    try {
+      await linkedinAgentService.updatePerson(person.id, {
+        tags: updatedTags,
+        role: updatedRole,
+      });
+      showToast(`Switched ${person.full_name} to ${targetCategory === 'PEER' ? '🤝 Peer' : '🎯 Recruiter'}`);
+      await onRefresh();
+    } catch (err: unknown) {
+      showToast(`Failed to update type: ${err instanceof Error ? err.message : 'Error'}`);
+    }
+  };
+
+  const handleQuickStatusChange = async (person: LinkedInPerson, newStatus: ConnectionStatus, e?: React.ChangeEvent<HTMLSelectElement>) => {
+    if (e) e.stopPropagation();
+    try {
+      await linkedinAgentService.updatePerson(person.id, {
+        connection_status: newStatus,
+      });
+      showToast(`Updated ${person.full_name} status to ${newStatus}`);
+      await onRefresh();
+    } catch (err: unknown) {
+      showToast(`Failed to update status: ${err instanceof Error ? err.message : 'Error'}`);
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPerson) return;
+    setIsSavingEdit(true);
+    try {
+      const finalTags = editTags.filter((t) => t !== 'PEER' && t !== 'RECRUITER' && t !== 'Recruiter');
+      finalTags.unshift(editCategory);
+
+      let finalRole = editRole.trim();
+      if (!finalRole) {
+        finalRole = editCategory === 'PEER' ? 'Senior Engineering Peer' : 'Tech Talent Recruiter';
+      }
+
+      await linkedinAgentService.updatePerson(editingPerson.id, {
+        full_name: editName.trim(),
+        profile_url: editProfileUrl.trim(),
+        company: editCompany.trim() || undefined,
+        role: finalRole,
+        headline: editHeadline.trim() || undefined,
+        interaction_notes: editNotes.trim() || undefined,
+        connection_status: editStatus,
+        tags: finalTags,
+      });
+
+      showToast(`Updated ${editName.trim()} successfully!`);
+      setEditingPerson(null);
+      await onRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update contact';
+      showToast(`Error: ${msg}`);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleAddTag = () => {
+    const trimmed = newTagInput.trim();
+    if (trimmed && !editTags.includes(trimmed)) {
+      setEditTags([...editTags, trimmed]);
+      setNewTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setEditTags(editTags.filter((t) => t !== tagToRemove));
+  };
+
   // Verification helper: Intro Sent badge is strictly scoped to tags
   const checkIsIntroSent = (p: LinkedInPerson): boolean => {
     return Boolean(Array.isArray(p.tags) && p.tags.includes('Intro Sent'));
-  };
-
-  // Recruiter detection helper
-  const checkIsRecruiter = (p: LinkedInPerson): boolean => {
-    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
-    return (
-      text.includes('recruiter') ||
-      text.includes('talent acquisition') ||
-      text.includes('hiring') ||
-      text.includes('sourcer') ||
-      text.includes('staffing') ||
-      text.includes('human resources') ||
-      text.includes('hrbp')
-    );
   };
 
   // Intelligent Pending Invite Detection (Single Source of Truth)
@@ -1743,21 +1841,26 @@ Focus on:
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{person.full_name}</span>
-                            {checkIsRecruiter(person) && (
-                              <span
-                                style={{
-                                  fontSize: '0.65rem',
-                                  padding: '0.1rem 0.35rem',
-                                  borderRadius: '4px',
-                                  background: 'rgba(139, 92, 246, 0.15)',
-                                  color: '#c084fc',
-                                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Recruiter
-                              </span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleCategory(person, e)}
+                              title={checkIsRecruiter(person) ? "Currently Recruiter. Click to switch to Peer" : "Currently Peer. Click to switch to Recruiter"}
+                              style={{
+                                fontSize: '0.65rem',
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '4px',
+                                background: checkIsRecruiter(person) ? 'rgba(139, 92, 246, 0.15)' : 'rgba(2, 132, 199, 0.15)',
+                                color: checkIsRecruiter(person) ? '#c084fc' : '#38bdf8',
+                                border: checkIsRecruiter(person) ? '1px solid rgba(139, 92, 246, 0.35)' : '1px solid rgba(2, 132, 199, 0.35)',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                              }}
+                            >
+                              {checkIsRecruiter(person) ? '🎯 Recruiter ⇄' : '🤝 Peer ⇄'}
+                            </button>
                           </div>
                           <a
                             href={person.profile_url}
@@ -1880,6 +1983,16 @@ Focus on:
                         )}
 
                         <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(person)}
+                          className="btn btn-secondary"
+                          title="Edit contact in whole"
+                          style={{ padding: '0.35rem', color: '#38bdf8' }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+
+                        <button
                           onClick={() => handleDelete(person.id, person.full_name)}
                           className="btn btn-secondary"
                           title="Delete contact"
@@ -1959,21 +2072,26 @@ Focus on:
                         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
                           {person.full_name}
                         </h4>
-                        {isRecruiter && (
-                          <span
-                            style={{
-                              fontSize: '0.65rem',
-                              padding: '0.1rem 0.4rem',
-                              borderRadius: '4px',
-                              background: 'rgba(139, 92, 246, 0.15)',
-                              color: '#c084fc',
-                              border: '1px solid rgba(139, 92, 246, 0.3)',
-                              fontWeight: 600,
-                            }}
-                          >
-                            Recruiter
-                          </span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleCategory(person, e)}
+                          title={isRecruiter ? "Currently Recruiter. Click to switch to Peer" : "Currently Peer. Click to switch to Recruiter"}
+                          style={{
+                            fontSize: '0.65rem',
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: '4px',
+                            background: isRecruiter ? 'rgba(139, 92, 246, 0.15)' : 'rgba(2, 132, 199, 0.15)',
+                            color: isRecruiter ? '#c084fc' : '#38bdf8',
+                            border: isRecruiter ? '1px solid rgba(139, 92, 246, 0.35)' : '1px solid rgba(2, 132, 199, 0.35)',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '2px',
+                          }}
+                        >
+                          {isRecruiter ? '🎯 Recruiter ⇄' : '🤝 Peer ⇄'}
+                        </button>
                       </div>
                       <div
                         style={{
@@ -1989,14 +2107,25 @@ Focus on:
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleDelete(person.id, person.full_name)}
-                    className="btn btn-secondary"
-                    title="Delete contact"
-                    style={{ padding: '0.25rem', color: '#ef4444', flexShrink: 0 }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(person)}
+                      className="btn btn-secondary"
+                      title="Edit contact in whole"
+                      style={{ padding: '0.25rem', color: '#38bdf8' }}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(person.id, person.full_name)}
+                      className="btn btn-secondary"
+                      title="Delete contact"
+                      style={{ padding: '0.25rem', color: '#ef4444' }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Company Tag & Profile Link */}
@@ -2129,26 +2258,48 @@ Focus on:
                   }}
                 >
                   {renderPipeline(stage, person)}
-                  {isConnected && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleIntroSent(person)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <select
+                      value={person.connection_status}
+                      onChange={(e) => handleQuickStatusChange(person, e.target.value as ConnectionStatus, e)}
                       style={{
-                        background: isIntro ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-                        border: isIntro ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
-                        color: isIntro ? '#38bdf8' : 'var(--text-muted)',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        color: person.connection_status === 'CONNECTED' ? '#10b981' : person.connection_status === 'INVITATION_SENT' ? '#38bdf8' : 'var(--text-muted)',
                         borderRadius: '4px',
                         fontSize: '0.65rem',
                         fontWeight: 600,
-                        padding: '2px 6px',
+                        padding: '1px 3px',
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease',
                       }}
-                      title={isIntro ? 'Click to remove Intro Sent tag' : 'Click to mark as Intro Sent (if messaged on LinkedIn)'}
+                      title="Quick change connection status"
                     >
-                      {isIntro ? '✓ Intro Sent' : '+ Mark Intro'}
-                    </button>
-                  )}
+                      <option value="NOT_CONNECTED" style={{ background: '#0f172a', color: '#94a3b8' }}>Not Connected</option>
+                      <option value="INVITATION_SENT" style={{ background: '#0f172a', color: '#38bdf8' }}>Invited</option>
+                      <option value="CONNECTED" style={{ background: '#0f172a', color: '#10b981' }}>Connected</option>
+                    </select>
+
+                    {isConnected && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleIntroSent(person)}
+                        style={{
+                          background: isIntro ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                          border: isIntro ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          color: isIntro ? '#38bdf8' : 'var(--text-muted)',
+                          borderRadius: '4px',
+                          fontSize: '0.65rem',
+                          fontWeight: 600,
+                          padding: '2px 5px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title={isIntro ? 'Click to remove Intro Sent tag' : 'Click to mark as Intro Sent (if messaged on LinkedIn)'}
+                      >
+                        {isIntro ? '✓ Intro' : '+ Intro'}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Contextual Action Buttons */}
@@ -2425,6 +2576,397 @@ Focus on:
                   style={{ background: '#0a66c2', borderColor: '#0a66c2' }}
                 >
                   {isSubmitting ? 'Saving...' : 'Save Contact'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Contact Modal */}
+      {editingPerson && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSavingEdit) setEditingPerson(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '1.5rem',
+              borderRadius: '0.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              background: 'rgba(15, 23, 42, 0.98)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.25rem' }}>✏️</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    Edit Contact
+                  </h3>
+                  <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                    Update profile, role, status, and tags directly
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPerson(null)}
+                className="btn btn-secondary"
+                disabled={isSavingEdit}
+                style={{ padding: '0.35rem', borderRadius: '50%' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* Category Segmented Selector */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.35rem', display: 'block' }}>
+                  Connection Category
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditCategory('PEER');
+                      if (!editRole || editRole.includes('Recruiter')) {
+                        setEditRole('Senior Engineering Peer');
+                      }
+                    }}
+                    style={{
+                      padding: '0.5rem',
+                      borderRadius: '0.4rem',
+                      border: editCategory === 'PEER' ? '2px solid #0284c7' : '1px solid rgba(255, 255, 255, 0.1)',
+                      background: editCategory === 'PEER' ? 'rgba(2, 132, 199, 0.2)' : 'rgba(6, 10, 18, 0.6)',
+                      color: editCategory === 'PEER' ? '#38bdf8' : 'var(--text-muted)',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    <span>🤝</span>
+                    <span>Data / BI Peer</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditCategory('RECRUITER');
+                      if (!editRole || editRole.includes('Peer')) {
+                        setEditRole('Tech Talent Recruiter');
+                      }
+                    }}
+                    style={{
+                      padding: '0.5rem',
+                      borderRadius: '0.4rem',
+                      border: editCategory === 'RECRUITER' ? '2px solid #8b5cf6' : '1px solid rgba(255, 255, 255, 0.1)',
+                      background: editCategory === 'RECRUITER' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(6, 10, 18, 0.6)',
+                      color: editCategory === 'RECRUITER' ? '#c084fc' : 'var(--text-muted)',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                    }}
+                  >
+                    <span>🎯</span>
+                    <span>Recruiter / HR</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Full Name & Status Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    Connection Status *
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as ConnectionStatus)}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    <option value="NOT_CONNECTED">Not Connected</option>
+                    <option value="PENDING_OUTREACH">Pending Outreach</option>
+                    <option value="INVITATION_SENT">Invitation Sent</option>
+                    <option value="CONNECTED">Connected</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* LinkedIn URL */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    LinkedIn Profile URL *
+                  </label>
+                  {editProfileUrl && (
+                    <a
+                      href={editProfileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '0.7rem', color: '#38bdf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '2px' }}
+                    >
+                      <span>Open ↗</span>
+                    </a>
+                  )}
+                </div>
+                <input
+                  type="url"
+                  required
+                  value={editProfileUrl}
+                  onChange={(e) => setEditProfileUrl(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.4rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem',
+                  }}
+                />
+              </div>
+
+              {/* Company & Role */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    Company
+                  </label>
+                  <input
+                    type="text"
+                    value={editCompany}
+                    onChange={(e) => setEditCompany(e.target.value)}
+                    placeholder="e.g. PwC, Microsoft, Reckitt"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    Role / Job Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    placeholder="e.g. Senior Data Analyst"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Headline */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  LinkedIn Headline
+                </label>
+                <textarea
+                  rows={2}
+                  value={editHeadline}
+                  onChange={(e) => setEditHeadline(e.target.value)}
+                  placeholder="e.g. Senior Data Analyst | Power BI • SQL • Python"
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.4rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.85rem',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              {/* Tags Section */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem', display: 'block' }}>
+                  Tags
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.45rem' }}>
+                  {editTags.map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '999px',
+                        background: tag === 'RECRUITER' ? 'rgba(139, 92, 246, 0.2)' : tag === 'PEER' ? 'rgba(2, 132, 199, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                        color: tag === 'RECRUITER' ? '#c084fc' : tag === 'PEER' ? '#38bdf8' : 'var(--text-main)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                      }}
+                    >
+                      <span>{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: '0.75rem',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <input
+                    type="text"
+                    value={newTagInput}
+                    onChange={(e) => setNewTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    placeholder="Add a tag and press Enter..."
+                    style={{
+                      flex: 1,
+                      padding: '0.35rem 0.65rem',
+                      borderRadius: '0.4rem',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'rgba(6, 10, 18, 0.6)',
+                      color: 'var(--text-main)',
+                      fontSize: '0.8rem',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                  >
+                    + Add Tag
+                  </button>
+                </div>
+              </div>
+
+              {/* Interaction Notes */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Interaction Notes / Log
+                </label>
+                <textarea
+                  rows={3}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Log interaction details, verified email, follow-up status..."
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.4rem',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'rgba(6, 10, 18, 0.6)',
+                    color: 'var(--text-main)',
+                    fontSize: '0.8rem',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              {/* Modal Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingPerson(null)}
+                  className="btn btn-secondary"
+                  disabled={isSavingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSavingEdit}
+                  style={{ minWidth: '120px', background: '#0a66c2', borderColor: '#0a66c2' }}
+                >
+                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

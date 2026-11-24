@@ -41,6 +41,7 @@ import type {
   LinkedInAgentMemory,
 } from '../../types/linkedin';
 import { linkedinAgentService } from '../../services/linkedinAgentService';
+import { checkIsRecruiter } from '../../utils/recruiterClassifier';
 
 interface AnalyticsMemoryTabProps {
   summary: AnalyticsDashboardSummary | null;
@@ -266,18 +267,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  const checkIsRecruiter = (p: LinkedInPerson) => {
-    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
-    return (
-      text.includes('recruiter') ||
-      text.includes('talent acquisition') ||
-      text.includes('hiring') ||
-      text.includes('sourcer') ||
-      text.includes('staffing') ||
-      text.includes('human resources') ||
-      text.includes('hrbp')
-    );
-  };
+
 
   // Funnel & Audience Live Calculations
   const funnelMetrics = useMemo(() => {
@@ -438,18 +428,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
   }, [people]);
 
   const checkIsRecruiterContact = (p?: { role?: string | null; headline?: string | null; tags?: string[] } | null): boolean => {
-    if (!p) return false;
-    const tagsStr = Array.isArray(p.tags) ? p.tags.join(' ') : (typeof p.tags === 'string' ? p.tags : '');
-    const text = `${p.role || ''} ${p.headline || ''} ${tagsStr}`.toLowerCase();
-    return (
-      text.includes('recruiter') ||
-      text.includes('talent acquisition') ||
-      text.includes('hiring') ||
-      text.includes('sourcer') ||
-      text.includes('staffing') ||
-      text.includes('human resources') ||
-      text.includes('hrbp')
-    );
+    return checkIsRecruiter(p);
   };
 
   // 7-Day Velocity & Granular Daily Activity Data
@@ -562,8 +541,8 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
       const isToday = idx === currentDayIdx;
       const isPast = idx < currentDayIdx;
       const isFuture = idx > currentDayIdx;
-      const peerGoal = 5;
-      const recruiterGoal = 2;
+      const peerGoal = 4;
+      const recruiterGoal = 3;
 
       const matching = dailyVelocityData.find((d) => d.weekday === day);
       const peersDone = matching ? matching.sentPeers : isToday ? Math.min(funnelMetrics.invited, peerGoal) : isPast ? 3 : 0;
@@ -943,7 +922,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
                 Your conversion rate is holding strong at <strong>{funnelMetrics.conversionRate}%</strong> with{' '}
                 <strong>{funnelMetrics.connected} connected peers & recruiters</strong> out of {funnelMetrics.totalTracked} tracked.
                 Top concentration is in <strong>{companyRadar.topCompanies[0]?.name || 'Healthcare/Consulting'}</strong>.
-                Recommendation: Continue the <strong>5 Peers + 2 Recruiters</strong> daily routine to reach 50 active 1st-degree connections by next week.
+                Recommendation: Continue the <strong>4 Peers + 3 HR / Recruiters</strong> daily routine to reach 50 active 1st-degree connections by next week.
               </p>
             </div>
           </div>
@@ -1006,7 +985,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
                 {funnelMetrics.invited}
               </div>
               <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                Pace: 5 Peers + 2 Recruiters/day
+                Pace: 4 Peers + 3 Recruiters/day
               </span>
             </div>
 
@@ -1806,7 +1785,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                 <Flame size={16} color="#f59e0b" />
                 <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                  7-Day Routine Consistency Cadence (5 Peers + 2 Recruiters / Day)
+                  7-Day Routine Consistency Cadence (4 Peers + 3 HR / Recruiters / Day)
                 </h3>
               </div>
               <div
@@ -1946,7 +1925,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
                           fontWeight: 600,
                         }}
                       >
-                        🤝 {selectedDayData.peersDone} / 5 Peers
+                        🤝 {selectedDayData.peersDone} / 4 Peers
                       </span>
                       <span
                         style={{
@@ -1958,7 +1937,7 @@ export const AnalyticsMemoryTab: React.FC<AnalyticsMemoryTabProps> = ({
                           fontWeight: 600,
                         }}
                       >
-                        💬 {selectedDayData.recruitersDone} / 2 Recruiters
+                        💬 {selectedDayData.recruitersDone} / 3 Recruiters
                       </span>
                     </div>
                   </div>

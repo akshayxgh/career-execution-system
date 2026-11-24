@@ -1025,6 +1025,37 @@ async function inPageBumpNaukriHeadline(variantA, variantB) {
 const SUPABASE_REST_URL = 'https://nnicnxwzuvinaqvxuvsh.supabase.co/rest/v1';
 const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaWNueHd6dXZpbmFxdnh1dnNoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjUzODE1NiwiZXhwIjoyMDk4MTE0MTU2fQ.iillIQhcnWBMriJ1n0MZdasQlk27tog1g7HOv3_DJas';
 
+/**
+ * Robust classifier for determining if a profile is a dedicated Recruiter/HR vs Engineering/Data Peer.
+ * Strictly avoids substring pitfalls (e.g. "through", "thru", "Synchrony", "Philanthropist" matching "hr").
+ */
+function isRecruiterProfile(headline, role, tags) {
+  const h = (headline || '').toLowerCase();
+  const r = (role || '').toLowerCase();
+  const t = Array.isArray(tags) ? tags.join(' ').toLowerCase() : (typeof tags === 'string' ? tags.toLowerCase() : '');
+  const combined = `${r} ${h} ${t}`;
+
+  const recruiterRegex = /\b(recruiter|recruiting|recruitment|talent\s*a[c]?quisition|talent\s*hiring[s]?|talent\s*partner|talent\s*specialist|talent\s*sourcer|talent\s*lead|talent\s*advisor|talent\s*manager|sourcer|headhunter|staffing|human\s*resources|hrbp|hr\s*executive|hr\s*manager|hr\s*specialist|hr\s*generalist|hr\s*lead|hr\s*director|hr\s*consultant|hr\s*recruiter|technical\s*recruitment|technical\s*recruiter|it\s*recruiter|campus\s*recruiter|campus\s*hiring|people\s*&\s*culture|people\s*partner|people\s*operations|ta\s*specialist|ta\s*partner|ta\s*lead)\b/i;
+  const isHrWord = /\bhr\b/i.test(combined) && !/\bhr\s*(analytics|analyst|data|ops)\b/i.test(combined);
+  const isRecruiterWord = recruiterRegex.test(combined) || isHrWord;
+
+  if (!isRecruiterWord) return false;
+
+  // Check if they are actually a Data/Engineering practitioner (e.g. "Senior Data Analyst", "Data Governance Leader")
+  const dataPeerRegex = /\b(data\s*analyst|senior\s*data\s*analyst|lead\s*data\s*analyst|data\s*engineer|senior\s*data\s*engineer|data\s*scientist|data\s*governance|data\s*architect|data\s*operations|master\s*data|data\s*quality|business\s*intelligence|bi\s*developer|bi\s*analyst|bi\s*specialist|bi\s*engineer|power\s*bi|tableau|analytics\s*manager|analytics\s*lead|analytics\s*engineer|avp[,\s]+analytics|vp[,\s]+analytics|head\s+of\s+analytics|director\s+of\s+analytics|sql\s*developer|mis\s*analyst|reporting\s*analyst|database\s*administrator|etl\s*developer|data\s*&\s*ai)\b/i;
+  
+  if (dataPeerRegex.test(combined)) {
+    // If they have data practitioner keywords, check if their primary job title (first segment) is explicitly a recruiter
+    const firstSegment = (headline || '').split(/[|•–\n@-]/)[0].toLowerCase().trim();
+    if (recruiterRegex.test(firstSegment) || (/\bhr\b/i.test(firstSegment) && !/\bhr\s*(analytics|analyst|data)\b/i.test(firstSegment))) {
+      return true; // e.g. "Technical Recruiter | Hiring Data Analysts"
+    }
+    return false; // e.g. "Senior Data Analyst | Power BI" or "Lead Data Analyst | Hiring for my team"
+  }
+
+  return true;
+}
+
 async function handleTrackLinkedInConnection(cand) {
   if (!cand || !cand.name) {
     return { success: false, error: 'Invalid candidate data' };
@@ -2186,10 +2217,8 @@ async function handleSyncAcceptedConnections(payload = {}) {
 
         updatedCount++;
 
-        // If Recruiter, draft automated welcome greeting message
-        const isRecruiter = (person.tags && person.tags.includes('RECRUITER')) ||
-                            (person.role && person.role.toLowerCase().includes('recruiter')) ||
-                            (person.headline && (person.headline.toLowerCase().includes('recruiter') || person.headline.toLowerCase().includes('talent')));
+        // If genuine Recruiter/HR, draft automated welcome greeting message
+        const isRecruiter = isRecruiterProfile(person.headline, person.role, person.tags);
 
         if (isRecruiter) {
           // Idempotency check: strictly skip if an action already exists for this person
@@ -2280,15 +2309,7 @@ async function handleImportSentInvitations(invitations = []) {
     const cleanUrl = (inv.profileUrl || '').replace(/\/+$/, '').trim();
     if (!inv.name || !cleanUrl) continue;
 
-    const lowerH = (inv.headline || '').toLowerCase();
-    const isRecruiter = lowerH.includes('recruiter') || 
-                        lowerH.includes('recruitment') || 
-                        lowerH.includes('talent') || 
-                        lowerH.includes('hr') || 
-                        lowerH.includes('hrbp') || 
-                        lowerH.includes('hiring') || 
-                        lowerH.includes('staffing') || 
-                        lowerH.includes('sourcer');
+    const isRecruiter = isRecruiterProfile(inv.headline);
 
     const personPayload = {
       user_id: 'Akshay',
@@ -2481,15 +2502,7 @@ async function handleSyncAllConnections(payload = {}, senderTabId = null) {
         company = atMatch[1].trim();
       }
 
-      const lowerH = headline.toLowerCase();
-      const isRecruiter = lowerH.includes('recruiter') || 
-                          lowerH.includes('recruitment') || 
-                          lowerH.includes('talent') || 
-                          lowerH.includes('hr') || 
-                          lowerH.includes('hrbp') || 
-                          lowerH.includes('hiring') || 
-                          lowerH.includes('staffing') || 
-                          lowerH.includes('sourcer');
+      const isRecruiter = isRecruiterProfile(headline);
 
       const existing = existingBySlug.get(slug) || existingByName.get(name.toLowerCase().trim());
 

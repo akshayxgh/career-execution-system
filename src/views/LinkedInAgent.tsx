@@ -28,6 +28,7 @@ import { ManualExecutionModal } from '../components/linkedin/ManualExecutionModa
 import { NetworkingTab } from '../components/linkedin/NetworkingTab';
 import { CompanyRadarTab } from '../components/linkedin/CompanyRadarTab';
 import { OpportunitiesTab } from '../components/linkedin/OpportunitiesTab';
+import { checkIsRecruiter as checkIsRecruiterPerson } from '../utils/recruiterClassifier';
 import { AnalyticsMemoryTab } from '../components/linkedin/AnalyticsMemoryTab';
 import { LearnInPublicCopilotTab } from '../components/linkedin/LearnInPublicCopilotTab';
 import type {
@@ -212,22 +213,9 @@ export const LinkedInAgent: React.FC = () => {
 
   const [networkingFilterPill, setNetworkingFilterPill] = useState<'ALL' | 'RECRUITERS' | 'INTRO_SENT' | 'PENDING_INVITES' | 'CONNECTED' | 'CONNECTED_TODAY'>('ALL');
 
-  const checkIsRecruiterPerson = (p?: LinkedInPerson | null): boolean => {
-    if (!p) return false;
-    const tagsStr = Array.isArray(p.tags) ? p.tags.join(' ') : (typeof p.tags === 'string' ? p.tags : '');
-    const text = `${p.role || ''} ${p.headline || ''} ${tagsStr}`.toLowerCase();
-    return (
-      text.includes('recruiter') ||
-      text.includes('talent acquisition') ||
-      text.includes('hiring') ||
-      text.includes('sourcer') ||
-      text.includes('staffing') ||
-      text.includes('human resources') ||
-      text.includes('hrbp')
-    );
-  };
 
-  // Today's Routine Pulse stats (5 Peers + 2 Recruiter Invites + 2 Recruiter Intros + Connected Today)
+
+  // Today's Routine Pulse stats (4 Peers + 3 Recruiter Invites + 2 Recruiter Intros + Connected Today)
   // Strictly isolated to today's data (UTC and local day)
   const routineStats = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -327,9 +315,9 @@ export const LinkedInAgent: React.FC = () => {
     const connectedRecruitersToday = connectedTodayList.filter(checkIsRecruiterPerson).length;
     const connectedPeersToday = connectedToday - connectedRecruitersToday;
 
-    // Targets: 5 Peers + 2 Recruiter Invites + 2 Recruiter Intros
-    const peerTarget = 5;
-    const recruiterInviteTarget = 2;
+    // Targets: 4 Peers + 3 Recruiter Invites + 2 Recruiter Intros
+    const peerTarget = 4;
+    const recruiterInviteTarget = 3;
     const recruiterTarget = 2;
     const totalTarget = peerTarget + recruiterInviteTarget + recruiterTarget;
     const totalDispatched =
@@ -565,7 +553,7 @@ export const LinkedInAgent: React.FC = () => {
               </span>
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Target: 5 Data/BI Peers + 2 Recruiter Invites + 2 Intros Daily Routine
+              Target: 4 Data/BI Peers + 3 Recruiter Invites + 2 Intros Daily Routine
             </div>
           </div>
         </div>
@@ -610,7 +598,7 @@ export const LinkedInAgent: React.FC = () => {
               </span>
             </div>
             <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
-              Target: 5 Data/BI Peers
+              Target: 4 Data/BI Peers
             </div>
           </div>
 
@@ -652,7 +640,7 @@ export const LinkedInAgent: React.FC = () => {
               </span>
             </div>
             <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
-              Target: 2 Recruiters
+              Target: 3 Recruiters
             </div>
           </div>
 
@@ -694,7 +682,7 @@ export const LinkedInAgent: React.FC = () => {
               </span>
             </div>
             <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>
-              Target: 2 Recruiters
+              Target: 2 Intros
             </div>
           </div>
 

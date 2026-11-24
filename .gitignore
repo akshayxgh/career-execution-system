@@ -31,3 +31,6 @@ outputs/
 recruiter_jobs*.json
 recruiters_for_apollo.csv
 scripts/test_inspect_recruiter.cjs
+scripts/export_recruiters_csv.cjs
+scripts/import_apollo_csv.cjs
+scripts/recruiter_jobs_listener.cjs

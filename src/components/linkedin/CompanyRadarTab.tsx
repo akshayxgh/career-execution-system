@@ -11,6 +11,7 @@ import {
   Target,
 } from 'lucide-react';
 import type { LinkedInPerson } from '../../types/linkedin';
+import { checkIsRecruiter } from '../../utils/recruiterClassifier';
 
 interface CompanyRadarTabProps {
   people: LinkedInPerson[];
@@ -50,19 +51,7 @@ export const CompanyRadarTab: React.FC<CompanyRadarTabProps> = ({
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  // Recruiter detection helper
-  const checkIsRecruiter = (p: LinkedInPerson): boolean => {
-    const text = `${p.role || ''} ${p.headline || ''} ${(p.tags || []).join(' ')}`.toLowerCase();
-    return (
-      text.includes('recruiter') ||
-      text.includes('talent acquisition') ||
-      text.includes('hiring') ||
-      text.includes('sourcer') ||
-      text.includes('staffing') ||
-      text.includes('human resources') ||
-      text.includes('hrbp')
-    );
-  };
+
 
   // Target Company Radar Calculations
   const companyRadar = useMemo(() => {
