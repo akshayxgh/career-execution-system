@@ -1030,24 +1030,50 @@ const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
  * Strictly avoids substring pitfalls (e.g. "through", "thru", "Synchrony", "Philanthropist" matching "hr").
  */
 function isRecruiterProfile(headline, role, tags) {
-  const h = (headline || '').toLowerCase();
-  const r = (role || '').toLowerCase();
-  const t = Array.isArray(tags) ? tags.join(' ').toLowerCase() : (typeof tags === 'string' ? tags.toLowerCase() : '');
-  const combined = `${r} ${h} ${t}`;
+  const tagsList = Array.isArray(tags)
+    ? tags
+    : typeof tags === 'string'
+    ? (() => {
+        try {
+          const parsed = JSON.parse(tags);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        return tags.split(/[,\s]+/);
+      })()
+    : [];
+
+  const hasPeerTag = tagsList.some((t) => typeof t === 'string' && /^peer$/i.test(t.trim()));
+  const hasRecruiterTag = tagsList.some((t) => typeof t === 'string' && /^(recruiter|hr)$/i.test(t.trim()));
+
+  if (hasPeerTag && !hasRecruiterTag) return false;
+  if (hasRecruiterTag && !hasPeerTag) return true;
+  if (hasPeerTag && hasRecruiterTag) {
+    const peerIdx = tagsList.findIndex((t) => typeof t === 'string' && /^peer$/i.test(t.trim()));
+    const recIdx = tagsList.findIndex((t) => typeof t === 'string' && /^(recruiter|hr)$/i.test(t.trim()));
+    return recIdx < peerIdx;
+  }
+
+  const r = (role || '').trim();
+  if (/^Senior Engineering Peer$/i.test(r) || /\bData \/ BI Peer\b/i.test(r)) return false;
+  if (/^Tech Talent Recruiter$/i.test(r) || /\bRecruiter \/ HR\b/i.test(r)) return true;
+
+  const h = (headline || '').trim();
+  const cleanTags = tagsList.filter(t => !/^(peer|recruiter|hr)$/i.test(t.trim())).join(' ');
+  const combined = `${r} ${h} ${cleanTags}`.toLowerCase();
 
   const recruiterRegex = /\b(recruiter|recruiting|recruitment|talent\s*a[c]?quisition|talent\s*hiring[s]?|talent\s*partner|talent\s*specialist|talent\s*sourcer|talent\s*lead|talent\s*advisor|talent\s*manager|sourcer|headhunter|staffing|human\s*resources|hrbp|hr\s*executive|hr\s*manager|hr\s*specialist|hr\s*generalist|hr\s*lead|hr\s*director|hr\s*consultant|hr\s*recruiter|technical\s*recruitment|technical\s*recruiter|it\s*recruiter|campus\s*recruiter|campus\s*hiring|people\s*&\s*culture|people\s*partner|people\s*operations|ta\s*specialist|ta\s*partner|ta\s*lead)\b/i;
-  const isHrWord = /\bhr\b/i.test(combined) && !/\bhr\s*(analytics|analyst|data|ops)\b/i.test(combined);
+  const isHrWord = /\bhr\b/i.test(combined) && !/\b(hr|people)\s*(analytics|analyst|data|ops|reporting)\b/i.test(combined);
   const isRecruiterWord = recruiterRegex.test(combined) || isHrWord;
 
   if (!isRecruiterWord) return false;
 
   // Check if they are actually a Data/Engineering practitioner (e.g. "Senior Data Analyst", "Data Governance Leader")
-  const dataPeerRegex = /\b(data\s*analyst|senior\s*data\s*analyst|lead\s*data\s*analyst|data\s*engineer|senior\s*data\s*engineer|data\s*scientist|data\s*governance|data\s*architect|data\s*operations|master\s*data|data\s*quality|business\s*intelligence|bi\s*developer|bi\s*analyst|bi\s*specialist|bi\s*engineer|power\s*bi|tableau|analytics\s*manager|analytics\s*lead|analytics\s*engineer|avp[,\s]+analytics|vp[,\s]+analytics|head\s+of\s+analytics|director\s+of\s+analytics|sql\s*developer|mis\s*analyst|reporting\s*analyst|database\s*administrator|etl\s*developer|data\s*&\s*ai)\b/i;
+  const dataPeerRegex = /\b(data\s*analyst|senior\s*data\s*analyst|lead\s*data\s*analyst|data\s*engineer|senior\s*data\s*engineer|data\s*scientist|data\s*governance|data\s*architect|data\s*operations|master\s*data|data\s*quality|business\s*intelligence|bi\s*developer|bi\s*analyst|bi\s*specialist|bi\s*engineer|power\s*bi|tableau|analytics\s*manager|analytics\s*lead|analytics\s*engineer|avp[,\s]+analytics|vp[,\s]+analytics|head\s+of\s+analytics|director\s+of\s+analytics|sql\s*developer|mis\s*analyst|reporting\s*analyst|database\s*administrator|etl\s*developer|data\s*&\s*ai|analytics|data)\b/i;
   
   if (dataPeerRegex.test(combined)) {
     // If they have data practitioner keywords, check if their primary job title (first segment) is explicitly a recruiter
     const firstSegment = (headline || '').split(/[|•–\n@-]/)[0].toLowerCase().trim();
-    if (recruiterRegex.test(firstSegment) || (/\bhr\b/i.test(firstSegment) && !/\bhr\s*(analytics|analyst|data)\b/i.test(firstSegment))) {
+    if (recruiterRegex.test(firstSegment) || (/\bhr\b/i.test(firstSegment) && !/\b(hr|people)\s*(analytics|analyst|data)\b/i.test(firstSegment))) {
       return true; // e.g. "Technical Recruiter | Hiring Data Analysts"
     }
     return false; // e.g. "Senior Data Analyst | Power BI" or "Lead Data Analyst | Hiring for my team"

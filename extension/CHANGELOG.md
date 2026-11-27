@@ -4,7 +4,15 @@ All notable changes and architectural updates to the **Job Autofill Pro** Chrome
 
 ---
 
-## [2.1.7] - 2026-11-24 (Current Release)
+## [2.1.8] - 2026-11-28 (Current Release)
+
+### 🏷️ Tag & Manual Category Precedence in Recruiter Classification
+- **User Override & Explicit Tag Priority:** Updated `isRecruiterProfile()` to prioritize manual tags (`PEER` vs `RECRUITER`) and role overrides (`Senior Engineering Peer` vs `Tech Talent Recruiter`) before evaluating headline regexes.
+- **Persistent Manual Classification:** Ensured contacts manually marked or edited as `PEER` never revert or display as `RECRUITER`, even if their headline contains HR keywords (e.g., HR Analytics, People Operations, Total Rewards).
+
+---
+
+## [2.1.7] - 2026-11-24
 
 ### 🎯 Strict Word-Boundary Recruiter & Peer Classification
 - **Bug Fix for False Recruiter Identification:** Fixed substring match flaw where words like "through", "thru", "Synchrony", "Philanthropist", and "threat" were erroneously triggering the `hr` keyword check and classifying senior Data/BI peers (such as Senior Data Analysts and Data Governance Leaders) as tech recruiters.
